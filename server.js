@@ -6,7 +6,7 @@ const fs = require('fs');
 const ejs = require('ejs');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Parse JSON and URL-encoded bodies
 app.use(express.json({ limit: '50mb' }));
