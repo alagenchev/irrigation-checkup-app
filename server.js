@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const path = require('path');
 const fs = require('fs');
 const ejs = require('ejs');
@@ -78,9 +79,17 @@ app.post('/generate-pdf', upload.array('zonePhotos'), async (req, res) => {
     });
 
     // Generate PDF with Puppeteer
+    // On macOS (local dev) use system Chrome; on Linux (Railway) use @sparticuz/chromium
+    const isLinux = process.platform === 'linux';
+    const executablePath = isLinux
+      ? await chromium.executablePath()
+      : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
     const browser = await puppeteer.launch({
+      args: isLinux ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox'],
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
