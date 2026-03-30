@@ -1,16 +1,19 @@
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql'
-import { Pool, PoolClient } from 'pg'
+import postgres, { type Sql, type TransactionSql } from 'postgres'
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import * as schema from '@/lib/schema'
 
-let container: StartedPostgreSqlContainer
-let pool: Pool
+let container: StartedPostgreSqlContainer | undefined
+let sql: Sql
+export let testDb: PostgresJsDatabase<typeof schema>
+
+class RollbackSignal extends Error {}
 
 /**
  * Starts a Postgres testcontainer and runs migrations.
  * Uses DATABASE_URL_TEST if set (local DB), otherwise spins up a container.
  * Call in beforeAll() with a generous timeout (60s).
- *
- * Requires DOCKER_HOST to be set correctly before this is called.
- * The npm test:db script handles this automatically via `docker context inspect`.
  */
 export async function startTestDb(): Promise<void> {
   let connectionString = process.env.DATABASE_URL_TEST
@@ -20,13 +23,14 @@ export async function startTestDb(): Promise<void> {
     connectionString = container.getConnectionUri()
   }
 
-  pool = new Pool({ connectionString })
-  await runMigrations(pool)
+  sql = postgres(connectionString, { max: 1 })
+  testDb = drizzle(sql, { schema })
+  await migrate(testDb, { migrationsFolder: './drizzle' })
 }
 
-/** Stops the pool and container (if one was started). Call in afterAll(). */
+/** Stops the connection and container (if one was started). Call in afterAll(). */
 export async function stopTestDb(): Promise<void> {
-  await pool?.end()
+  await sql?.end()
   await container?.stop()
 }
 
@@ -34,33 +38,15 @@ export async function stopTestDb(): Promise<void> {
  * Wraps a test in a transaction that is always rolled back.
  * Guarantees no data leaks between tests.
  */
-export async function withRollback(fn: (client: PoolClient) => Promise<void>): Promise<void> {
-  const client = await pool.connect()
-  await client.query('BEGIN')
-  try {
-    await fn(client)
-  } finally {
-    await client.query('ROLLBACK')
-    client.release()
-  }
-}
-
-/** Returns the raw pool — useful for assertions outside a transaction. */
-export function getTestPool(): Pool {
-  return pool
-}
-
-async function runMigrations(p: Pool): Promise<void> {
-  await p.query(`
-    CREATE TABLE IF NOT EXISTS clients (
-      id             SERIAL PRIMARY KEY,
-      name           TEXT NOT NULL,
-      address        TEXT,
-      phone          TEXT,
-      email          TEXT,
-      account_type   TEXT,
-      account_number TEXT,
-      created_at     TIMESTAMPTZ DEFAULT NOW()
-    )
-  `)
+export async function withRollback(
+  fn: (db: PostgresJsDatabase<typeof schema>) => Promise<void>,
+): Promise<void> {
+  await sql.begin(async (txSql: TransactionSql) => {
+    const txDb = drizzle(txSql as unknown as Sql, { schema })
+    await fn(txDb)
+    throw new RollbackSignal()
+  }).catch(err => {
+    if (err instanceof RollbackSignal) return
+    throw err
+  })
 }

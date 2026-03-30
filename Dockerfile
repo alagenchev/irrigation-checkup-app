@@ -13,7 +13,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
-RUN npm run db:migrate
 
 EXPOSE 3000
-CMD ["npm", "start"]
+# Run migrations at container startup (requires DATABASE_URL to be injected by Railway),
+# then start the app.
+CMD ["sh", "-c", "npm run db:migrate && npm start"]

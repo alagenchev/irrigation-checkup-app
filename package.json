@@ -8,16 +8,20 @@
     "start": "next start",
     "test": "jest --config jest.config.js",
     "test:db": "DATABASE_URL_TEST=postgresql://localhost:5432/irrigation_test jest --config jest.integration.config.js --runInBand",
-    "db:migrate": "ts-node -e \"require('./lib/db').initDb().then(() => { console.log('Migrations complete'); process.exit(0); })\"",
-    "db:migrate:test": "ts-node -e \"require('./lib/db').initDb().then(() => { console.log('done'); process.exit(0); })\" -- DATABASE_URL=$DATABASE_URL_TEST"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.7",
+    "drizzle-orm": "^0.45.2",
     "next": "^15.2.8",
-    "pg": "^8.20.0",
+    "postgres": "^3.4.8",
     "puppeteer-core": "^23.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tsx": "^4.19.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.4.0",
@@ -25,9 +29,9 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22",
-    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "ts-jest": "^29.4.6",
