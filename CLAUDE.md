@@ -196,6 +196,37 @@ __tests__/             ← unit and integration tests
 
 ---
 
+## UI & Color — Readability Rules
+
+This app uses a **dark theme**. All UI must meet these contrast and color rules:
+
+### Text on dark backgrounds
+- Body / primary text: `#ffffff` or `#f4f4f5` — never dark gray or black on dark backgrounds.
+- Secondary / hint text: `#a1a1aa` minimum — light enough to read but visually subordinate.
+- Disabled / placeholder text: `#71717a` — use sparingly; never for content the user must read.
+
+### Interactive overlays (dropdowns, modals, tooltips, popovers)
+- Background: `#1c1c1e` (near-black surface).
+- Text: `#ffffff` — always set explicitly; never rely on inheritance from the page which may have a different context.
+- Hover / active highlight: `#2c2c2e`.
+- Border: `#3a3a3c`.
+
+### Status colors
+| Purpose | Color |
+|---|---|
+| Error / destructive | `#ef4444` |
+| Success | `#22c55e` |
+| Warning | `#f59e0b` |
+| Info / accent | `#3b82f6` |
+
+### Rules
+- **Always set `color` explicitly on floating elements** (dropdowns, tooltips, modals). Do not rely on CSS inheritance — the parent context may use a different color scheme and cause unreadable dark-on-dark or light-on-light combinations.
+- **Never use black (`#000000`) text** on dark backgrounds.
+- **Minimum contrast ratio: 4.5:1** for normal text, 3:1 for large text (WCAG AA).
+- **Test readability visually** whenever adding any overlay or floating UI element.
+
+---
+
 ## Database (Drizzle ORM + PostgreSQL)
 
 ### Setup & client
