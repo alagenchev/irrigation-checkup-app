@@ -14,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/" className="nav-brand">💧 Irrigation Checkup</Link>
               <nav>
                 <Link href="/clients">Clients</Link>
+                <Link href="/sites">Sites</Link>
               </nav>
             </div>
             <Show when="signed-out">

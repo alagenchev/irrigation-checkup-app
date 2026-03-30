@@ -9,4 +9,12 @@ export const createClientSchema = z.object({
   accountNumber: z.string().max(100).optional(),
 })
 
+export const createSiteSchema = z.object({
+  name:       z.string().min(1, 'Site name is required').max(255),
+  address:    z.string().max(500).optional(),
+  clientName: z.string().max(255).optional(), // resolved to clientId in the action
+  notes:      z.string().max(2000).optional(),
+})
+
 export type CreateClientInput = z.infer<typeof createClientSchema>
+export type CreateSiteInput   = z.infer<typeof createSiteSchema>

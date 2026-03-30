@@ -1,26 +1,20 @@
-import { createClientSchema } from '@/lib/validators'
+import { createClientSchema, createSiteSchema } from '@/lib/validators'
 
 describe('createClientSchema', () => {
   test('accepts a valid client with all fields', () => {
     const result = createClientSchema.safeParse({
-      name: 'Acme Corp',
-      address: '123 Main St',
-      phone: '555-0000',
-      email: 'info@acme.com',
-      accountType: 'Commercial',
-      accountNumber: 'ABC123',
+      name: 'Acme Corp', address: '123 Main St', phone: '555-0000',
+      email: 'info@acme.com', accountType: 'Commercial', accountNumber: 'ABC123',
     })
     expect(result.success).toBe(true)
   })
 
   test('accepts a client with only the required name field', () => {
-    const result = createClientSchema.safeParse({ name: 'Bare Minimum LLC' })
-    expect(result.success).toBe(true)
+    expect(createClientSchema.safeParse({ name: 'Bare Minimum LLC' }).success).toBe(true)
   })
 
   test('rejects when name is missing', () => {
-    const result = createClientSchema.safeParse({})
-    expect(result.success).toBe(false)
+    expect(createClientSchema.safeParse({}).success).toBe(false)
   })
 
   test('rejects when name is an empty string', () => {
@@ -36,7 +30,33 @@ describe('createClientSchema', () => {
   })
 
   test('accepts an empty string email (field left blank)', () => {
-    const result = createClientSchema.safeParse({ name: 'Valid Name', email: '' })
+    expect(createClientSchema.safeParse({ name: 'Valid Name', email: '' }).success).toBe(true)
+  })
+})
+
+describe('createSiteSchema', () => {
+  test('accepts a valid site with all fields', () => {
+    const result = createSiteSchema.safeParse({
+      name: 'Acme HQ', address: '123 Main St', clientName: 'Acme Corp', notes: 'Main campus',
+    })
     expect(result.success).toBe(true)
+  })
+
+  test('accepts a site with only the required name field', () => {
+    expect(createSiteSchema.safeParse({ name: 'Minimal Site' }).success).toBe(true)
+  })
+
+  test('rejects when name is missing', () => {
+    expect(createSiteSchema.safeParse({}).success).toBe(false)
+  })
+
+  test('rejects when name is empty', () => {
+    const result = createSiteSchema.safeParse({ name: '' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/required/i)
+  })
+
+  test('accepts a site without a client (clientName optional)', () => {
+    expect(createSiteSchema.safeParse({ name: 'No Client Site' }).success).toBe(true)
   })
 })
