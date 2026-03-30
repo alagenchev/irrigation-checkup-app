@@ -1,6 +1,5 @@
 FROM node:20-slim
 
-# Install Chromium and its dependencies via apt
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -13,6 +12,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+RUN npm run build
+RUN npm run db:migrate
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

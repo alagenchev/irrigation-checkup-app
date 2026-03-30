@@ -1,4 +1,5 @@
+.env*.local
+.env.test.example
+.env.local.example
+.next/
 node_modules/
-uploads/
-*.pdf
-.env
