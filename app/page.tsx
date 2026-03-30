@@ -306,7 +306,7 @@ export default function IrrigationPage() {
             ] as [string,string][]).map(([key, label]) => (
               <div className="field checkbox-field" key={key}>
                 <label>
-                  <input type="checkbox" checked={(form as Record<string,boolean>)[key]} onChange={e => setField(key, e.target.checked)} />
+                  <input type="checkbox" checked={(form as unknown as Record<string,boolean>)[key]} onChange={e => setField(key, e.target.checked)} />
                   {label}
                 </label>
               </div>
