@@ -87,7 +87,7 @@ export function Autocomplete({
             position: 'absolute', zIndex: 50, top: '100%', left: 0, right: 0,
             background: '#1c1c1e', border: '1px solid #3a3a3c', borderRadius: 6,
             listStyle: 'none', margin: 0, padding: '4px 0', maxHeight: 220, overflowY: 'auto',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)', color: '#ffffff',
           }}
         >
           {filtered.map((opt, i) => (
