@@ -10,8 +10,33 @@
    ```bash
    npm test
    ```
+3. **If `scripts/` was modified**, run the migration test to verify it executes without runtime errors:
+   ```bash
+   npm run test:migrate
+   ```
 
-Both must pass before considering work complete.
+All must pass before considering work complete.
+
+---
+
+## Scripts in `scripts/` — CJS compatibility rule
+
+**Never use top-level `await` in `scripts/*.ts`.** The scripts are run by `tsx` in CommonJS mode (no `"type": "module"` in `package.json`), and top-level await is not supported in CJS.
+
+**Always wrap async work in an explicit `main()` function:**
+
+```ts
+// ✅ correct
+async function main() {
+  await someAsyncThing()
+}
+main().catch(err => { console.error(err); process.exit(1) })
+
+// ❌ wrong — fails at runtime on Railway with "Top-level await is not supported with CJS"
+await someAsyncThing()
+```
+
+This error does NOT surface during `npm run build` (Next.js doesn't compile `scripts/`) and is only caught at container startup on Railway. Run `npm run test:migrate` locally to catch it before pushing.
 
 ---
 

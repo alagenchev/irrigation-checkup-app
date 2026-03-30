@@ -10,7 +10,8 @@
     "test:db": "DATABASE_URL_TEST=postgresql://localhost:5432/irrigation_test jest --config jest.integration.config.js --runInBand",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:migrate": "dropdb --if-exists irrigation_migrate_test 2>/dev/null; createdb irrigation_migrate_test && DATABASE_URL=postgresql://localhost:5432/irrigation_migrate_test npm run db:migrate; ec=$?; dropdb --if-exists irrigation_migrate_test 2>/dev/null; exit $ec"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.7",
