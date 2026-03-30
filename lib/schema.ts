@@ -1,5 +1,20 @@
 import { pgTable, serial, text, timestamp, integer } from 'drizzle-orm/pg-core'
 
+export const companySettings = pgTable('company_settings', {
+  id:                  integer('id').primaryKey().default(1),
+  companyName:         text('company_name').notNull().default(''),
+  licenseNum:          text('license_num').notNull().default(''),
+  companyAddress:      text('company_address').notNull().default(''),
+  companyCityStateZip: text('company_city_state_zip').notNull().default(''),
+  companyPhone:        text('company_phone').notNull().default(''),
+  performedBy:         text('performed_by').notNull().default(''),
+  updatedAt:           timestamp('updated_at', { withTimezone: true }).defaultNow().$onUpdateFn(() => new Date()),
+})
+
+export type CompanySettings    = typeof companySettings.$inferSelect
+export type NewCompanySettings = typeof companySettings.$inferInsert
+
+
 export const clients = pgTable('clients', {
   id:            serial('id').primaryKey(),
   name:          text('name').notNull(),

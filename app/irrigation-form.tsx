@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
-import type { Client, Site } from '@/types'
+import type { Client, CompanySettings, Site } from '@/types'
 
 const ISSUE_TYPES = [
   'Runoff','Overspray','Lower Head','Raise Head','Obstructions','Adjust Nozzle',
@@ -26,15 +26,13 @@ let nextId = 1
 const uid = () => nextId++
 
 interface IrrigationFormProps {
-  clients: Client[]
-  sites:   Site[]
+  clients:  Client[]
+  sites:    Site[]
+  company:  CompanySettings
 }
 
-export function IrrigationForm({ clients, sites }: IrrigationFormProps) {
+export function IrrigationForm({ clients, sites, company }: IrrigationFormProps) {
   const [form, setForm] = useState({
-    companyName: 'TM&F Services LLC', licenseNum: 'TX LI0028463',
-    companyAddress: '3811 Kentucky ct', companyCityStateZip: 'Grand Prairie, TX 75052',
-    companyPhone: '9038122010', performedBy: 'Tihomir Tony Alagenchev',
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
     datePerformed: '', checkupType: 'Repair Checkup', accountType: 'Commercial',
     accountNumber: '', status: 'New', dueDate: '', assignedUser: '',
@@ -159,6 +157,11 @@ export function IrrigationForm({ clients, sites }: IrrigationFormProps) {
     try {
       const fd = new FormData()
 
+      // Company fields (read-only on this form, sourced from DB)
+      Object.entries(company).forEach(([k, v]) => {
+        if (v !== null) fd.append(k, String(v))
+      })
+
       // Simple form fields
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)))
 
@@ -220,18 +223,29 @@ export function IrrigationForm({ clients, sites }: IrrigationFormProps) {
           <button className="btn btn-primary" onClick={generatePDF}>Create PDF</button>
         </div>
 
-        {/* COMPANY INFO */}
+        {/* COMPANY INFO — read-only, edit via /company */}
         <section className="card">
-          <h2>Company Information</h2>
+          <div className="section-header">
+            <h2>Company Information</h2>
+            <a href="/company" className="btn btn-sm">Edit</a>
+          </div>
           <div className="grid-2">
             {([
-              ['companyName','Company Name'],['licenseNum','License #'],
-              ['companyAddress','Company Address'],['companyCityStateZip','Company City/State/Zip'],
-              ['companyPhone','Company Phone'],['performedBy','Performed By'],
-            ] as [string,string][]).map(([key, label]) => (
+              ['companyName',         'Company Name'],
+              ['licenseNum',          'License #'],
+              ['companyAddress',      'Company Address'],
+              ['companyCityStateZip', 'City / State / Zip'],
+              ['companyPhone',        'Company Phone'],
+              ['performedBy',         'Performed By'],
+            ] as [keyof CompanySettings, string][]).map(([key, label]) => (
               <div className="field" key={key}>
                 <label>{label}</label>
-                <input type="text" value={(form as Record<string,string|boolean>)[key] as string} onChange={e => setField(key, e.target.value)} />
+                <p style={{
+                  padding: '7px 10px', border: '1px solid #3a3a3c', borderRadius: 6,
+                  fontSize: 13, color: '#ffffff', background: '#2c2c2e', margin: 0,
+                }}>
+                  {(company[key] as string) || <span style={{ color: '#71717a' }}>—</span>}
+                </p>
               </div>
             ))}
           </div>

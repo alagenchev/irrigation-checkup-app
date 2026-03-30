@@ -16,5 +16,15 @@ export const createSiteSchema = z.object({
   notes:      z.string().max(2000).optional(),
 })
 
-export type CreateClientInput = z.infer<typeof createClientSchema>
-export type CreateSiteInput   = z.infer<typeof createSiteSchema>
+export const companySettingsSchema = z.object({
+  companyName:         z.string().min(1, 'Company name is required').max(255),
+  licenseNum:          z.string().max(100).optional().default(''),
+  companyAddress:      z.string().max(500).optional().default(''),
+  companyCityStateZip: z.string().max(255).optional().default(''),
+  companyPhone:        z.string().max(50).optional().default(''),
+  performedBy:         z.string().max(255).optional().default(''),
+})
+
+export type CreateClientInput    = z.infer<typeof createClientSchema>
+export type CreateSiteInput      = z.infer<typeof createSiteSchema>
+export type CompanySettingsInput = z.infer<typeof companySettingsSchema>

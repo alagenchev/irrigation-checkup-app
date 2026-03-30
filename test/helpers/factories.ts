@@ -1,5 +1,18 @@
 import { faker } from '@faker-js/faker'
-import type { NewClient } from '@/lib/schema'
+import type { NewClient, NewCompanySettings } from '@/lib/schema'
+
+export function buildCompanySettings(overrides: Partial<NewCompanySettings> = {}): NewCompanySettings {
+  return {
+    id:                  1,
+    companyName:         faker.company.name(),
+    licenseNum:          faker.string.alphanumeric(8).toUpperCase(),
+    companyAddress:      faker.location.streetAddress(),
+    companyCityStateZip: `${faker.location.city()}, TX ${faker.location.zipCode()}`,
+    companyPhone:        faker.phone.number(),
+    performedBy:         faker.person.fullName(),
+    ...overrides,
+  }
+}
 
 export function buildClient(overrides: Partial<NewClient> = {}): NewClient {
   return {

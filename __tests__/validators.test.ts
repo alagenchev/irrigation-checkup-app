@@ -1,4 +1,4 @@
-import { createClientSchema, createSiteSchema } from '@/lib/validators'
+import { createClientSchema, createSiteSchema, companySettingsSchema } from '@/lib/validators'
 
 describe('createClientSchema', () => {
   test('accepts a valid client with all fields', () => {
@@ -58,5 +58,29 @@ describe('createSiteSchema', () => {
 
   test('accepts a site without a client (clientName optional)', () => {
     expect(createSiteSchema.safeParse({ name: 'No Client Site' }).success).toBe(true)
+  })
+})
+
+describe('companySettingsSchema', () => {
+  test('accepts valid company settings with all fields', () => {
+    const result = companySettingsSchema.safeParse({
+      companyName: 'Acme LLC', licenseNum: 'TX123', companyAddress: '1 Main St',
+      companyCityStateZip: 'Dallas, TX 75001', companyPhone: '5550000', performedBy: 'Jane',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('accepts settings with only companyName (all others optional)', () => {
+    expect(companySettingsSchema.safeParse({ companyName: 'Minimal Co' }).success).toBe(true)
+  })
+
+  test('rejects when companyName is missing', () => {
+    expect(companySettingsSchema.safeParse({}).success).toBe(false)
+  })
+
+  test('rejects when companyName is empty', () => {
+    const result = companySettingsSchema.safeParse({ companyName: '' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/required/i)
   })
 })
