@@ -60,6 +60,7 @@ export const siteZones = pgTable('site_zones', {
   description:     text('description'),
   landscapeTypes:  text('landscape_types').array(),
   irrigationTypes: text('irrigation_types').array(),
+  notes:           text('notes'),
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
@@ -75,7 +76,6 @@ export const siteBackflows = pgTable('site_backflows', {
 
 // ── JSONB sub-types for visit-specific snapshot data ──────────────────────
 
-export type ZoneNoteData  = { id: number; zoneNum: string; zoneDesc: string; note: string }
 export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string }
 export type ZoneIssueData = { zoneNum: string; issues: string[] }
 
@@ -109,7 +109,6 @@ export const siteVisits = pgTable('site_visits', {
 
   // Visit-specific snapshot data (not auto-populated)
   zoneIssues: jsonb('zone_issues').$type<ZoneIssueData[]>(),
-  zoneNotes:  jsonb('zone_notes').$type<ZoneNoteData[]>(),
   quoteItems: jsonb('quote_items').$type<QuoteItemData[]>(),
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   siteVisits, siteControllers, siteZones, siteBackflows,
-  type ZoneIssueData, type ZoneNoteData, type QuoteItemData,
+  type ZoneIssueData, type QuoteItemData,
 } from '@/lib/schema'
 import { saveCheckupSchema } from '@/lib/validators'
 import { ensureSiteExists } from '@/actions/sites'
@@ -73,6 +73,7 @@ export async function saveCheckup(input: SaveCheckupInput): Promise<ActionResult
         description:     zone.description     || null,
         landscapeTypes:  zone.landscapeTypes,
         irrigationTypes: zone.irrigationTypes,
+        notes:           zone.notes            || null,
       })
     }
 
@@ -92,8 +93,6 @@ export async function saveCheckup(input: SaveCheckupInput): Promise<ActionResult
       zoneNum: z.zoneNum,
       issues:  (data.zoneIssues[z.zoneNum] ?? []) as string[],
     }))
-
-    const zoneNotes = data.zoneNotes as ZoneNoteData[]
 
     const quoteItems: QuoteItemData[] = data.quoteItems.map(qi => ({
       id: qi.id, location: qi.location, item: qi.item,
@@ -121,7 +120,6 @@ export async function saveCheckup(input: SaveCheckupInput): Promise<ActionResult
       isolationValve:      data.isolationValve,
       systemNotes:         data.systemNotes    || null,
       zoneIssues,
-      zoneNotes,
       quoteItems,
     }
 

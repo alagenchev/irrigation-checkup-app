@@ -159,7 +159,6 @@ describe('createSiteVisitSchema', () => {
       isolationValve:      true,
       systemNotes: 'Hunter Pro-HC installed.',
       zoneIssues: [{ zoneNum: '1', issues: ['Runoff'] }],
-      zoneNotes:  [],
       quoteItems: [],
     })
     expect(r.success).toBe(true)
@@ -227,7 +226,7 @@ describe('saveCheckupSchema', () => {
   const VALID = {
     siteName: 'Acme HQ', datePerformed: '2025-06-15',
     backflowInstalled: false, backflowServiceable: false, isolationValve: false,
-    controllers: [], zones: [], backflows: [], zoneIssues: {}, zoneNotes: [], quoteItems: [],
+    controllers: [], zones: [], backflows: [], zoneIssues: {}, quoteItems: [],
   }
 
   test('accepts minimal valid input', () => {
@@ -267,7 +266,7 @@ describe('saveCheckupSchema', () => {
       staticPressure: '68.0', systemNotes: 'Hunter Pro-HC',
       backflowInstalled: true, backflowServiceable: true, isolationValve: true,
       controllers: [{ id: 1, location: 'Front', manufacturer: 'Hunter', model: 'Pro-HC', sensors: 'Rain', numZones: '6', masterValve: false, notes: '' }],
-      zones: [{ id: 2, zoneNum: '1', controller: '1', description: 'Lawn', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'] }],
+      zones: [{ id: 2, zoneNum: '1', controller: '1', description: 'Lawn', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'], notes: '' }],
       zoneIssues: { '1': ['Runoff'] },
     })
     expect(r.success).toBe(true)

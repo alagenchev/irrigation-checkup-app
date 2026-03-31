@@ -7,7 +7,7 @@ export type {
   SiteZone, NewSiteZone,
   SiteBackflow, NewSiteBackflow,
   SiteVisit, NewSiteVisit,
-  ZoneNoteData, QuoteItemData, ZoneIssueData,
+  QuoteItemData, ZoneIssueData,
 } from '@/lib/schema'
 
 export type ActionResult<T = void> =

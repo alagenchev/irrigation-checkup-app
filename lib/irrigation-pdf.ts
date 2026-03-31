@@ -41,6 +41,7 @@ interface Zone {
   description: string
   landscapeTypes: string[]
   irrigationTypes: string[]
+  notes: string
 }
 
 interface Backflow {
@@ -54,13 +55,6 @@ interface Backflow {
 interface ZoneIssueRow {
   zoneNum: string
   issues: string[]
-}
-
-interface ZoneNote {
-  id: number
-  zoneNum: string
-  zoneDesc: string
-  note: string
 }
 
 interface QuoteItem {
@@ -78,13 +72,12 @@ interface IrrigationPdfData {
   zones: Zone[]
   backflows: Backflow[]
   zoneIssues: ZoneIssueRow[]
-  zoneNotes: ZoneNote[]
   quoteItems: QuoteItem[]
   photoMap: Record<string, string[]>
 }
 
 export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
-  const { formData, controllers, zones, backflows, zoneIssues, zoneNotes, quoteItems, photoMap } = data
+  const { formData, controllers, zones, backflows, zoneIssues, quoteItems, photoMap } = data
 
   const quoteTotal = quoteItems.reduce((sum, item) => sum + item.price * item.qty, 0)
 
@@ -132,6 +125,7 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
           <td>${esc(z.description)}</td>
           <td>${esc((z.landscapeTypes || []).join(', '))}</td>
           <td>${esc((z.irrigationTypes || []).join(', '))}</td>
+          <td>${esc(z.notes || '')}</td>
         </tr>
       `).join('')
 
@@ -143,6 +137,7 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
               <th>Description</th>
               <th>Landscape Type(s)</th>
               <th>Irrigation Type(s)</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -217,33 +212,6 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
   }
 
   // ── ZONE NOTES SECTION ───────────────────────────────────────────────────
-  let zoneNotesHtml = ''
-  if (zoneNotes && zoneNotes.length > 0) {
-    const noteRows = zoneNotes.map(n => `
-      <tr>
-        <td>${esc(n.zoneNum)}</td>
-        <td>${esc(n.zoneDesc)}</td>
-        <td>${esc(n.note)}</td>
-      </tr>
-    `).join('')
-
-    zoneNotesHtml = `
-      <div class="section-heading">Zone Notes</div>
-      <table class="zone-notes-table">
-        <thead>
-          <tr>
-            <th style="width:50px">Zone</th>
-            <th style="width:130px">Zone Description</th>
-            <th>Issue Note</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${noteRows}
-        </tbody>
-      </table>
-    `
-  }
-
   // ── ZONE PHOTOS SECTION ──────────────────────────────────────────────────
   const photoKeys = Object.keys(photoMap || {})
   const hasPhotos = photoKeys.length > 0
@@ -611,9 +579,6 @@ ${controllersHtml}
 
 <!-- ═══════════════════════════════════════════════════════ PAGE 2 ═══ -->
 <div class="page-break"></div>
-
-<!-- ZONE NOTES -->
-${zoneNotesHtml}
 
 <!-- ZONE PHOTOS -->
 ${photosHtml}

@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
     const zones = JSON.parse(fields.zones || '[]')
     const backflows = JSON.parse(fields.backflows || '[]')
     const zoneIssues = JSON.parse(fields.zoneIssues || '[]')
-    const zoneNotes = JSON.parse(fields.zoneNotes || '[]')
     const quoteItems = JSON.parse(fields.quoteItems || '[]')
 
     // Build photoMap: key is like "photo_zone_2"
@@ -36,7 +35,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const html = generateIrrigationPdfHtml({ formData: fields, controllers, zones, backflows, zoneIssues, zoneNotes, quoteItems, photoMap })
+    const html = generateIrrigationPdfHtml({ formData: fields, controllers, zones, backflows, zoneIssues, quoteItems, photoMap })
 
     const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     const browser = await puppeteer.launch({

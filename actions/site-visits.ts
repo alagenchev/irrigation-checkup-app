@@ -2,7 +2,7 @@
 
 import { and, count, desc, eq, lt } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { clients, siteVisits, sites, technicians, type ZoneIssueData, type ZoneNoteData, type QuoteItemData } from '@/lib/schema'
+import { clients, siteVisits, sites, technicians, type ZoneIssueData, type QuoteItemData } from '@/lib/schema'
 import { createSiteVisitSchema } from '@/lib/validators'
 import type { ActionResult, SiteVisit } from '@/types'
 import type { CreateSiteVisitInput } from '@/lib/validators'
@@ -82,7 +82,7 @@ export async function getLatestSystemDataForSite(siteId: number) {
  * Controllers, zones, and backflow devices are site-level records in their
  * own tables — not stored per-visit.
  *
- * Per-visit snapshot data (zoneIssues, zoneNotes, quoteItems) is never
+ * Per-visit snapshot data (zoneIssues, quoteItems) is never
  * auto-populated.
  */
 export async function createSiteVisit(input: CreateSiteVisitInput): Promise<ActionResult<SiteVisit>> {
@@ -139,7 +139,6 @@ export async function createSiteVisit(input: CreateSiteVisitInput): Promise<Acti
 
       // Visit-specific snapshot data
       zoneIssues: snap<ZoneIssueData[]>(data.zoneIssues ?? null),
-      zoneNotes:  snap<ZoneNoteData[]>(data.zoneNotes   ?? null),
       quoteItems: snap<QuoteItemData[]>(data.quoteItems ?? null),
     })
     .returning()

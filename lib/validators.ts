@@ -53,6 +53,7 @@ export const createSiteZoneSchema = z.object({
   description:     z.string().max(500).optional(),
   landscapeTypes:  z.array(z.string()).optional().default([]),
   irrigationTypes: z.array(z.string()).optional().default([]),
+  notes:           z.string().max(2000).optional(),
 })
 
 export const updateSiteZoneSchema = createSiteZoneSchema
@@ -101,7 +102,6 @@ export const createSiteVisitSchema = z.object({
 
   // Visit-specific snapshot data — never auto-populated
   zoneIssues: z.array(z.unknown()).optional(),
-  zoneNotes:  z.array(z.unknown()).optional(),
   quoteItems: z.array(z.unknown()).optional(),
 })
 
@@ -115,14 +115,11 @@ const controllerRow = z.object({
 const zoneRow = z.object({
   id: z.number(), zoneNum: z.string(), controller: z.string(),
   description: z.string(), landscapeTypes: z.array(z.string()),
-  irrigationTypes: z.array(z.string()),
+  irrigationTypes: z.array(z.string()), notes: z.string(),
 })
 const backflowRow = z.object({
   id: z.number(), manufacturer: z.string(), type: z.string(),
   model: z.string(), size: z.string(),
-})
-const zoneNoteRow = z.object({
-  id: z.number(), zoneNum: z.string(), zoneDesc: z.string(), note: z.string(),
 })
 const quoteItemRow = z.object({
   id: z.number(), location: z.string(), item: z.string(),
@@ -156,7 +153,6 @@ export const saveCheckupSchema = z.object({
   zones:       z.array(zoneRow),
   backflows:   z.array(backflowRow),
   zoneIssues:  z.record(z.string(), z.array(z.string())),
-  zoneNotes:   z.array(zoneNoteRow),
   quoteItems:  z.array(quoteItemRow),
 })
 

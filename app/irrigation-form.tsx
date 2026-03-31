@@ -22,9 +22,8 @@ const IRRIGATION_TYPES = ['Rotor','MPR spray','Fan spray','Rotator nozzle','Drip
 
 // UI-only types (React key `id` is ephemeral, not the DB primary key)
 type Controller = { id: number; location: string; manufacturer: string; model: string; sensors: string; numZones: string; masterValve: boolean; notes: string }
-type Zone       = { id: number; zoneNum: string; controller: string; description: string; landscapeTypes: string[]; irrigationTypes: string[] }
+type Zone       = { id: number; zoneNum: string; controller: string; description: string; landscapeTypes: string[]; irrigationTypes: string[]; notes: string }
 type Backflow   = { id: number; manufacturer: string; type: string; model: string; size: string }
-type ZoneNote   = { id: number; zoneNum: string; zoneDesc: string; note: string }
 type QuoteItem  = { id: number; location: string; item: string; description: string; price: string; qty: string }
 
 let nextId = 1
@@ -51,12 +50,11 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
     { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, notes: '' }
   ])
   const [zones, setZones] = useState<Zone[]>([
-    { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [] },
-    { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [] },
+    { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
+    { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
   ])
   const [backflows, setBackflows] = useState<Backflow[]>([])
   const [zoneIssues, setZoneIssues] = useState<Record<string, string[]>>({})
-  const [zoneNotes, setZoneNotes] = useState<ZoneNote[]>([])
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([
     { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
   ])
@@ -98,7 +96,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
 
   function addZone() {
     const num = String(zones.length + 1)
-    setZones(z => [...z, { id: uid(), zoneNum: num, controller: '', description: '', landscapeTypes: [], irrigationTypes: [] }])
+    setZones(z => [...z, { id: uid(), zoneNum: num, controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' }])
   }
   function updateZone(id: number, key: keyof Zone, value: string | string[]) {
     setZones(z => z.map(zn => zn.id === id ? { ...zn, [key]: value } : zn))
@@ -140,15 +138,6 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
 
   // ── ZONE NOTES ───────────────────────────────────────────────────────────
 
-  function addZoneNote() {
-    setZoneNotes(n => [...n, { id: uid(), zoneNum: '', zoneDesc: '', note: '' }])
-  }
-  function updateZoneNote(id: number, key: keyof ZoneNote, value: string) {
-    setZoneNotes(n => n.map(note => note.id === id ? { ...note, [key]: value } : note))
-  }
-  function removeZoneNote(id: number) {
-    setZoneNotes(n => n.filter(note => note.id !== id))
-  }
 
   // ── QUOTE ITEMS ──────────────────────────────────────────────────────────
 
@@ -206,7 +195,6 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
         zones,
         backflows,
         zoneIssues,
-        zoneNotes,
         quoteItems,
       })
 
@@ -257,7 +245,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
       fd.append('zoneIssues', JSON.stringify(
         zones.map(z => ({ zoneNum: z.zoneNum, issues: zoneIssues[z.zoneNum] || [] }))
       ))
-      fd.append('zoneNotes', JSON.stringify(zoneNotes))
+
       fd.append('quoteItems', JSON.stringify(
         quoteItems.map((qi, i) => ({
           num: i + 1,
@@ -547,7 +535,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
             <thead>
               <tr>
                 <th>Zone #</th><th>Controller</th><th>Description</th>
-                <th>Landscape Type(s)</th><th>Irrigation Type(s)</th><th>Photos</th><th></th>
+                <th>Landscape Type(s)</th><th>Irrigation Type(s)</th><th>Notes</th><th>Photos</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -582,6 +570,15 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                         </label>
                       ))}
                     </div>
+                  </td>
+                  <td>
+                    <textarea
+                      rows={2}
+                      value={zn.notes}
+                      onChange={e => updateZone(zn.id, 'notes', e.target.value)}
+                      placeholder="Notes..."
+                      style={{width:'100%',minWidth:160}}
+                    />
                   </td>
                   <td>
                     <input
@@ -633,31 +630,6 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
               </tbody>
             </table>
           </div>
-        </section>
-
-        {/* ZONE NOTES */}
-        <section className="card">
-          <div className="section-header">
-            <h2>Zone Notes</h2>
-            <button type="button" className="btn btn-sm" onClick={addZoneNote}>+ Note</button>
-          </div>
-          {zoneNotes.map(n => (
-            <div className="zone-note-row" key={n.id}>
-              <div className="field">
-                <label>Zone #</label>
-                <input type="number" value={n.zoneNum} onChange={e => updateZoneNote(n.id,'zoneNum',e.target.value)} placeholder="Zone" />
-              </div>
-              <div className="field">
-                <label>Zone Description</label>
-                <input type="text" value={n.zoneDesc} onChange={e => updateZoneNote(n.id,'zoneDesc',e.target.value)} placeholder="Zone description" />
-              </div>
-              <div className="field">
-                <label>Note</label>
-                <textarea rows={2} value={n.note} onChange={e => updateZoneNote(n.id,'note',e.target.value)} placeholder="Describe the issue..." />
-              </div>
-              <button type="button" className="btn btn-danger" style={{alignSelf:'end'}} onClick={() => removeZoneNote(n.id)}>✕</button>
-            </div>
-          ))}
         </section>
 
         {/* QUOTE ITEMS */}
