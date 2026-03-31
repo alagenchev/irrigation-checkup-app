@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { ensureTechnicianExists } from '@/actions/technicians'
@@ -37,6 +38,7 @@ interface IrrigationFormProps {
 }
 
 export function IrrigationForm({ clients, sites, company, technicians }: IrrigationFormProps) {
+  const router = useRouter()
   const [form, setForm] = useState({
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
     datePerformed: '', checkupType: 'Repair Checkup', accountType: 'Commercial',
@@ -60,7 +62,8 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
   ])
   const [loading, setLoading] = useState(false)
   const [saving,  setSaving]  = useState(false)
-  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
@@ -78,6 +81,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
 
   function setField(key: string, value: string | boolean) {
     setForm(f => ({ ...f, [key]: value }))
+    setFieldErrors(e => { const { [key]: _, ...rest } = e; return rest })
   }
 
   // ── CONTROLLERS ──────────────────────────────────────────────────────────
@@ -156,12 +160,11 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
   // ── SAVE ─────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!form.siteName.trim()) {
-      setSaveMsg({ ok: false, text: 'Site name is required to save.' })
-      return
-    }
-    if (!form.datePerformed) {
-      setSaveMsg({ ok: false, text: 'Date performed is required to save.' })
+    const errs: Record<string, string> = {}
+    if (!form.siteName.trim())   errs.siteName      = 'Required'
+    if (!form.datePerformed)     errs.datePerformed  = 'Required'
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
       return
     }
 
@@ -199,12 +202,12 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
       })
 
       if (result.ok) {
-        setSaveMsg({ ok: true, text: 'Saved successfully.' })
+        router.push('/inspections')
       } else {
-        setSaveMsg({ ok: false, text: result.error })
+        setSaveMsg(result.error)
       }
     } catch {
-      setSaveMsg({ ok: false, text: 'An unexpected error occurred.' })
+      setSaveMsg('An unexpected error occurred.')
     } finally {
       setSaving(false)
     }
@@ -295,9 +298,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           <h1>Checkup Details</h1>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {saveMsg && (
-              <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>
-                {saveMsg.text}
-              </span>
+              <span style={{ fontSize: 13, color: '#ef4444' }}>{saveMsg}</span>
             )}
             <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving…' : 'Save'}
@@ -359,7 +360,10 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
               <input type="text" value={form.clientAddress} onChange={e => setField('clientAddress', e.target.value)} />
             </div>
             <div className="field">
-              <label>Site Name</label>
+              <label>
+                Site Name <span style={{ color: '#ffffff' }}>*</span>
+                {fieldErrors.siteName && <span style={{ color: '#ef4444', marginLeft: 6, fontSize: 12 }}>{fieldErrors.siteName}</span>}
+              </label>
               <Autocomplete
                 name="siteName"
                 value={form.siteName}
@@ -388,7 +392,10 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           <h2>Checkup Information</h2>
           <div className="grid-2">
             <div className="field">
-              <label>Date Performed</label>
+              <label>
+                Date Performed <span style={{ color: '#ffffff' }}>*</span>
+                {fieldErrors.datePerformed && <span style={{ color: '#ef4444', marginLeft: 6, fontSize: 12 }}>{fieldErrors.datePerformed}</span>}
+              </label>
               <input type="date" value={form.datePerformed} onChange={e => setField('datePerformed', e.target.value)} />
             </div>
             <div className="field">
@@ -672,6 +679,9 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
         </section>
 
         <div className="bottom-actions" style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
+          {saveMsg && (
+            <span style={{ fontSize: 13, color: '#ef4444' }}>{saveMsg}</span>
+          )}
           <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
