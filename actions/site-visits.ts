@@ -1,11 +1,50 @@
 'use server'
 
-import { and, desc, eq, lt } from 'drizzle-orm'
+import { and, count, desc, eq, lt } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { siteVisits, type ZoneIssueData, type ZoneNoteData, type QuoteItemData } from '@/lib/schema'
+import { clients, siteVisits, sites, technicians, type ZoneIssueData, type ZoneNoteData, type QuoteItemData } from '@/lib/schema'
 import { createSiteVisitSchema } from '@/lib/validators'
 import type { ActionResult, SiteVisit } from '@/types'
 import type { CreateSiteVisitInput } from '@/lib/validators'
+
+const INSPECTIONS_PAGE_SIZE = 10
+
+type InspectionRow = {
+  siteVisitId:    number
+  datePerformed:  string
+  checkupType:    string
+  status:         string
+  siteName:       string
+  clientName:     string | null
+  technicianName: string | null
+}
+
+export async function getInspections(page: number): Promise<{ rows: InspectionRow[]; total: number; pageSize: number }> {
+  const offset = (page - 1) * INSPECTIONS_PAGE_SIZE
+
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        siteVisitId:    siteVisits.siteVisitId,
+        datePerformed:  siteVisits.datePerformed,
+        checkupType:    siteVisits.checkupType,
+        status:         siteVisits.status,
+        siteName:       sites.name,
+        clientName:     clients.name,
+        technicianName: technicians.name,
+      })
+      .from(siteVisits)
+      .leftJoin(sites,        eq(siteVisits.siteId,       sites.id))
+      .leftJoin(clients,      eq(siteVisits.clientId,     clients.id))
+      .leftJoin(technicians,  eq(siteVisits.technicianId, technicians.id))
+      .orderBy(desc(siteVisits.datePerformed))
+      .limit(INSPECTIONS_PAGE_SIZE)
+      .offset(offset),
+    db.select({ total: count() }).from(siteVisits),
+  ])
+
+  return { rows: rows as InspectionRow[], total, pageSize: INSPECTIONS_PAGE_SIZE }
+}
 
 export async function getSiteVisitsForSite(siteId: number): Promise<SiteVisit[]> {
   return db

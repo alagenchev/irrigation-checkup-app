@@ -1,0 +1,143 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { eq } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import {
+  siteVisits, siteControllers, siteZones, siteBackflows,
+  type ZoneIssueData, type ZoneNoteData, type QuoteItemData,
+} from '@/lib/schema'
+import { saveCheckupSchema } from '@/lib/validators'
+import { ensureSiteExists } from '@/actions/sites'
+import { ensureClientExists } from '@/actions/clients'
+import { ensureTechnicianExists } from '@/actions/technicians'
+import type { ActionResult, SiteVisit } from '@/types'
+import type { SaveCheckupInput } from '@/lib/validators'
+
+export async function saveCheckup(input: SaveCheckupInput): Promise<ActionResult<SiteVisit>> {
+  const parsed = saveCheckupSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
+  }
+  const data = parsed.data
+
+  // Resolve / create site, client, technician outside the transaction
+  // (these are idempotent lookups safe to run before the atomic block)
+  const site = await ensureSiteExists(data.siteName, data.siteAddress ?? undefined)
+
+  let clientId: number | null = null
+  if (data.clientName?.trim()) {
+    const client = await ensureClientExists(data.clientName.trim(), data.clientAddress?.trim() ?? undefined)
+    clientId = client.id
+  }
+
+  let technicianId: number | null = null
+  if (data.technicianName?.trim()) {
+    const tech = await ensureTechnicianExists(data.technicianName.trim())
+    technicianId = tech.id
+  }
+
+  // Atomically sync equipment and upsert the visit
+  const visit = await db.transaction(async (tx) => {
+    // ── Replace site equipment (full sync from form state) ────────────────
+
+    // Delete zones first (FK → site_controllers)
+    await tx.delete(siteZones).where(eq(siteZones.siteId, site.id))
+    await tx.delete(siteControllers).where(eq(siteControllers.siteId, site.id))
+    await tx.delete(siteBackflows).where(eq(siteBackflows.siteId, site.id))
+
+    // Insert controllers; map ephemeral UI id → new DB id for zone FK resolution
+    const controllerIdMap = new Map<string, number>()
+    for (const ctrl of data.controllers) {
+      const [row] = await tx
+        .insert(siteControllers)
+        .values({
+          siteId:       site.id,
+          location:     ctrl.location     || null,
+          manufacturer: ctrl.manufacturer || null,
+          model:        ctrl.model        || null,
+          sensors:      ctrl.sensors      || null,
+          numZones:     ctrl.numZones,
+          masterValve:  ctrl.masterValve,
+          notes:        ctrl.notes        || null,
+        })
+        .returning()
+      controllerIdMap.set(String(ctrl.id), row.id)
+    }
+
+    for (const zone of data.zones) {
+      await tx.insert(siteZones).values({
+        siteId:          site.id,
+        controllerId:    zone.controller ? (controllerIdMap.get(zone.controller) ?? null) : null,
+        zoneNum:         zone.zoneNum,
+        description:     zone.description     || null,
+        landscapeTypes:  zone.landscapeTypes,
+        irrigationTypes: zone.irrigationTypes,
+      })
+    }
+
+    for (const bf of data.backflows) {
+      await tx.insert(siteBackflows).values({
+        siteId:       site.id,
+        manufacturer: bf.manufacturer || null,
+        type:         bf.type         || null,
+        model:        bf.model        || null,
+        size:         bf.size         || null,
+      })
+    }
+
+    // ── Build visit snapshot data ─────────────────────────────────────────
+
+    const zoneIssues: ZoneIssueData[] = data.zones.map(z => ({
+      zoneNum: z.zoneNum,
+      issues:  (data.zoneIssues[z.zoneNum] ?? []) as string[],
+    }))
+
+    const zoneNotes = data.zoneNotes as ZoneNoteData[]
+
+    const quoteItems: QuoteItemData[] = data.quoteItems.map(qi => ({
+      id: qi.id, location: qi.location, item: qi.item,
+      description: qi.description, price: qi.price, qty: qi.qty,
+    }))
+
+    // ── Upsert visit (create or update for same site + date) ──────────────
+
+    const visitData = {
+      siteId:              site.id,
+      clientId,
+      technicianId,
+      datePerformed:       data.datePerformed,
+      checkupType:         data.checkupType,
+      accountType:         data.accountType   || null,
+      accountNumber:       data.accountNumber || null,
+      status:              data.status,
+      dueDate:             data.dueDate        || null,
+      repairEstimate:      data.repairEstimate || null,
+      checkupNotes:        data.checkupNotes   || null,
+      internalNotes:       data.internalNotes  || null,
+      staticPressure:      data.staticPressure || null,
+      backflowInstalled:   data.backflowInstalled,
+      backflowServiceable: data.backflowServiceable,
+      isolationValve:      data.isolationValve,
+      systemNotes:         data.systemNotes    || null,
+      zoneIssues,
+      zoneNotes,
+      quoteItems,
+    }
+
+    const [row] = await tx
+      .insert(siteVisits)
+      .values(visitData)
+      .onConflictDoUpdate({
+        target: [siteVisits.siteId, siteVisits.datePerformed],
+        set: { ...visitData, updatedAt: new Date() },
+      })
+      .returning()
+
+    return row
+  })
+
+  revalidatePath('/')
+  revalidatePath('/inspections')
+  return { ok: true, data: visit }
+}

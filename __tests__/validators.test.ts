@@ -2,6 +2,7 @@ import {
   createClientSchema, createSiteSchema, companySettingsSchema,
   createTechnicianSchema, createSiteVisitSchema,
   createSiteControllerSchema, createSiteZoneSchema, createSiteBackflowSchema,
+  saveCheckupSchema,
 } from '@/lib/validators'
 
 describe('createClientSchema', () => {
@@ -219,5 +220,56 @@ describe('createSiteBackflowSchema', () => {
 
   test('rejects when siteId is missing', () => {
     expect(createSiteBackflowSchema.safeParse({ type: 'RPZ' }).success).toBe(false)
+  })
+})
+
+describe('saveCheckupSchema', () => {
+  const VALID = {
+    siteName: 'Acme HQ', datePerformed: '2025-06-15',
+    backflowInstalled: false, backflowServiceable: false, isolationValve: false,
+    controllers: [], zones: [], backflows: [], zoneIssues: {}, zoneNotes: [], quoteItems: [],
+  }
+
+  test('accepts minimal valid input', () => {
+    expect(saveCheckupSchema.safeParse(VALID).success).toBe(true)
+  })
+
+  test('rejects when siteName is missing', () => {
+    const { siteName: _, ...rest } = VALID
+    expect(saveCheckupSchema.safeParse(rest).success).toBe(false)
+  })
+
+  test('rejects when siteName is empty', () => {
+    const r = saveCheckupSchema.safeParse({ ...VALID, siteName: '' })
+    expect(r.success).toBe(false)
+    expect(r.error?.issues[0]?.message).toMatch(/required/i)
+  })
+
+  test('rejects when datePerformed is missing', () => {
+    const { datePerformed: _, ...rest } = VALID
+    expect(saveCheckupSchema.safeParse(rest).success).toBe(false)
+  })
+
+  test('rejects an invalid date format', () => {
+    const r = saveCheckupSchema.safeParse({ ...VALID, datePerformed: '06/15/2025' })
+    expect(r.success).toBe(false)
+    expect(r.error?.issues[0]?.message).toMatch(/YYYY-MM-DD/i)
+  })
+
+  test('accepts full input with all optional fields', () => {
+    const r = saveCheckupSchema.safeParse({
+      ...VALID,
+      clientName: 'Acme Corp', clientAddress: '1 Main St',
+      technicianName: 'Jane Smith',
+      checkupType: 'Start-up', accountType: 'Commercial', accountNumber: 'A1',
+      status: 'In Progress', dueDate: '2025-07-01', repairEstimate: '350.00',
+      checkupNotes: 'All clear.', internalNotes: 'Note.',
+      staticPressure: '68.0', systemNotes: 'Hunter Pro-HC',
+      backflowInstalled: true, backflowServiceable: true, isolationValve: true,
+      controllers: [{ id: 1, location: 'Front', manufacturer: 'Hunter', model: 'Pro-HC', sensors: 'Rain', numZones: '6', masterValve: false, notes: '' }],
+      zones: [{ id: 2, zoneNum: '1', controller: '1', description: 'Lawn', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'] }],
+      zoneIssues: { '1': ['Runoff'] },
+    })
+    expect(r.success).toBe(true)
   })
 })

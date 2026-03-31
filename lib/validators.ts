@@ -105,6 +105,61 @@ export const createSiteVisitSchema = z.object({
   quoteItems: z.array(z.unknown()).optional(),
 })
 
+// ── Save checkup (full form submission) ──────────────────────────────────
+
+const controllerRow = z.object({
+  id: z.number(), location: z.string(), manufacturer: z.string(),
+  model: z.string(), sensors: z.string(), numZones: z.string(),
+  masterValve: z.boolean(), notes: z.string(),
+})
+const zoneRow = z.object({
+  id: z.number(), zoneNum: z.string(), controller: z.string(),
+  description: z.string(), landscapeTypes: z.array(z.string()),
+  irrigationTypes: z.array(z.string()),
+})
+const backflowRow = z.object({
+  id: z.number(), manufacturer: z.string(), type: z.string(),
+  model: z.string(), size: z.string(),
+})
+const zoneNoteRow = z.object({
+  id: z.number(), zoneNum: z.string(), zoneDesc: z.string(), note: z.string(),
+})
+const quoteItemRow = z.object({
+  id: z.number(), location: z.string(), item: z.string(),
+  description: z.string(), price: z.string(), qty: z.string(),
+})
+
+export const saveCheckupSchema = z.object({
+  siteName:      z.string().min(1, 'Site name is required'),
+  siteAddress:   z.string().optional(),
+  clientName:    z.string().optional(),
+  clientAddress: z.string().optional(),
+  technicianName: z.string().optional(),
+
+  datePerformed:  isoDate,
+  checkupType:    z.string().max(100).optional().default('Repair Checkup'),
+  accountType:    z.string().optional(),
+  accountNumber:  z.string().optional(),
+  status:         z.string().optional().default('New'),
+  dueDate:        z.string().optional(),
+  repairEstimate: z.string().optional(),
+  checkupNotes:   z.string().optional(),
+  internalNotes:  z.string().optional(),
+
+  staticPressure:      z.string().optional(),
+  backflowInstalled:   z.boolean(),
+  backflowServiceable: z.boolean(),
+  isolationValve:      z.boolean(),
+  systemNotes:         z.string().optional(),
+
+  controllers: z.array(controllerRow),
+  zones:       z.array(zoneRow),
+  backflows:   z.array(backflowRow),
+  zoneIssues:  z.record(z.string(), z.array(z.string())),
+  zoneNotes:   z.array(zoneNoteRow),
+  quoteItems:  z.array(quoteItemRow),
+})
+
 export type CreateClientInput         = z.infer<typeof createClientSchema>
 export type CreateSiteInput           = z.infer<typeof createSiteSchema>
 export type CompanySettingsInput      = z.infer<typeof companySettingsSchema>
@@ -116,3 +171,4 @@ export type UpdateSiteZoneInput       = z.infer<typeof updateSiteZoneSchema>
 export type CreateSiteBackflowInput   = z.infer<typeof createSiteBackflowSchema>
 export type UpdateSiteBackflowInput   = z.infer<typeof updateSiteBackflowSchema>
 export type CreateSiteVisitInput      = z.infer<typeof createSiteVisitSchema>
+export type SaveCheckupInput          = z.infer<typeof saveCheckupSchema>

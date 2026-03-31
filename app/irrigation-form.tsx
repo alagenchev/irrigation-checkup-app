@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { ensureTechnicianExists } from '@/actions/technicians'
+import { saveCheckup } from '@/actions/save-checkup'
 import type { Client, CompanySettings, Technician } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
@@ -60,6 +61,8 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
     { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
   ])
   const [loading, setLoading] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
@@ -161,6 +164,64 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
 
   const quoteTotal = quoteItems.reduce((sum, qi) => sum + (parseFloat(qi.price) || 0) * (parseInt(qi.qty) || 1), 0)
 
+  // ── SAVE ─────────────────────────────────────────────────────────────────
+
+  async function handleSave() {
+    if (!form.siteName.trim()) {
+      setSaveMsg({ ok: false, text: 'Site name is required to save.' })
+      return
+    }
+    if (!form.datePerformed) {
+      setSaveMsg({ ok: false, text: 'Date performed is required to save.' })
+      return
+    }
+
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const result = await saveCheckup({
+        siteName:      form.siteName.trim(),
+        siteAddress:   form.siteAddress.trim()     || undefined,
+        clientName:    form.clientName.trim()       || undefined,
+        clientAddress: form.clientAddress.trim()    || undefined,
+        technicianName: form.assignedTechnician.trim() || undefined,
+
+        datePerformed:  form.datePerformed,
+        checkupType:    form.checkupType,
+        accountType:    form.accountType    || undefined,
+        accountNumber:  form.accountNumber  || undefined,
+        status:         form.status,
+        dueDate:        form.dueDate        || undefined,
+        repairEstimate: form.repairEstimate || undefined,
+        checkupNotes:   form.checkupNotes   || undefined,
+        internalNotes:  form.internalNotes  || undefined,
+
+        staticPressure:      form.staticPressure || undefined,
+        backflowInstalled:   form.backflowInstalled,
+        backflowServiceable: form.backflowServiceable,
+        isolationValve:      form.isolationValve,
+        systemNotes:         form.systemNotes || undefined,
+
+        controllers,
+        zones,
+        backflows,
+        zoneIssues,
+        zoneNotes,
+        quoteItems,
+      })
+
+      if (result.ok) {
+        setSaveMsg({ ok: true, text: 'Saved successfully.' })
+      } else {
+        setSaveMsg({ ok: false, text: result.error })
+      }
+    } catch {
+      setSaveMsg({ ok: false, text: 'An unexpected error occurred.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // ── PDF GENERATION ───────────────────────────────────────────────────────
 
   async function generatePDF() {
@@ -244,7 +305,19 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
       <main className="container">
         <div className="page-header">
           <h1>Checkup Details</h1>
-          <button className="btn btn-primary" onClick={generatePDF}>Create PDF</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {saveMsg && (
+              <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>
+                {saveMsg.text}
+              </span>
+            )}
+            <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button className="btn btn-primary" onClick={generatePDF} disabled={loading}>
+              {loading ? 'Generating…' : 'Create PDF'}
+            </button>
+          </div>
         </div>
 
         {/* COMPANY INFO — read-only, edit via /company */}
@@ -626,8 +699,13 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           </table>
         </section>
 
-        <div className="bottom-actions">
-          <button className="btn btn-primary btn-lg" onClick={generatePDF}>Create PDF</button>
+        <div className="bottom-actions" style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
+          <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button className="btn btn-primary btn-lg" onClick={generatePDF} disabled={loading}>
+            {loading ? 'Generating…' : 'Create PDF'}
+          </button>
         </div>
       </main>
 

@@ -66,3 +66,15 @@ export async function createSite(_prev: ActionResult<Site> | null, formData: For
   revalidatePath('/sites')
   return { ok: true, data: site }
 }
+
+/**
+ * Finds a site by name or creates one if no match exists.
+ * Used by saveCheckup to resolve a typed site name to a DB id.
+ */
+export async function ensureSiteExists(name: string, address?: string): Promise<Site> {
+  const existing = await db.select().from(sites).where(eq(sites.name, name)).limit(1)
+  if (existing.length > 0) return existing[0]
+  const [created] = await db.insert(sites).values({ name, address: address ?? null }).returning()
+  revalidatePath('/sites')
+  return created
+}
