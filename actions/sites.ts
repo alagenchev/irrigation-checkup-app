@@ -7,18 +7,19 @@ import { clients, sites } from '@/lib/schema'
 import { createSiteSchema } from '@/lib/validators'
 import type { ActionResult, Site } from '@/types'
 
-export type SiteWithClient = Site & { clientName: string | null }
+export type SiteWithClient = Site & { clientName: string | null; clientAddress: string | null }
 
 export async function getSites(): Promise<SiteWithClient[]> {
   const rows = await db
     .select({
-      id:         sites.id,
-      name:       sites.name,
-      address:    sites.address,
-      clientId:   sites.clientId,
-      notes:      sites.notes,
-      createdAt:  sites.createdAt,
-      clientName: clients.name,
+      id:            sites.id,
+      name:          sites.name,
+      address:       sites.address,
+      clientId:      sites.clientId,
+      notes:         sites.notes,
+      createdAt:     sites.createdAt,
+      clientName:    clients.name,
+      clientAddress: clients.address,
     })
     .from(sites)
     .leftJoin(clients, eq(sites.clientId, clients.id))

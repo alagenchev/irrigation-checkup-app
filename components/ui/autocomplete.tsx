@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect, useId } from 'react'
 
 export interface AutocompleteOption {
-  label:    string
-  address?: string
+  label:        string
+  address?:     string
+  clientName?:  string
+  clientAddress?: string
 }
 
 interface AutocompleteProps {

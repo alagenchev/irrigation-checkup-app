@@ -2,7 +2,9 @@
 
 import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
-import type { Client, CompanySettings, Site } from '@/types'
+import { ensureClientExists } from '@/actions/clients'
+import type { Client, CompanySettings } from '@/types'
+import type { SiteWithClient } from '@/actions/sites'
 
 const ISSUE_TYPES = [
   'Runoff','Overspray','Lower Head','Raise Head','Obstructions','Adjust Nozzle',
@@ -27,7 +29,7 @@ const uid = () => nextId++
 
 interface IrrigationFormProps {
   clients:  Client[]
-  sites:    Site[]
+  sites:    SiteWithClient[]
   company:  CompanySettings
 }
 
@@ -60,7 +62,12 @@ export function IrrigationForm({ clients, sites, company }: IrrigationFormProps)
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
 
   const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
-  const siteOptions   = sites.map(s => ({ label: s.name, address: s.address ?? undefined }))
+  const siteOptions   = sites.map(s => ({
+    label:         s.name,
+    address:       s.address       ?? undefined,
+    clientName:    s.clientName    ?? undefined,
+    clientAddress: s.clientAddress ?? undefined,
+  }))
 
   // ── FIELD HANDLERS ──────────────────────────────────────────────────────
 
@@ -155,6 +162,14 @@ export function IrrigationForm({ clients, sites, company }: IrrigationFormProps)
   async function generatePDF() {
     setLoading(true)
     try {
+      // Persist client to DB (creates if name not yet in DB, returns existing otherwise)
+      if (form.clientName.trim()) {
+        await ensureClientExists(
+          form.clientName.trim(),
+          form.clientAddress.trim() || undefined,
+        )
+      }
+
       const fd = new FormData()
 
       // Company fields (read-only on this form, sourced from DB)
@@ -282,6 +297,10 @@ export function IrrigationForm({ clients, sites, company }: IrrigationFormProps)
                 onSelect={opt => {
                   setField('siteName', opt.label)
                   if (opt.address) setField('siteAddress', opt.address)
+                  if (opt.clientName) {
+                    setField('clientName', opt.clientName)
+                    if (opt.clientAddress) setField('clientAddress', opt.clientAddress)
+                  }
                 }}
                 options={siteOptions}
                 placeholder="Type or select a site"

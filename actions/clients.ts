@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { asc } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { clients } from '@/lib/schema'
 import { createClientSchema } from '@/lib/validators'
@@ -29,4 +29,25 @@ export async function createClient(_prev: ActionResult<Client> | null, formData:
   const [client] = await db.insert(clients).values(parsed.data).returning()
   revalidatePath('/clients')
   return { ok: true, data: client }
+}
+
+/**
+ * Finds a client by name or creates one if no match exists.
+ * Used when generating a checkup PDF to persist new customer names.
+ */
+export async function ensureClientExists(name: string, address?: string): Promise<Client> {
+  const existing = await db
+    .select()
+    .from(clients)
+    .where(eq(clients.name, name))
+    .limit(1)
+
+  if (existing.length > 0) return existing[0]
+
+  const [created] = await db
+    .insert(clients)
+    .values({ name, address: address || null })
+    .returning()
+  revalidatePath('/clients')
+  return created
 }

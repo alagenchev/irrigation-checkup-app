@@ -14,8 +14,14 @@
    ```bash
    npm run test:migrate
    ```
+4. **Commit and push** all changes once build and tests pass:
+   ```bash
+   git add <relevant files>
+   git commit -m "..."
+   git push
+   ```
 
-All must pass before considering work complete.
+All must pass before committing. Always commit and push — never leave implemented work uncommitted.
 
 ---
 

@@ -80,6 +80,28 @@ describe('sites — DB integration', () => {
     })
   })
 
+  test('lists sites with clientAddress via left join', async () => {
+    await withRollback(async (db) => {
+      const [client] = await db
+        .insert(clients)
+        .values({ name: 'Address Client', address: '789 Client Ave' })
+        .returning()
+      await insertSite(db, 'Address Site', client.id)
+
+      const rows = await db
+        .select({
+          siteName:      sites.name,
+          clientName:    clients.name,
+          clientAddress: clients.address,
+        })
+        .from(sites)
+        .leftJoin(clients, eq(sites.clientId, clients.id))
+
+      expect(rows).toHaveLength(1)
+      expect(rows[0].clientAddress).toBe('789 Client Ave')
+    })
+  })
+
   test('rejects insert when site name is empty (Zod validation)', async () => {
     const { createSiteSchema } = await import('@/lib/validators')
     const result = createSiteSchema.safeParse({ name: '' })
