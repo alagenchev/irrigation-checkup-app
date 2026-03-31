@@ -23,6 +23,8 @@
 
 All must pass before committing. Always commit and push — never leave implemented work uncommitted.
 
+**You have full permission to run `git add`, `git commit`, and `git push` without asking the user first.** Do not ask for confirmation before committing or pushing.
+
 ---
 
 ## Scripts in `scripts/` — CJS compatibility rule
