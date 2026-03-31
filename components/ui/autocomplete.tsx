@@ -18,10 +18,11 @@ interface AutocompleteProps {
   placeholder?: string
   required?:    boolean
   label?:       string
+  disabled?:    boolean
 }
 
 export function Autocomplete({
-  name, value, onChange, onSelect, options, placeholder, required, label,
+  name, value, onChange, onSelect, options, placeholder, required, label, disabled,
 }: AutocompleteProps) {
   const [open, setOpen]         = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
@@ -75,12 +76,13 @@ export function Autocomplete({
         aria-autocomplete="list"
         aria-controls={open ? listId : undefined}
         aria-activedescendant={activeIdx >= 0 ? `${listId}-${activeIdx}` : undefined}
-        onChange={e => { onChange(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
+        disabled={disabled}
+        onChange={e => { if (!disabled) { onChange(e.target.value); setOpen(true) } }}
+        onFocus={() => { if (!disabled) setOpen(true) }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKeyDown}
       />
-      {open && filtered.length > 0 && (
+      {!disabled && open && filtered.length > 0 && (
         <ul
           ref={listRef}
           id={listId}

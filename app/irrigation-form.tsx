@@ -5,7 +5,7 @@ import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { ensureTechnicianExists } from '@/actions/technicians'
 import { saveInspection } from '@/actions/save-inspection'
-import type { Client, CompanySettings, Technician } from '@/types'
+import type { Client, CompanySettings, Technician, IrrigationFormInitialData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
 const ISSUE_TYPES = [
@@ -26,18 +26,31 @@ type Zone       = { id: number; zoneNum: string; controller: string; description
 type Backflow   = { id: number; manufacturer: string; type: string; model: string; size: string }
 type QuoteItem  = { id: number; location: string; item: string; description: string; price: string; qty: string }
 
-let nextId = 1
-const uid = () => nextId++
-
 interface IrrigationFormProps {
   clients:      Client[]
   sites:        SiteWithClient[]
   company:      CompanySettings
   technicians:  Technician[]
+  initialData?: IrrigationFormInitialData
 }
 
-export function IrrigationForm({ clients, sites, company, technicians }: IrrigationFormProps) {
-  const [form, setForm] = useState({
+export function IrrigationForm({ clients, sites, company, technicians, initialData }: IrrigationFormProps) {
+  // ── ID COUNTER (useRef so lazy initializers don't conflict with loaded IDs) ─
+  const maxInitialId = initialData
+    ? Math.max(
+        0,
+        ...initialData.controllers.map(c => c.id),
+        ...initialData.zones.map(z => z.id),
+        ...initialData.backflows.map(b => b.id),
+        ...initialData.quoteItems.map(q => q.id),
+      )
+    : 0
+  const nextIdRef = useRef(maxInitialId + 1)
+  const uid = () => nextIdRef.current++
+
+  const isDetailPage = initialData !== undefined
+
+  const [form, setForm] = useState(() => initialData?.form ?? {
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
     datePerformed: '', inspectionType: 'Repair Inspection', accountType: 'Commercial',
     accountNumber: '', status: 'New', dueDate: '', assignedTechnician: '',
@@ -46,24 +59,33 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
     isolationValve: false, systemNotes: '',
   })
 
-  const [controllers, setControllers] = useState<Controller[]>([
-    { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, notes: '' }
-  ])
-  const [zones, setZones] = useState<Zone[]>([
-    { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
-    { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
-  ])
-  const [backflows, setBackflows] = useState<Backflow[]>([])
-  const [zoneIssues, setZoneIssues] = useState<Record<string, string[]>>({})
-  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([
-    { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
-  ])
+  const [controllers, setControllers] = useState<Controller[]>(() =>
+    initialData?.controllers ?? [
+      { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, notes: '' }
+    ]
+  )
+  const [zones, setZones] = useState<Zone[]>(() =>
+    initialData?.zones ?? [
+      { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
+      { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
+    ]
+  )
+  const [backflows, setBackflows]   = useState<Backflow[]>(() => initialData?.backflows ?? [])
+  const [zoneIssues, setZoneIssues] = useState<Record<string, string[]>>(() => initialData?.zoneIssues ?? {})
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>(() =>
+    initialData?.quoteItems ?? [
+      { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
+    ]
+  )
   const [loading,        setLoading]        = useState(false)
   const [saving,         setSaving]         = useState(false)
   const [saveMsg,        setSaveMsg]        = useState<{ ok: boolean; text: string } | null>(null)
   const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({})
   const [savedOk,        setSavedOk]        = useState(false)
-  const [mode,           setMode]           = useState<'edit' | 'preview'>('edit')
+  const [mode,           setMode]           = useState<'edit' | 'readonly' | 'preview'>(
+    initialData ? 'readonly' : 'edit'
+  )
+  const [previewFrom,    setPreviewFrom]    = useState<'edit' | 'readonly'>('edit')
   const [previewHtml,    setPreviewHtml]    = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [geoLoading,     setGeoLoading]     = useState(false)
@@ -234,6 +256,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
       if (result.ok) {
         setSavedOk(true)
         setSaveMsg({ ok: true, text: 'Saved successfully.' })
+        if (isDetailPage) setMode('readonly')
       } else {
         setSaveMsg({ ok: false, text: result.error })
       }
@@ -272,6 +295,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
   }
 
   async function handlePreview() {
+    setPreviewFrom(mode as 'edit' | 'readonly')
     setPreviewLoading(true)
     try {
       const res = await fetch('/api/preview-report', { method: 'POST', body: buildReportFormData() })
@@ -324,13 +348,23 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           <div className="page-header">
             <h1>Report Preview</h1>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button className="btn btn-sm" onClick={() => setMode('edit')}>← Edit</button>
+              <button className="btn btn-sm" onClick={() => setMode(previewFrom)}>← Edit</button>
               {/* TODO: Temporary — Send Report will email the report to the customer instead of generating a PDF download. */}
               <button className="btn btn-sm" onClick={handleSendReport} disabled={loading}>
                 {loading ? 'Sending…' : 'Send Report'}
               </button>
               <button className="btn btn-primary" onClick={generatePDF} disabled={loading}>
                 {loading ? 'Generating…' : 'Create PDF'}
+              </button>
+            </div>
+          </div>
+        ) : mode === 'readonly' ? (
+          <div className="page-header">
+            <h1>Inspection Details</h1>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="btn btn-sm" onClick={() => setMode('edit')}>Edit</button>
+              <button className="btn btn-sm" onClick={handlePreview} disabled={previewLoading}>
+                {previewLoading ? 'Loading…' : 'Preview Report'}
               </button>
             </div>
           </div>
@@ -361,7 +395,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           />
         )}
 
-        {mode === 'edit' && (<>
+        {(mode === 'edit' || mode === 'readonly') && (<>
 
         {/* COMPANY INFO — read-only, edit via /company */}
         <section className="card">
@@ -407,11 +441,12 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                 }}
                 options={clientOptions}
                 placeholder="Type or select a client"
+                disabled={mode === 'readonly'}
               />
             </div>
             <div className="field">
               <label>Client Address</label>
-              <input type="text" value={form.clientAddress} onChange={e => setField('clientAddress', e.target.value)} />
+              <input type="text" value={form.clientAddress} onChange={e => setField('clientAddress', e.target.value)} disabled={mode === 'readonly'} />
             </div>
             <div className="field">
               <label>
@@ -432,15 +467,18 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                 }}
                 options={siteOptions}
                 placeholder="Type or select a site"
+                disabled={mode === 'readonly'}
               />
             </div>
             <div className="field">
               <label>Site Address</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input type="text" value={form.siteAddress} onChange={e => setField('siteAddress', e.target.value)} style={{ flex: 1 }} />
+                <input type="text" value={form.siteAddress} onChange={e => setField('siteAddress', e.target.value)} style={{ flex: 1 }} disabled={mode === 'readonly'} />
+                {mode !== 'readonly' && (
                 <button type="button" className="btn btn-sm" onClick={handleGetLocation} disabled={geoLoading} title="Use current location" style={{ flexShrink: 0 }}>
                   {geoLoading ? '…' : '📍'}
                 </button>
+                )}
               </div>
               {geoResults.length > 0 && (
                 <div style={{ marginTop: 4, border: '1px solid #3a3a3c', borderRadius: 6, background: '#1c1c1e', overflow: 'hidden' }}>
@@ -474,33 +512,33 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                 Date Performed <span style={{ color: '#ffffff' }}>*</span>
                 {fieldErrors.datePerformed && <span style={{ color: '#ef4444', marginLeft: 6, fontSize: 12 }}>{fieldErrors.datePerformed}</span>}
               </label>
-              <input type="date" value={form.datePerformed} onChange={e => setField('datePerformed', e.target.value)} />
+              <input type="date" value={form.datePerformed} onChange={e => setField('datePerformed', e.target.value)} disabled={mode === 'readonly'} />
             </div>
             <div className="field">
               <label>Inspection Type</label>
-              <select value={form.inspectionType} onChange={e => setField('inspectionType', e.target.value)}>
+              <select value={form.inspectionType} onChange={e => setField('inspectionType', e.target.value)} disabled={mode === 'readonly'}>
                 {['Repair Inspection','Start-up','Mid-season','Diagnosis','Monthly','Quarterly','Late-season','Winterization'].map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="field">
               <label>Account Type</label>
-              <select value={form.accountType} onChange={e => setField('accountType', e.target.value)}>
+              <select value={form.accountType} onChange={e => setField('accountType', e.target.value)} disabled={mode === 'readonly'}>
                 {['Commercial','Residential','HOA','Municipal'].map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="field">
               <label>Account Number</label>
-              <input type="text" value={form.accountNumber} onChange={e => setField('accountNumber', e.target.value)} />
+              <input type="text" value={form.accountNumber} onChange={e => setField('accountNumber', e.target.value)} disabled={mode === 'readonly'} />
             </div>
             <div className="field">
               <label>Status</label>
-              <select value={form.status} onChange={e => setField('status', e.target.value)}>
+              <select value={form.status} onChange={e => setField('status', e.target.value)} disabled={mode === 'readonly'}>
                 {['New','In Progress','Completed'].map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="field">
               <label>Due Date</label>
-              <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} />
+              <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} disabled={mode === 'readonly'} />
             </div>
             <div className="field">
               <label>Assigned Technician</label>
@@ -511,20 +549,21 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                 onSelect={opt => setField('assignedTechnician', opt.label)}
                 options={technicianOptions}
                 placeholder="Type or select a technician"
+                disabled={mode === 'readonly'}
               />
             </div>
             <div className="field">
               <label>Total System Repair Estimate ($)</label>
-              <input type="number" value={form.repairEstimate} onChange={e => setField('repairEstimate', e.target.value)} step="0.01" placeholder="0.00" />
+              <input type="number" value={form.repairEstimate} onChange={e => setField('repairEstimate', e.target.value)} step="0.01" placeholder="0.00" disabled={mode === 'readonly'} />
             </div>
           </div>
           <div className="field full-width" style={{ marginTop: 12 }}>
             <label>Inspection Notes <span className="hint">(displayed on PDF)</span></label>
-            <textarea rows={3} value={form.inspectionNotes} onChange={e => setField('inspectionNotes', e.target.value)} />
+            <textarea rows={3} value={form.inspectionNotes} onChange={e => setField('inspectionNotes', e.target.value)} disabled={mode === 'readonly'} />
           </div>
           <div className="field full-width" style={{ marginTop: 12 }}>
             <label>Internal Notes <span className="hint">(NOT displayed on PDF)</span></label>
-            <textarea rows={2} value={form.internalNotes} onChange={e => setField('internalNotes', e.target.value)} />
+            <textarea rows={2} value={form.internalNotes} onChange={e => setField('internalNotes', e.target.value)} disabled={mode === 'readonly'} />
           </div>
         </section>
 
@@ -534,7 +573,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           <div className="grid-4">
             <div className="field">
               <label>Static Pressure (PSI)</label>
-              <input type="number" step="0.1" value={form.staticPressure} onChange={e => setField('staticPressure', e.target.value)} placeholder="PSI" />
+              <input type="number" step="0.1" value={form.staticPressure} onChange={e => setField('staticPressure', e.target.value)} placeholder="PSI" disabled={mode === 'readonly'} />
             </div>
             {([
               ['backflowInstalled','Backflow Installed?'],
@@ -543,7 +582,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
             ] as [string,string][]).map(([key, label]) => (
               <div className="field checkbox-field" key={key}>
                 <label>
-                  <input type="checkbox" checked={(form as unknown as Record<string,boolean>)[key]} onChange={e => setField(key, e.target.checked)} />
+                  <input type="checkbox" checked={(form as unknown as Record<string,boolean>)[key]} onChange={e => setField(key, e.target.checked)} disabled={mode === 'readonly'} />
                   {label}
                 </label>
               </div>
@@ -551,7 +590,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           </div>
           <div className="field full-width" style={{ marginTop: 12 }}>
             <label>Supply / System Notes</label>
-            <textarea rows={2} value={form.systemNotes} onChange={e => setField('systemNotes', e.target.value)} />
+            <textarea rows={2} value={form.systemNotes} onChange={e => setField('systemNotes', e.target.value)} disabled={mode === 'readonly'} />
           </div>
         </section>
 
@@ -559,7 +598,9 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
         <section className="card">
           <div className="section-header">
             <h2>Backflow Devices</h2>
-            <button type="button" className="btn btn-sm" onClick={addBackflow}>+ Backflow</button>
+            {mode !== 'readonly' && (
+              <button type="button" className="btn btn-sm" onClick={addBackflow}>+ Backflow</button>
+            )}
           </div>
           {backflows.map((bf, i) => (
             <div className="backflow-row" key={bf.id}>
@@ -567,14 +608,16 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
               {(['manufacturer','type','model'] as const).map(f => (
                 <div className="field" key={f}>
                   <label>{f.charAt(0).toUpperCase()+f.slice(1)}</label>
-                  <input type="text" value={bf[f]} onChange={e => updateBackflow(bf.id, f, e.target.value)} placeholder={f.charAt(0).toUpperCase()+f.slice(1)} />
+                  <input type="text" value={bf[f]} onChange={e => updateBackflow(bf.id, f, e.target.value)} placeholder={f.charAt(0).toUpperCase()+f.slice(1)} disabled={mode === 'readonly'} />
                 </div>
               ))}
               <div className="field">
                 <label>Size (inches)</label>
-                <input type="number" step="0.25" value={bf.size} onChange={e => updateBackflow(bf.id, 'size', e.target.value)} placeholder="e.g. 1" />
+                <input type="number" step="0.25" value={bf.size} onChange={e => updateBackflow(bf.id, 'size', e.target.value)} placeholder="e.g. 1" disabled={mode === 'readonly'} />
               </div>
-              <button type="button" className="btn btn-danger" onClick={() => removeBackflow(bf.id)}>✕</button>
+              {mode !== 'readonly' && (
+                <button type="button" className="btn btn-danger" onClick={() => removeBackflow(bf.id)}>✕</button>
+              )}
             </div>
           ))}
         </section>
@@ -583,27 +626,32 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
         <section className="card">
           <div className="section-header">
             <h2>Controllers</h2>
-            <button type="button" className="btn btn-sm" onClick={addController}>+ Controller</button>
+            {mode !== 'readonly' && (
+              <button type="button" className="btn btn-sm" onClick={addController}>+ Controller</button>
+            )}
           </div>
           <table className="data-table">
             <thead>
               <tr>
                 <th>#</th><th>Location</th><th>Manufacturer</th><th>Model</th>
-                <th>Sensors</th><th># Zones</th><th>Master Valve?</th><th>Internal Notes</th><th></th>
+                <th>Sensors</th><th># Zones</th><th>Master Valve?</th><th>Internal Notes</th>
+                {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
             <tbody>
               {controllers.map((ct, i) => (
                 <tr key={ct.id}>
                   <td>{i+1}</td>
-                  <td><input value={ct.location} onChange={e => updateController(ct.id, 'location', e.target.value)} placeholder="e.g. Front of building" /></td>
-                  <td><input value={ct.manufacturer} onChange={e => updateController(ct.id, 'manufacturer', e.target.value)} placeholder="Hunter" /></td>
-                  <td><input value={ct.model} onChange={e => updateController(ct.id, 'model', e.target.value)} placeholder="Pro-HC" /></td>
-                  <td><input value={ct.sensors} onChange={e => updateController(ct.id, 'sensors', e.target.value)} placeholder="Rain/Freeze" /></td>
-                  <td><input type="number" style={{width:60}} value={ct.numZones} onChange={e => updateController(ct.id, 'numZones', e.target.value)} /></td>
-                  <td><input type="checkbox" checked={ct.masterValve} onChange={e => updateController(ct.id, 'masterValve', e.target.checked)} /></td>
-                  <td><input value={ct.notes} onChange={e => updateController(ct.id, 'notes', e.target.value)} placeholder="Notes" /></td>
-                  <td><button type="button" className="btn btn-danger" onClick={() => removeController(ct.id)}>✕</button></td>
+                  <td><input value={ct.location} onChange={e => updateController(ct.id, 'location', e.target.value)} placeholder="e.g. Front of building" disabled={mode === 'readonly'} /></td>
+                  <td><input value={ct.manufacturer} onChange={e => updateController(ct.id, 'manufacturer', e.target.value)} placeholder="Hunter" disabled={mode === 'readonly'} /></td>
+                  <td><input value={ct.model} onChange={e => updateController(ct.id, 'model', e.target.value)} placeholder="Pro-HC" disabled={mode === 'readonly'} /></td>
+                  <td><input value={ct.sensors} onChange={e => updateController(ct.id, 'sensors', e.target.value)} placeholder="Rain/Freeze" disabled={mode === 'readonly'} /></td>
+                  <td><input type="number" style={{width:60}} value={ct.numZones} onChange={e => updateController(ct.id, 'numZones', e.target.value)} disabled={mode === 'readonly'} /></td>
+                  <td><input type="checkbox" checked={ct.masterValve} onChange={e => updateController(ct.id, 'masterValve', e.target.checked)} disabled={mode === 'readonly'} /></td>
+                  <td><input value={ct.notes} onChange={e => updateController(ct.id, 'notes', e.target.value)} placeholder="Notes" disabled={mode === 'readonly'} /></td>
+                  {mode !== 'readonly' && (
+                    <td><button type="button" className="btn btn-danger" onClick={() => removeController(ct.id)}>✕</button></td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -614,33 +662,37 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
         <section className="card">
           <div className="section-header">
             <h2>Zone Descriptions</h2>
-            <button type="button" className="btn btn-sm" onClick={addZone}>+ Zone</button>
+            {mode !== 'readonly' && (
+              <button type="button" className="btn btn-sm" onClick={addZone}>+ Zone</button>
+            )}
           </div>
           <table className="data-table">
             <thead>
               <tr>
                 <th>Zone #</th><th>Controller</th><th>Description</th>
-                <th>Landscape Type(s)</th><th>Irrigation Type(s)</th><th>Notes</th><th>Photos</th><th></th>
+                <th>Landscape Type(s)</th><th>Irrigation Type(s)</th><th>Notes</th>
+                {mode !== 'readonly' && <th>Photos</th>}
+                {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
             <tbody>
               {zones.map(zn => (
                 <tr key={zn.id}>
-                  <td><input type="number" style={{width:55}} value={zn.zoneNum} onChange={e => updateZone(zn.id, 'zoneNum', e.target.value)} /></td>
+                  <td><input type="number" style={{width:55}} value={zn.zoneNum} onChange={e => updateZone(zn.id, 'zoneNum', e.target.value)} disabled={mode === 'readonly'} /></td>
                   <td>
-                    <select value={zn.controller} onChange={e => updateZone(zn.id, 'controller', e.target.value)} style={{minWidth:120}}>
+                    <select value={zn.controller} onChange={e => updateZone(zn.id, 'controller', e.target.value)} style={{minWidth:120}} disabled={mode === 'readonly'}>
                       <option value="">—</option>
                       {controllers.map((ct, i) => (
                         <option key={ct.id} value={String(ct.id)}>#{i+1} - {ct.manufacturer} {ct.model}{ct.location ? ' - '+ct.location : ''}</option>
                       ))}
                     </select>
                   </td>
-                  <td><input value={zn.description} onChange={e => updateZone(zn.id, 'description', e.target.value)} placeholder="Description" /></td>
+                  <td><input value={zn.description} onChange={e => updateZone(zn.id, 'description', e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
                   <td>
                     <div style={{display:'flex',flexDirection:'column',gap:2}}>
                       {LANDSCAPE_TYPES.map(lt => (
-                        <label key={lt} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor:'pointer'}}>
-                          <input type="checkbox" checked={zn.landscapeTypes.includes(lt)} onChange={() => toggleMultiSelect(zn.id,'landscapeTypes',lt)} />
+                        <label key={lt} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor: mode === 'readonly' ? 'default' : 'pointer'}}>
+                          <input type="checkbox" checked={zn.landscapeTypes.includes(lt)} onChange={() => toggleMultiSelect(zn.id,'landscapeTypes',lt)} disabled={mode === 'readonly'} />
                           {lt}
                         </label>
                       ))}
@@ -649,8 +701,8 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                   <td>
                     <div style={{display:'flex',flexDirection:'column',gap:2}}>
                       {IRRIGATION_TYPES.map(it => (
-                        <label key={it} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor:'pointer'}}>
-                          <input type="checkbox" checked={zn.irrigationTypes.includes(it)} onChange={() => toggleMultiSelect(zn.id,'irrigationTypes',it)} />
+                        <label key={it} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor: mode === 'readonly' ? 'default' : 'pointer'}}>
+                          <input type="checkbox" checked={zn.irrigationTypes.includes(it)} onChange={() => toggleMultiSelect(zn.id,'irrigationTypes',it)} disabled={mode === 'readonly'} />
                           {it}
                         </label>
                       ))}
@@ -663,18 +715,23 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                       onChange={e => updateZone(zn.id, 'notes', e.target.value)}
                       placeholder="Notes..."
                       style={{width:'100%',minWidth:160}}
+                      disabled={mode === 'readonly'}
                     />
                   </td>
-                  <td>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      style={{fontSize:11,maxWidth:140}}
-                      ref={el => { photoRefs.current[`zone_${zn.id}`] = el }}
-                    />
-                  </td>
-                  <td><button type="button" className="btn btn-danger" onClick={() => removeZone(zn.id)}>✕</button></td>
+                  {mode !== 'readonly' && (
+                    <td>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{fontSize:11,maxWidth:140}}
+                        ref={el => { photoRefs.current[`zone_${zn.id}`] = el }}
+                      />
+                    </td>
+                  )}
+                  {mode !== 'readonly' && (
+                    <td><button type="button" className="btn btn-danger" onClick={() => removeZone(zn.id)}>✕</button></td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -707,6 +764,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
                           type="checkbox"
                           checked={(zoneIssues[zn.zoneNum] || []).includes(issue)}
                           onChange={() => toggleIssue(zn.zoneNum, issue)}
+                          disabled={mode === 'readonly'}
                         />
                       </td>
                     ))}
@@ -721,28 +779,33 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
         <section className="card">
           <div className="section-header">
             <h2>Quote / Repair Items</h2>
-            <button type="button" className="btn btn-sm" onClick={addQuoteItem}>+ Item</button>
+            {mode !== 'readonly' && (
+              <button type="button" className="btn btn-sm" onClick={addQuoteItem}>+ Item</button>
+            )}
           </div>
           <table className="data-table">
             <thead>
               <tr>
                 <th>#</th><th>Location (e.g. C1-Z3)</th><th>Item / Description</th>
-                <th>Price ($)</th><th>QTY</th><th>Total</th><th></th>
+                <th>Price ($)</th><th>QTY</th><th>Total</th>
+                {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
             <tbody>
               {quoteItems.map((qi, i) => (
                 <tr key={qi.id}>
                   <td>{i+1}</td>
-                  <td><input style={{width:70}} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="C1-Z3" /></td>
+                  <td><input style={{width:70}} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="C1-Z3" disabled={mode === 'readonly'} /></td>
                   <td>
-                    <input value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" />
-                    <input value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" style={{marginTop:2,fontSize:11,color:'#71717a'}} />
+                    <input value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} />
+                    <input value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" style={{marginTop:2,fontSize:11,color:'#71717a'}} disabled={mode === 'readonly'} />
                   </td>
-                  <td><input type="number" style={{width:80}} step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" /></td>
-                  <td><input type="number" style={{width:55}} value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" /></td>
+                  <td><input type="number" style={{width:80}} step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
+                  <td><input type="number" style={{width:55}} value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
                   <td>${((parseFloat(qi.price)||0)*(parseInt(qi.qty)||1)).toFixed(2)}</td>
-                  <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
+                  {mode !== 'readonly' && (
+                    <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -756,19 +819,21 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           </table>
         </section>
 
-        <div className="bottom-actions" style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
-          {saveMsg && (
-            <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>{saveMsg.text}</span>
-          )}
-          <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          {savedOk && (
-            <button className="btn btn-sm" onClick={handlePreview} disabled={previewLoading}>
-              {previewLoading ? 'Loading…' : 'Preview Report'}
+        {mode === 'edit' && (
+          <div className="bottom-actions" style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
+            {saveMsg && (
+              <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>{saveMsg.text}</span>
+            )}
+            <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
             </button>
-          )}
-        </div>
+            {savedOk && (
+              <button className="btn btn-sm" onClick={handlePreview} disabled={previewLoading}>
+                {previewLoading ? 'Loading…' : 'Preview Report'}
+              </button>
+            )}
+          </div>
+        )}
 
         </>)}
       </main>

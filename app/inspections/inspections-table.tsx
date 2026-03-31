@@ -1,3 +1,7 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
+
 type InspectionRow = {
   siteVisitId:    number
   datePerformed:  string
@@ -32,6 +36,8 @@ function formatDate(iso: string) {
 }
 
 export function InspectionsTable({ rows }: { rows: InspectionRow[] }) {
+  const router = useRouter()
+
   if (rows.length === 0) {
     return (
       <p style={{ color: '#71717a', padding: '24px 0', textAlign: 'center' }}>
@@ -54,7 +60,11 @@ export function InspectionsTable({ rows }: { rows: InspectionRow[] }) {
       </thead>
       <tbody>
         {rows.map(row => (
-          <tr key={row.siteVisitId}>
+          <tr
+            key={row.siteVisitId}
+            style={{ cursor: 'pointer' }}
+            onClick={() => router.push(`/inspections/${row.siteVisitId}`)}
+          >
             <td style={{ whiteSpace: 'nowrap' }}>{formatDate(row.datePerformed)}</td>
             <td>{row.siteName}</td>
             <td style={{ color: row.clientName     ? '#ffffff' : '#71717a' }}>{row.clientName     ?? '—'}</td>
