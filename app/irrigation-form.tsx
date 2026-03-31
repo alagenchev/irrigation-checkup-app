@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { ensureTechnicianExists } from '@/actions/technicians'
@@ -38,7 +37,6 @@ interface IrrigationFormProps {
 }
 
 export function IrrigationForm({ clients, sites, company, technicians }: IrrigationFormProps) {
-  const router = useRouter()
   const [form, setForm] = useState({
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
     datePerformed: '', checkupType: 'Repair Checkup', accountType: 'Commercial',
@@ -60,10 +58,14 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([
     { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
   ])
-  const [loading, setLoading] = useState(false)
-  const [saving,  setSaving]  = useState(false)
-  const [saveMsg, setSaveMsg] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [loading,        setLoading]        = useState(false)
+  const [saving,         setSaving]         = useState(false)
+  const [saveMsg,        setSaveMsg]        = useState<{ ok: boolean; text: string } | null>(null)
+  const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({})
+  const [savedOk,        setSavedOk]        = useState(false)
+  const [mode,           setMode]           = useState<'edit' | 'preview'>('edit')
+  const [previewHtml,    setPreviewHtml]    = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
@@ -202,80 +204,71 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
       })
 
       if (result.ok) {
-        router.push('/inspections')
+        setSavedOk(true)
+        setSaveMsg({ ok: true, text: 'Saved successfully.' })
       } else {
-        setSaveMsg(result.error)
+        setSaveMsg({ ok: false, text: result.error })
       }
     } catch {
-      setSaveMsg('An unexpected error occurred.')
+      setSaveMsg({ ok: false, text: 'An unexpected error occurred.' })
     } finally {
       setSaving(false)
     }
   }
 
-  // ── PDF GENERATION ───────────────────────────────────────────────────────
+  // ── REPORT HELPERS ───────────────────────────────────────────────────────
+
+  function buildReportFormData(): FormData {
+    const fd = new FormData()
+    Object.entries(company).forEach(([k, v]) => { if (v !== null) fd.append(k, String(v)) })
+    Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)))
+    fd.append('controllers', JSON.stringify(controllers))
+    fd.append('zones',       JSON.stringify(zones))
+    fd.append('backflows',   JSON.stringify(backflows))
+    fd.append('zoneIssues',  JSON.stringify(
+      zones.map(z => ({ zoneNum: z.zoneNum, issues: zoneIssues[z.zoneNum] || [] }))
+    ))
+    fd.append('quoteItems', JSON.stringify(
+      quoteItems.map((qi, i) => ({
+        num: i + 1, location: qi.location, item: qi.item,
+        description: qi.description, price: parseFloat(qi.price) || 0, qty: parseInt(qi.qty) || 1,
+      }))
+    ))
+    zones.forEach(z => {
+      const input = photoRefs.current[`zone_${z.id}`]
+      if (input?.files) {
+        Array.from(input.files).forEach(file => fd.append(`photo_zone_${z.zoneNum}`, file))
+      }
+    })
+    return fd
+  }
+
+  async function handlePreview() {
+    setPreviewLoading(true)
+    try {
+      const res = await fetch('/api/preview-report', { method: 'POST', body: buildReportFormData() })
+      if (!res.ok) throw new Error('Failed to load preview')
+      setPreviewHtml(await res.text())
+      setMode('preview')
+    } catch (err: unknown) {
+      setSaveMsg({ ok: false, text: 'Preview failed: ' + (err instanceof Error ? err.message : String(err)) })
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
 
   async function generatePDF() {
     setLoading(true)
     try {
-      // Persist client to DB (creates if name not yet in DB, returns existing otherwise)
-      if (form.clientName.trim()) {
-        await ensureClientExists(
-          form.clientName.trim(),
-          form.clientAddress.trim() || undefined,
-        )
-      }
+      if (form.clientName.trim())       await ensureClientExists(form.clientName.trim(), form.clientAddress.trim() || undefined)
+      if (form.assignedTechnician.trim()) await ensureTechnicianExists(form.assignedTechnician.trim())
 
-      // Persist technician to DB (creates if name not yet in DB, returns existing otherwise)
-      if (form.assignedTechnician.trim()) {
-        await ensureTechnicianExists(form.assignedTechnician.trim())
-      }
-
-      const fd = new FormData()
-
-      // Company fields (read-only on this form, sourced from DB)
-      Object.entries(company).forEach(([k, v]) => {
-        if (v !== null) fd.append(k, String(v))
-      })
-
-      // Simple form fields
-      Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)))
-
-      // JSON data
-      fd.append('controllers', JSON.stringify(controllers))
-      fd.append('zones', JSON.stringify(zones))
-      fd.append('backflows', JSON.stringify(backflows))
-      fd.append('zoneIssues', JSON.stringify(
-        zones.map(z => ({ zoneNum: z.zoneNum, issues: zoneIssues[z.zoneNum] || [] }))
-      ))
-
-      fd.append('quoteItems', JSON.stringify(
-        quoteItems.map((qi, i) => ({
-          num: i + 1,
-          location: qi.location,
-          item: qi.item,
-          description: qi.description,
-          price: parseFloat(qi.price) || 0,
-          qty: parseInt(qi.qty) || 1,
-        }))
-      ))
-
-      // Zone photos
-      zones.forEach(z => {
-        const input = photoRefs.current[`zone_${z.id}`]
-        if (input?.files) {
-          Array.from(input.files).forEach(file => {
-            fd.append(`photo_zone_${z.zoneNum}`, file)
-          })
-        }
-      })
-
-      const res = await fetch('/api/generate-pdf', { method: 'POST', body: fd })
+      const res = await fetch('/api/generate-pdf', { method: 'POST', body: buildReportFormData() })
       if (!res.ok) throw new Error((await res.json()).error || 'Failed')
 
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
       a.href = url
       a.download = `checkup-report-${Date.now()}.pdf`
       document.body.appendChild(a)
@@ -289,25 +282,58 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
     }
   }
 
+  // TODO: Temporary — Send Report will email the report to the customer instead of generating a PDF download.
+  async function handleSendReport() {
+    await generatePDF()
+  }
+
   // ── RENDER ───────────────────────────────────────────────────────────────
 
   return (
     <>
       <main className="container">
-        <div className="page-header">
-          <h1>Checkup Details</h1>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {saveMsg && (
-              <span style={{ fontSize: 13, color: '#ef4444' }}>{saveMsg}</span>
-            )}
-            <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button className="btn btn-primary" onClick={generatePDF} disabled={loading}>
-              {loading ? 'Generating…' : 'Create PDF'}
-            </button>
+        {mode === 'preview' ? (
+          <div className="page-header">
+            <h1>Report Preview</h1>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="btn btn-sm" onClick={() => setMode('edit')}>← Edit</button>
+              {/* TODO: Temporary — Send Report will email the report to the customer instead of generating a PDF download. */}
+              <button className="btn btn-sm" onClick={handleSendReport} disabled={loading}>
+                {loading ? 'Sending…' : 'Send Report'}
+              </button>
+              <button className="btn btn-primary" onClick={generatePDF} disabled={loading}>
+                {loading ? 'Generating…' : 'Create PDF'}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="page-header">
+            <h1>Checkup Details</h1>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {saveMsg && (
+                <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>{saveMsg.text}</span>
+              )}
+              <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              {savedOk && (
+                <button className="btn btn-sm" onClick={handlePreview} disabled={previewLoading}>
+                  {previewLoading ? 'Loading…' : 'Preview Report'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {mode === 'preview' && previewHtml && (
+          <iframe
+            srcDoc={previewHtml}
+            title="Report Preview"
+            style={{ width: '100%', height: '80vh', border: 'none', borderRadius: 8, background: '#fff', display: 'block' }}
+          />
+        )}
+
+        {mode === 'edit' && (<>
 
         {/* COMPANY INFO — read-only, edit via /company */}
         <section className="card">
@@ -680,15 +706,19 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
 
         <div className="bottom-actions" style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
           {saveMsg && (
-            <span style={{ fontSize: 13, color: '#ef4444' }}>{saveMsg}</span>
+            <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>{saveMsg.text}</span>
           )}
           <button className="btn btn-sm" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button className="btn btn-primary btn-lg" onClick={generatePDF} disabled={loading}>
-            {loading ? 'Generating…' : 'Create PDF'}
-          </button>
+          {savedOk && (
+            <button className="btn btn-sm" onClick={handlePreview} disabled={previewLoading}>
+              {previewLoading ? 'Loading…' : 'Preview Report'}
+            </button>
+          )}
         </div>
+
+        </>)}
       </main>
 
       {loading && (
