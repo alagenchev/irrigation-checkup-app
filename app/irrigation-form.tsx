@@ -19,11 +19,12 @@ const ISSUE_TYPES = [
 const LANDSCAPE_TYPES = ['Full-sun turf','Shade turf','Low demand beds','High demand beds','Trees','Shrubs','Ground cover','Slope']
 const IRRIGATION_TYPES = ['Rotor','MPR spray','Fan spray','Rotator nozzle','Drip','Micro spray','Bubbler']
 
+// UI-only types (React key `id` is ephemeral, not the DB primary key)
 type Controller = { id: number; location: string; manufacturer: string; model: string; sensors: string; numZones: string; masterValve: boolean; notes: string }
-type Zone = { id: number; zoneNum: string; controller: string; description: string; landscapeTypes: string[]; irrigationTypes: string[] }
-type Backflow = { id: number; manufacturer: string; type: string; model: string; size: string }
-type ZoneNote = { id: number; zoneNum: string; zoneDesc: string; note: string }
-type QuoteItem = { id: number; location: string; item: string; description: string; price: string; qty: string }
+type Zone       = { id: number; zoneNum: string; controller: string; description: string; landscapeTypes: string[]; irrigationTypes: string[] }
+type Backflow   = { id: number; manufacturer: string; type: string; model: string; size: string }
+type ZoneNote   = { id: number; zoneNum: string; zoneDesc: string; note: string }
+type QuoteItem  = { id: number; location: string; item: string; description: string; price: string; qty: string }
 
 let nextId = 1
 const uid = () => nextId++

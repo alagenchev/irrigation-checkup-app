@@ -1,4 +1,8 @@
-import { createClientSchema, createSiteSchema, companySettingsSchema, createTechnicianSchema } from '@/lib/validators'
+import {
+  createClientSchema, createSiteSchema, companySettingsSchema,
+  createTechnicianSchema, createSiteVisitSchema,
+  createSiteControllerSchema, createSiteZoneSchema, createSiteBackflowSchema,
+} from '@/lib/validators'
 
 describe('createClientSchema', () => {
   test('accepts a valid client with all fields', () => {
@@ -98,5 +102,122 @@ describe('createTechnicianSchema', () => {
     const result = createTechnicianSchema.safeParse({ name: '' })
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toMatch(/required/i)
+  })
+})
+
+describe('createSiteVisitSchema', () => {
+  const VALID: Parameters<typeof createSiteVisitSchema.safeParse>[0] = {
+    siteId:        1,
+    datePerformed: '2025-06-15',
+  }
+
+  test('accepts minimal valid input', () => {
+    expect(createSiteVisitSchema.safeParse(VALID).success).toBe(true)
+  })
+
+  test('defaults checkupType to "Repair Checkup" when omitted', () => {
+    const r = createSiteVisitSchema.safeParse(VALID)
+    expect(r.success && r.data.checkupType).toBe('Repair Checkup')
+  })
+
+  test('defaults status to "New" when omitted', () => {
+    const r = createSiteVisitSchema.safeParse(VALID)
+    expect(r.success && r.data.status).toBe('New')
+  })
+
+  test('rejects when siteId is missing', () => {
+    expect(createSiteVisitSchema.safeParse({ datePerformed: '2025-06-15' }).success).toBe(false)
+  })
+
+  test('rejects when datePerformed is missing', () => {
+    expect(createSiteVisitSchema.safeParse({ siteId: 1 }).success).toBe(false)
+  })
+
+  test('rejects an invalid date format', () => {
+    const r = createSiteVisitSchema.safeParse({ siteId: 1, datePerformed: '15/06/2025' })
+    expect(r.success).toBe(false)
+    expect(r.error?.issues[0]?.message).toMatch(/YYYY-MM-DD/i)
+  })
+
+  test('accepts all optional fields (no equipment arrays — those live in their own tables)', () => {
+    const r = createSiteVisitSchema.safeParse({
+      ...VALID,
+      clientId:     2,
+      technicianId: 3,
+      checkupType:  'Start-up',
+      accountType:  'Commercial',
+      accountNumber: 'A123',
+      status:       'In Progress',
+      dueDate:      '2025-07-01',
+      repairEstimate: '250.00',
+      checkupNotes:   'All zones tested.',
+      internalNotes:  'Client prefers morning visits.',
+      staticPressure: '65.5',
+      backflowInstalled:   true,
+      backflowServiceable: true,
+      isolationValve:      true,
+      systemNotes: 'Hunter Pro-HC installed.',
+      zoneIssues: [{ zoneNum: '1', issues: ['Runoff'] }],
+      zoneNotes:  [],
+      quoteItems: [],
+    })
+    expect(r.success).toBe(true)
+  })
+})
+
+describe('createSiteControllerSchema', () => {
+  test('accepts valid controller with all fields', () => {
+    expect(createSiteControllerSchema.safeParse({
+      siteId: 1, location: 'Front', manufacturer: 'Hunter',
+      model: 'Pro-HC', sensors: 'Rain', numZones: '6', masterValve: true,
+    }).success).toBe(true)
+  })
+
+  test('accepts controller with only siteId (all equipment fields optional)', () => {
+    expect(createSiteControllerSchema.safeParse({ siteId: 1 }).success).toBe(true)
+  })
+
+  test('rejects when siteId is missing', () => {
+    expect(createSiteControllerSchema.safeParse({ manufacturer: 'Hunter' }).success).toBe(false)
+  })
+
+  test('defaults numZones to "0" and masterValve to false', () => {
+    const r = createSiteControllerSchema.safeParse({ siteId: 1 })
+    expect(r.success && r.data.numZones).toBe('0')
+    expect(r.success && r.data.masterValve).toBe(false)
+  })
+})
+
+describe('createSiteZoneSchema', () => {
+  test('accepts a valid zone', () => {
+    expect(createSiteZoneSchema.safeParse({
+      siteId: 1, zoneNum: '3', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'],
+    }).success).toBe(true)
+  })
+
+  test('rejects when zoneNum is missing', () => {
+    expect(createSiteZoneSchema.safeParse({ siteId: 1 }).success).toBe(false)
+  })
+
+  test('defaults landscapeTypes and irrigationTypes to empty arrays', () => {
+    const r = createSiteZoneSchema.safeParse({ siteId: 1, zoneNum: '1' })
+    expect(r.success && r.data.landscapeTypes).toEqual([])
+    expect(r.success && r.data.irrigationTypes).toEqual([])
+  })
+})
+
+describe('createSiteBackflowSchema', () => {
+  test('accepts a valid backflow device', () => {
+    expect(createSiteBackflowSchema.safeParse({
+      siteId: 1, manufacturer: 'Febco', type: 'RPZ', model: '825Y', size: '1',
+    }).success).toBe(true)
+  })
+
+  test('accepts with only siteId (all device fields optional)', () => {
+    expect(createSiteBackflowSchema.safeParse({ siteId: 1 }).success).toBe(true)
+  })
+
+  test('rejects when siteId is missing', () => {
+    expect(createSiteBackflowSchema.safeParse({ type: 'RPZ' }).success).toBe(false)
   })
 })
