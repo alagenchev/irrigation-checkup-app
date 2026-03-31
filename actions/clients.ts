@@ -33,7 +33,7 @@ export async function createClient(_prev: ActionResult<Client> | null, formData:
 
 /**
  * Finds a client by name or creates one if no match exists.
- * Used when generating a checkup PDF to persist new customer names.
+ * Used when generating an inspection PDF to persist new customer names.
  */
 export async function ensureClientExists(name: string, address?: string): Promise<Client> {
   const existing = await db

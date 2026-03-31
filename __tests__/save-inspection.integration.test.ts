@@ -40,7 +40,7 @@ async function ensureTechnician(db: PostgresJsDatabase<typeof schema>, name: str
 
 // ── tests ──────────────────────────────────────────────────────────────────
 
-describe('saveCheckup — DB integration', () => {
+describe('saveInspection — DB integration', () => {
   test('creates site, visit, and equipment in one pass', async () => {
     await withRollback(async (db) => {
       const site = await ensureSite(db, 'Main Campus')
@@ -85,21 +85,21 @@ describe('saveCheckup — DB integration', () => {
       await db.insert(siteVisits).values({
         siteId:        site.id,
         datePerformed: '2025-07-01',
-        checkupNotes:  'First save',
+        inspectionNotes:  'First save',
       })
 
       // Simulate update (same site + date)
       await db
         .insert(siteVisits)
-        .values({ siteId: site.id, datePerformed: '2025-07-01', checkupNotes: 'Updated save' })
+        .values({ siteId: site.id, datePerformed: '2025-07-01', inspectionNotes: 'Updated save' })
         .onConflictDoUpdate({
           target: [siteVisits.siteId, siteVisits.datePerformed],
-          set: { checkupNotes: 'Updated save', updatedAt: new Date() },
+          set: { inspectionNotes: 'Updated save', updatedAt: new Date() },
         })
 
       const all = await db.select().from(siteVisits).where(eq(siteVisits.siteId, site.id))
       expect(all).toHaveLength(1)
-      expect(all[0].checkupNotes).toBe('Updated save')
+      expect(all[0].inspectionNotes).toBe('Updated save')
     })
   })
 

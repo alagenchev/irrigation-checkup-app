@@ -89,16 +89,16 @@ export const siteVisits = pgTable('site_visits', {
   clientId:     integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
   technicianId: integer('technician_id').references(() => technicians.id, { onDelete: 'set null' }),
 
-  // Checkup details
-  datePerformed:  date('date_performed').notNull(),
-  checkupType:    text('checkup_type').notNull().default('Repair Checkup'),
-  accountType:    text('account_type'),
-  accountNumber:  text('account_number'),
-  status:         text('status').notNull().default('New'),
-  dueDate:        date('due_date'),
-  repairEstimate: numeric('repair_estimate', { precision: 10, scale: 2 }),
-  checkupNotes:   text('checkup_notes'),
-  internalNotes:  text('internal_notes'),
+  // Inspection details
+  datePerformed:   date('date_performed').notNull(),
+  inspectionType:  text('checkup_type').notNull().default('Repair Inspection'),
+  accountType:     text('account_type'),
+  accountNumber:   text('account_number'),
+  status:          text('status').notNull().default('New'),
+  dueDate:         date('due_date'),
+  repairEstimate:  numeric('repair_estimate', { precision: 10, scale: 2 }),
+  inspectionNotes: text('checkup_notes'),
+  internalNotes:   text('internal_notes'),
 
   // Irrigation system overview — auto-populated from most recent prior visit on creation
   staticPressure:      numeric('static_pressure', { precision: 6, scale: 2 }),

@@ -1,7 +1,7 @@
 type InspectionRow = {
   siteVisitId:    number
   datePerformed:  string
-  checkupType:    string
+  inspectionType: string
   status:         string
   siteName:       string
   clientName:     string | null
@@ -35,7 +35,7 @@ export function InspectionsTable({ rows }: { rows: InspectionRow[] }) {
   if (rows.length === 0) {
     return (
       <p style={{ color: '#71717a', padding: '24px 0', textAlign: 'center' }}>
-        No inspections saved yet. Fill out a checkup and click Save.
+        No inspections saved yet. Fill out an inspection and click Save.
       </p>
     )
   }
@@ -59,7 +59,7 @@ export function InspectionsTable({ rows }: { rows: InspectionRow[] }) {
             <td>{row.siteName}</td>
             <td style={{ color: row.clientName     ? '#ffffff' : '#71717a' }}>{row.clientName     ?? '—'}</td>
             <td style={{ color: row.technicianName ? '#ffffff' : '#71717a' }}>{row.technicianName ?? '—'}</td>
-            <td>{row.checkupType}</td>
+            <td>{row.inspectionType}</td>
             <td><StatusBadge status={row.status} /></td>
           </tr>
         ))}

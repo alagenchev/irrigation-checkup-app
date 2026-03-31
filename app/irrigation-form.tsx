@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { ensureTechnicianExists } from '@/actions/technicians'
-import { saveCheckup } from '@/actions/save-checkup'
+import { saveInspection } from '@/actions/save-inspection'
 import type { Client, CompanySettings, Technician } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
@@ -39,9 +39,9 @@ interface IrrigationFormProps {
 export function IrrigationForm({ clients, sites, company, technicians }: IrrigationFormProps) {
   const [form, setForm] = useState({
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
-    datePerformed: '', checkupType: 'Repair Checkup', accountType: 'Commercial',
+    datePerformed: '', inspectionType: 'Repair Inspection', accountType: 'Commercial',
     accountNumber: '', status: 'New', dueDate: '', assignedTechnician: '',
-    repairEstimate: '', checkupNotes: '', internalNotes: '',
+    repairEstimate: '', inspectionNotes: '', internalNotes: '',
     staticPressure: '', backflowInstalled: false, backflowServiceable: false,
     isolationValve: false, systemNotes: '',
   })
@@ -66,6 +66,9 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
   const [mode,           setMode]           = useState<'edit' | 'preview'>('edit')
   const [previewHtml,    setPreviewHtml]    = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [geoLoading,     setGeoLoading]     = useState(false)
+  const [geoResults,     setGeoResults]     = useState<string[]>([])
+  const [geoError,       setGeoError]       = useState<string | null>(null)
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
@@ -142,8 +145,33 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
     })
   }
 
-  // ── ZONE NOTES ───────────────────────────────────────────────────────────
+  // ── GEOLOCATION ──────────────────────────────────────────────────────────
 
+  async function handleGetLocation() {
+    setGeoLoading(true)
+    setGeoResults([])
+    setGeoError(null)
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+      )
+      const res = await fetch(`/api/geocode?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
+      if (!res.ok) throw new Error('Geocoding failed')
+      const addresses: string[] = await res.json()
+      if (addresses.length === 0) throw new Error('No address found at this location')
+      setGeoResults(addresses)
+    } catch (err: unknown) {
+      setGeoError(err instanceof Error ? err.message : 'Location unavailable')
+    } finally {
+      setGeoLoading(false)
+    }
+  }
+
+  function selectGeoResult(address: string) {
+    setField('siteAddress', address)
+    setGeoResults([])
+    setGeoError(null)
+  }
 
   // ── QUOTE ITEMS ──────────────────────────────────────────────────────────
 
@@ -173,22 +201,22 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
     setSaving(true)
     setSaveMsg(null)
     try {
-      const result = await saveCheckup({
+      const result = await saveInspection({
         siteName:      form.siteName.trim(),
-        siteAddress:   form.siteAddress.trim()     || undefined,
-        clientName:    form.clientName.trim()       || undefined,
-        clientAddress: form.clientAddress.trim()    || undefined,
+        siteAddress:   form.siteAddress.trim()        || undefined,
+        clientName:    form.clientName.trim()          || undefined,
+        clientAddress: form.clientAddress.trim()       || undefined,
         technicianName: form.assignedTechnician.trim() || undefined,
 
-        datePerformed:  form.datePerformed,
-        checkupType:    form.checkupType,
-        accountType:    form.accountType    || undefined,
-        accountNumber:  form.accountNumber  || undefined,
-        status:         form.status,
-        dueDate:        form.dueDate        || undefined,
-        repairEstimate: form.repairEstimate || undefined,
-        checkupNotes:   form.checkupNotes   || undefined,
-        internalNotes:  form.internalNotes  || undefined,
+        datePerformed:   form.datePerformed,
+        inspectionType:  form.inspectionType,
+        accountType:     form.accountType     || undefined,
+        accountNumber:   form.accountNumber   || undefined,
+        status:          form.status,
+        dueDate:         form.dueDate         || undefined,
+        repairEstimate:  form.repairEstimate  || undefined,
+        inspectionNotes: form.inspectionNotes || undefined,
+        internalNotes:   form.internalNotes   || undefined,
 
         staticPressure:      form.staticPressure || undefined,
         backflowInstalled:   form.backflowInstalled,
@@ -270,7 +298,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href = url
-      a.download = `checkup-report-${Date.now()}.pdf`
+      a.download = `inspection-report-${Date.now()}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -308,7 +336,7 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
           </div>
         ) : (
           <div className="page-header">
-            <h1>Checkup Details</h1>
+            <h1>Inspection Details</h1>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {saveMsg && (
                 <span style={{ fontSize: 13, color: saveMsg.ok ? '#22c55e' : '#ef4444' }}>{saveMsg.text}</span>
@@ -408,14 +436,38 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
             </div>
             <div className="field">
               <label>Site Address</label>
-              <input type="text" value={form.siteAddress} onChange={e => setField('siteAddress', e.target.value)} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input type="text" value={form.siteAddress} onChange={e => setField('siteAddress', e.target.value)} style={{ flex: 1 }} />
+                <button type="button" className="btn btn-sm" onClick={handleGetLocation} disabled={geoLoading} title="Use current location" style={{ flexShrink: 0 }}>
+                  {geoLoading ? '…' : '📍'}
+                </button>
+              </div>
+              {geoResults.length > 0 && (
+                <div style={{ marginTop: 4, border: '1px solid #3a3a3c', borderRadius: 6, background: '#1c1c1e', overflow: 'hidden' }}>
+                  {geoResults.map((addr, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => selectGeoResult(addr)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', color: '#ffffff', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid #3a3a3c' : 'none', cursor: 'pointer', fontSize: 13 }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#2c2c2e' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {addr}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {geoError && (
+                <span style={{ fontSize: 12, color: '#ef4444', marginTop: 4, display: 'block' }}>{geoError}</span>
+              )}
             </div>
           </div>
         </section>
 
-        {/* CHECKUP INFO */}
+        {/* INSPECTION INFO */}
         <section className="card">
-          <h2>Checkup Information</h2>
+          <h2>Inspection Information</h2>
           <div className="grid-2">
             <div className="field">
               <label>
@@ -425,9 +477,9 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
               <input type="date" value={form.datePerformed} onChange={e => setField('datePerformed', e.target.value)} />
             </div>
             <div className="field">
-              <label>Checkup Type</label>
-              <select value={form.checkupType} onChange={e => setField('checkupType', e.target.value)}>
-                {['Repair Checkup','Start-up','Mid-season','Diagnosis','Monthly','Quarterly','Late-season','Winterization'].map(v => <option key={v}>{v}</option>)}
+              <label>Inspection Type</label>
+              <select value={form.inspectionType} onChange={e => setField('inspectionType', e.target.value)}>
+                {['Repair Inspection','Start-up','Mid-season','Diagnosis','Monthly','Quarterly','Late-season','Winterization'].map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="field">
@@ -467,8 +519,8 @@ export function IrrigationForm({ clients, sites, company, technicians }: Irrigat
             </div>
           </div>
           <div className="field full-width" style={{ marginTop: 12 }}>
-            <label>Checkup Notes <span className="hint">(displayed on PDF)</span></label>
-            <textarea rows={3} value={form.checkupNotes} onChange={e => setField('checkupNotes', e.target.value)} />
+            <label>Inspection Notes <span className="hint">(displayed on PDF)</span></label>
+            <textarea rows={3} value={form.inspectionNotes} onChange={e => setField('inspectionNotes', e.target.value)} />
           </div>
           <div className="field full-width" style={{ marginTop: 12 }}>
             <label>Internal Notes <span className="hint">(NOT displayed on PDF)</span></label>

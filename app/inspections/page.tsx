@@ -17,7 +17,7 @@ export default async function InspectionsPage({
     <main className="container">
       <div className="page-header">
         <h1>Site Inspections</h1>
-        <Link href="/" className="btn btn-primary">+ New Checkup</Link>
+        <Link href="/" className="btn btn-primary">+ New Inspection</Link>
       </div>
 
       <section className="card">

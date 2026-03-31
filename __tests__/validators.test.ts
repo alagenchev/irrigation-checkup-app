@@ -2,7 +2,7 @@ import {
   createClientSchema, createSiteSchema, companySettingsSchema,
   createTechnicianSchema, createSiteVisitSchema,
   createSiteControllerSchema, createSiteZoneSchema, createSiteBackflowSchema,
-  saveCheckupSchema,
+  saveInspectionSchema,
 } from '@/lib/validators'
 
 describe('createClientSchema', () => {
@@ -116,9 +116,9 @@ describe('createSiteVisitSchema', () => {
     expect(createSiteVisitSchema.safeParse(VALID).success).toBe(true)
   })
 
-  test('defaults checkupType to "Repair Checkup" when omitted', () => {
+  test('defaults inspectionType to "Repair Inspection" when omitted', () => {
     const r = createSiteVisitSchema.safeParse(VALID)
-    expect(r.success && r.data.checkupType).toBe('Repair Checkup')
+    expect(r.success && r.data.inspectionType).toBe('Repair Inspection')
   })
 
   test('defaults status to "New" when omitted', () => {
@@ -145,13 +145,13 @@ describe('createSiteVisitSchema', () => {
       ...VALID,
       clientId:     2,
       technicianId: 3,
-      checkupType:  'Start-up',
+      inspectionType:  'Start-up',
       accountType:  'Commercial',
       accountNumber: 'A123',
       status:       'In Progress',
       dueDate:      '2025-07-01',
       repairEstimate: '250.00',
-      checkupNotes:   'All zones tested.',
+      inspectionNotes:   'All zones tested.',
       internalNotes:  'Client prefers morning visits.',
       staticPressure: '65.5',
       backflowInstalled:   true,
@@ -222,7 +222,7 @@ describe('createSiteBackflowSchema', () => {
   })
 })
 
-describe('saveCheckupSchema', () => {
+describe('saveInspectionSchema', () => {
   const VALID = {
     siteName: 'Acme HQ', datePerformed: '2025-06-15',
     backflowInstalled: false, backflowServiceable: false, isolationValve: false,
@@ -230,39 +230,39 @@ describe('saveCheckupSchema', () => {
   }
 
   test('accepts minimal valid input', () => {
-    expect(saveCheckupSchema.safeParse(VALID).success).toBe(true)
+    expect(saveInspectionSchema.safeParse(VALID).success).toBe(true)
   })
 
   test('rejects when siteName is missing', () => {
     const { siteName: _, ...rest } = VALID
-    expect(saveCheckupSchema.safeParse(rest).success).toBe(false)
+    expect(saveInspectionSchema.safeParse(rest).success).toBe(false)
   })
 
   test('rejects when siteName is empty', () => {
-    const r = saveCheckupSchema.safeParse({ ...VALID, siteName: '' })
+    const r = saveInspectionSchema.safeParse({ ...VALID, siteName: '' })
     expect(r.success).toBe(false)
     expect(r.error?.issues[0]?.message).toMatch(/required/i)
   })
 
   test('rejects when datePerformed is missing', () => {
     const { datePerformed: _, ...rest } = VALID
-    expect(saveCheckupSchema.safeParse(rest).success).toBe(false)
+    expect(saveInspectionSchema.safeParse(rest).success).toBe(false)
   })
 
   test('rejects an invalid date format', () => {
-    const r = saveCheckupSchema.safeParse({ ...VALID, datePerformed: '06/15/2025' })
+    const r = saveInspectionSchema.safeParse({ ...VALID, datePerformed: '06/15/2025' })
     expect(r.success).toBe(false)
     expect(r.error?.issues[0]?.message).toMatch(/YYYY-MM-DD/i)
   })
 
   test('accepts full input with all optional fields', () => {
-    const r = saveCheckupSchema.safeParse({
+    const r = saveInspectionSchema.safeParse({
       ...VALID,
       clientName: 'Acme Corp', clientAddress: '1 Main St',
       technicianName: 'Jane Smith',
-      checkupType: 'Start-up', accountType: 'Commercial', accountNumber: 'A1',
+      inspectionType: 'Start-up', accountType: 'Commercial', accountNumber: 'A1',
       status: 'In Progress', dueDate: '2025-07-01', repairEstimate: '350.00',
-      checkupNotes: 'All clear.', internalNotes: 'Note.',
+      inspectionNotes: 'All clear.', internalNotes: 'Note.',
       staticPressure: '68.0', systemNotes: 'Hunter Pro-HC',
       backflowInstalled: true, backflowServiceable: true, isolationValve: true,
       controllers: [{ id: 1, location: 'Front', manufacturer: 'Hunter', model: 'Pro-HC', sensors: 'Rain', numZones: '6', masterValve: false, notes: '' }],

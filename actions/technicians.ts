@@ -11,7 +11,7 @@ export async function getTechnicians(): Promise<Technician[]> {
 
 /**
  * Finds a technician by name or creates one if no match exists.
- * Called when generating a checkup PDF to persist new technician names.
+ * Called when generating an inspection PDF to persist new technician names.
  */
 export async function ensureTechnicianExists(name: string): Promise<Technician> {
   const existing = await db

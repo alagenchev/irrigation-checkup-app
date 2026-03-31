@@ -12,7 +12,7 @@ const INSPECTIONS_PAGE_SIZE = 10
 type InspectionRow = {
   siteVisitId:    number
   datePerformed:  string
-  checkupType:    string
+  inspectionType: string
   status:         string
   siteName:       string
   clientName:     string | null
@@ -27,7 +27,7 @@ export async function getInspections(page: number): Promise<{ rows: InspectionRo
       .select({
         siteVisitId:    siteVisits.siteVisitId,
         datePerformed:  siteVisits.datePerformed,
-        checkupType:    siteVisits.checkupType,
+        inspectionType: siteVisits.inspectionType,
         status:         siteVisits.status,
         siteName:       sites.name,
         clientName:     clients.name,
@@ -120,15 +120,15 @@ export async function createSiteVisit(input: CreateSiteVisitInput): Promise<Acti
       clientId:     data.clientId     ?? null,
       technicianId: data.technicianId ?? null,
 
-      datePerformed:  data.datePerformed,
-      checkupType:    data.checkupType,
-      accountType:    data.accountType   ?? null,
-      accountNumber:  data.accountNumber ?? null,
-      status:         data.status,
-      dueDate:        data.dueDate        ?? null,
-      repairEstimate: data.repairEstimate ?? null,
-      checkupNotes:   data.checkupNotes   ?? null,
-      internalNotes:  data.internalNotes  ?? null,
+      datePerformed:   data.datePerformed,
+      inspectionType:  data.inspectionType,
+      accountType:     data.accountType    ?? null,
+      accountNumber:   data.accountNumber  ?? null,
+      status:          data.status,
+      dueDate:         data.dueDate         ?? null,
+      repairEstimate:  data.repairEstimate  ?? null,
+      inspectionNotes: data.inspectionNotes ?? null,
+      internalNotes:   data.internalNotes   ?? null,
 
       // System overview: caller → prior visit → schema default
       staticPressure:      data.staticPressure      ?? priorVisit?.staticPressure      ?? null,

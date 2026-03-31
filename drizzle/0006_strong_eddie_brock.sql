@@ -1,0 +1,1 @@
+ALTER TABLE "site_visits" ALTER COLUMN "checkup_type" SET DEFAULT 'Repair Inspection';

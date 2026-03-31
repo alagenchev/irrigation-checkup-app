@@ -54,7 +54,7 @@ describe('site_visits — DB integration', () => {
       expect(visit.siteVisitId).toBeDefined()
       expect(visit.siteId).toBe(site.id)
       expect(visit.datePerformed).toBe('2025-06-15')
-      expect(visit.checkupType).toBe('Repair Checkup')
+      expect(visit.inspectionType).toBe('Repair Inspection')
       expect(visit.status).toBe('New')
       expect(visit.backflowInstalled).toBe(false)
       expect(visit.backflowServiceable).toBe(false)

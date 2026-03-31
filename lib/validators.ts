@@ -82,16 +82,16 @@ export const createSiteVisitSchema = z.object({
   clientId:     z.number().int().positive().nullable().optional(),
   technicianId: z.number().int().positive().nullable().optional(),
 
-  // Checkup details
-  datePerformed:  isoDate,
-  checkupType:    z.string().max(100).optional().default('Repair Checkup'),
-  accountType:    z.string().max(100).nullable().optional(),
-  accountNumber:  z.string().max(100).nullable().optional(),
-  status:         z.string().max(50).optional().default('New'),
-  dueDate:        isoDate.nullable().optional(),
-  repairEstimate: z.string().nullable().optional(),
-  checkupNotes:   z.string().nullable().optional(),
-  internalNotes:  z.string().nullable().optional(),
+  // Inspection details
+  datePerformed:   isoDate,
+  inspectionType:  z.string().max(100).optional().default('Repair Inspection'),
+  accountType:     z.string().max(100).nullable().optional(),
+  accountNumber:   z.string().max(100).nullable().optional(),
+  status:          z.string().max(50).optional().default('New'),
+  dueDate:         isoDate.nullable().optional(),
+  repairEstimate:  z.string().nullable().optional(),
+  inspectionNotes: z.string().nullable().optional(),
+  internalNotes:   z.string().nullable().optional(),
 
   // System overview — undefined means "inherit from most recent prior visit"
   staticPressure:      z.string().nullable().optional(),
@@ -105,7 +105,7 @@ export const createSiteVisitSchema = z.object({
   quoteItems: z.array(z.unknown()).optional(),
 })
 
-// ── Save checkup (full form submission) ──────────────────────────────────
+// ── Save inspection (full form submission) ───────────────────────────────
 
 const controllerRow = z.object({
   id: z.number(), location: z.string(), manufacturer: z.string(),
@@ -126,22 +126,22 @@ const quoteItemRow = z.object({
   description: z.string(), price: z.string(), qty: z.string(),
 })
 
-export const saveCheckupSchema = z.object({
+export const saveInspectionSchema = z.object({
   siteName:      z.string().min(1, 'Site name is required'),
   siteAddress:   z.string().optional(),
   clientName:    z.string().optional(),
   clientAddress: z.string().optional(),
   technicianName: z.string().optional(),
 
-  datePerformed:  isoDate,
-  checkupType:    z.string().max(100).optional().default('Repair Checkup'),
-  accountType:    z.string().optional(),
-  accountNumber:  z.string().optional(),
-  status:         z.string().optional().default('New'),
-  dueDate:        z.string().optional(),
-  repairEstimate: z.string().optional(),
-  checkupNotes:   z.string().optional(),
-  internalNotes:  z.string().optional(),
+  datePerformed:   isoDate,
+  inspectionType:  z.string().max(100).optional().default('Repair Inspection'),
+  accountType:     z.string().optional(),
+  accountNumber:   z.string().optional(),
+  status:          z.string().optional().default('New'),
+  dueDate:         z.string().optional(),
+  repairEstimate:  z.string().optional(),
+  inspectionNotes: z.string().optional(),
+  internalNotes:   z.string().optional(),
 
   staticPressure:      z.string().optional(),
   backflowInstalled:   z.boolean(),
@@ -167,4 +167,4 @@ export type UpdateSiteZoneInput       = z.infer<typeof updateSiteZoneSchema>
 export type CreateSiteBackflowInput   = z.infer<typeof createSiteBackflowSchema>
 export type UpdateSiteBackflowInput   = z.infer<typeof updateSiteBackflowSchema>
 export type CreateSiteVisitInput      = z.infer<typeof createSiteVisitSchema>
-export type SaveCheckupInput          = z.infer<typeof saveCheckupSchema>
+export type SaveInspectionInput       = z.infer<typeof saveInspectionSchema>

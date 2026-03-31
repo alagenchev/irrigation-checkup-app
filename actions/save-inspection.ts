@@ -7,15 +7,15 @@ import {
   siteVisits, siteControllers, siteZones, siteBackflows,
   type ZoneIssueData, type QuoteItemData,
 } from '@/lib/schema'
-import { saveCheckupSchema } from '@/lib/validators'
+import { saveInspectionSchema } from '@/lib/validators'
 import { ensureSiteExists } from '@/actions/sites'
 import { ensureClientExists } from '@/actions/clients'
 import { ensureTechnicianExists } from '@/actions/technicians'
 import type { ActionResult, SiteVisit } from '@/types'
-import type { SaveCheckupInput } from '@/lib/validators'
+import type { SaveInspectionInput } from '@/lib/validators'
 
-export async function saveCheckup(input: SaveCheckupInput): Promise<ActionResult<SiteVisit>> {
-  const parsed = saveCheckupSchema.safeParse(input)
+export async function saveInspection(input: SaveInspectionInput): Promise<ActionResult<SiteVisit>> {
+  const parsed = saveInspectionSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
   }
@@ -106,13 +106,13 @@ export async function saveCheckup(input: SaveCheckupInput): Promise<ActionResult
       clientId,
       technicianId,
       datePerformed:       data.datePerformed,
-      checkupType:         data.checkupType,
-      accountType:         data.accountType   || null,
-      accountNumber:       data.accountNumber || null,
+      inspectionType:      data.inspectionType,
+      accountType:         data.accountType    || null,
+      accountNumber:       data.accountNumber  || null,
       status:              data.status,
-      dueDate:             data.dueDate        || null,
-      repairEstimate:      data.repairEstimate || null,
-      checkupNotes:        data.checkupNotes   || null,
+      dueDate:             data.dueDate         || null,
+      repairEstimate:      data.repairEstimate  || null,
+      inspectionNotes:     data.inspectionNotes || null,
       internalNotes:       data.internalNotes  || null,
       staticPressure:      data.staticPressure || null,
       backflowInstalled:   data.backflowInstalled,

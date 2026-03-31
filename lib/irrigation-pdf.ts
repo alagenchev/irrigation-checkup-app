@@ -249,8 +249,8 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     </tr>
   `).join('')
 
-  const checkupNotesRow = formData.checkupNotes
-    ? `<div style="font-size:8pt;margin-bottom:4px;"><strong>Note:</strong> ${esc(formData.checkupNotes)}</div>`
+  const inspectionNotesRow = formData.inspectionNotes
+    ? `<div style="font-size:8pt;margin-bottom:4px;"><strong>Note:</strong> ${esc(formData.inspectionNotes)}</div>`
     : ''
 
   // ── FULL HTML ────────────────────────────────────────────────────────────
@@ -519,7 +519,7 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
   <div class="logo"></div>
   <div class="title-block">
     <div class="title-main">Irrigation System</div>
-    <div class="title-sub">Checkup</div>
+    <div class="title-sub">Inspection</div>
   </div>
   <div class="company-info">
     <strong>${esc(formData.companyName)}</strong><br>
@@ -549,9 +549,9 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
   </tr>
 </table>
 
-<!-- CHECKUP NOTES -->
-<div class="section-heading">Checkup Notes:</div>
-<div class="notes-box">${esc(formData.checkupNotes || '')}</div>
+<!-- INSPECTION NOTES -->
+<div class="section-heading">Inspection Notes:</div>
+<div class="notes-box">${esc(formData.inspectionNotes || '')}</div>
 
 <!-- IRRIGATION SYSTEM OVERVIEW -->
 <div class="section-heading">Irrigation System Overview:</div>
@@ -592,7 +592,7 @@ ${photosHtml}
 
 <!-- QUOTE DETAIL -->
 <div class="section-heading">Quote Detail:</div>
-${checkupNotesRow}
+${inspectionNotesRow}
 
 <table class="quote-table">
   <thead>

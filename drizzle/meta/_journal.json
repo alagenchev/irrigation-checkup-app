@@ -43,6 +43,13 @@
       "when": 1774935151488,
       "tag": "0005_flimsy_steve_rogers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774967619993,
+      "tag": "0006_strong_eddie_brock",
+      "breakpoints": true
     }
   ]
 }

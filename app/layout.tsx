@@ -2,7 +2,7 @@ import { ClerkProvider, UserButton, SignInButton, SignUpButton, Show } from '@cl
 import Link from 'next/link'
 import './globals.css'
 
-export const metadata = { title: 'Irrigation Checkup' }
+export const metadata = { title: 'Irrigation Inspection' }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClerkProvider>
           <header className="top-nav">
             <div className="nav-left">
-              <Link href="/" className="nav-brand">💧 Irrigation Checkup</Link>
+              <Link href="/" className="nav-brand">💧 Irrigation Inspection</Link>
               <nav>
                 <Link href="/clients">Clients</Link>
                 <Link href="/sites">Sites</Link>

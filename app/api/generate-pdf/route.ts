@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse(Buffer.from(pdf), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="checkup-report-${Date.now()}.pdf"`,
+        'Content-Disposition': `attachment; filename="inspection-report-${Date.now()}.pdf"`,
       },
     })
   } catch (err: unknown) {
