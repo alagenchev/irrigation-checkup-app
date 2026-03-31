@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
-import type { Client, CompanySettings } from '@/types'
+import { ensureTechnicianExists } from '@/actions/technicians'
+import type { Client, CompanySettings, Technician } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
 const ISSUE_TYPES = [
@@ -28,16 +29,17 @@ let nextId = 1
 const uid = () => nextId++
 
 interface IrrigationFormProps {
-  clients:  Client[]
-  sites:    SiteWithClient[]
-  company:  CompanySettings
+  clients:      Client[]
+  sites:        SiteWithClient[]
+  company:      CompanySettings
+  technicians:  Technician[]
 }
 
-export function IrrigationForm({ clients, sites, company }: IrrigationFormProps) {
+export function IrrigationForm({ clients, sites, company, technicians }: IrrigationFormProps) {
   const [form, setForm] = useState({
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
     datePerformed: '', checkupType: 'Repair Checkup', accountType: 'Commercial',
-    accountNumber: '', status: 'New', dueDate: '', assignedUser: '',
+    accountNumber: '', status: 'New', dueDate: '', assignedTechnician: '',
     repairEstimate: '', checkupNotes: '', internalNotes: '',
     staticPressure: '', backflowInstalled: false, backflowServiceable: false,
     isolationValve: false, systemNotes: '',
@@ -61,8 +63,9 @@ export function IrrigationForm({ clients, sites, company }: IrrigationFormProps)
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
 
-  const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
-  const siteOptions   = sites.map(s => ({
+  const clientOptions     = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
+  const technicianOptions = technicians.map(t => ({ label: t.name }))
+  const siteOptions       = sites.map(s => ({
     label:         s.name,
     address:       s.address       ?? undefined,
     clientName:    s.clientName    ?? undefined,
@@ -168,6 +171,11 @@ export function IrrigationForm({ clients, sites, company }: IrrigationFormProps)
           form.clientName.trim(),
           form.clientAddress.trim() || undefined,
         )
+      }
+
+      // Persist technician to DB (creates if name not yet in DB, returns existing otherwise)
+      if (form.assignedTechnician.trim()) {
+        await ensureTechnicianExists(form.assignedTechnician.trim())
       }
 
       const fd = new FormData()
@@ -348,8 +356,15 @@ export function IrrigationForm({ clients, sites, company }: IrrigationFormProps)
               <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} />
             </div>
             <div className="field">
-              <label>Assigned User</label>
-              <input type="text" value={form.assignedUser} onChange={e => setField('assignedUser', e.target.value)} />
+              <label>Assigned Technician</label>
+              <Autocomplete
+                name="assignedTechnician"
+                value={form.assignedTechnician}
+                onChange={v => setField('assignedTechnician', v)}
+                onSelect={opt => setField('assignedTechnician', opt.label)}
+                options={technicianOptions}
+                placeholder="Type or select a technician"
+              />
             </div>
             <div className="field">
               <label>Total System Repair Estimate ($)</label>

@@ -35,7 +35,15 @@ export const sites = pgTable('sites', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
-export type Client    = typeof clients.$inferSelect
-export type NewClient = typeof clients.$inferInsert
-export type Site      = typeof sites.$inferSelect
-export type NewSite   = typeof sites.$inferInsert
+export const technicians = pgTable('technicians', {
+  id:        serial('id').primaryKey(),
+  name:      text('name').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export type Client       = typeof clients.$inferSelect
+export type NewClient    = typeof clients.$inferInsert
+export type Site         = typeof sites.$inferSelect
+export type NewSite      = typeof sites.$inferInsert
+export type Technician    = typeof technicians.$inferSelect
+export type NewTechnician = typeof technicians.$inferInsert

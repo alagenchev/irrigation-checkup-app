@@ -1,4 +1,4 @@
-export type { Client, NewClient, Site, NewSite, CompanySettings, NewCompanySettings } from '@/lib/schema'
+export type { Client, NewClient, Site, NewSite, CompanySettings, NewCompanySettings, Technician, NewTechnician } from '@/lib/schema'
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }

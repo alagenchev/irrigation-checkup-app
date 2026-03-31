@@ -1,4 +1,4 @@
-import { createClientSchema, createSiteSchema, companySettingsSchema } from '@/lib/validators'
+import { createClientSchema, createSiteSchema, companySettingsSchema, createTechnicianSchema } from '@/lib/validators'
 
 describe('createClientSchema', () => {
   test('accepts a valid client with all fields', () => {
@@ -80,6 +80,22 @@ describe('companySettingsSchema', () => {
 
   test('rejects when companyName is empty', () => {
     const result = companySettingsSchema.safeParse({ companyName: '' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/required/i)
+  })
+})
+
+describe('createTechnicianSchema', () => {
+  test('accepts a valid technician name', () => {
+    expect(createTechnicianSchema.safeParse({ name: 'Jane Smith' }).success).toBe(true)
+  })
+
+  test('rejects when name is missing', () => {
+    expect(createTechnicianSchema.safeParse({}).success).toBe(false)
+  })
+
+  test('rejects when name is empty', () => {
+    const result = createTechnicianSchema.safeParse({ name: '' })
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toMatch(/required/i)
   })

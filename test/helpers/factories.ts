@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker'
-import type { NewClient, NewCompanySettings } from '@/lib/schema'
+import type { NewClient, NewCompanySettings, NewTechnician } from '@/lib/schema'
 
 export function buildCompanySettings(overrides: Partial<NewCompanySettings> = {}): NewCompanySettings {
   return {
@@ -10,6 +10,13 @@ export function buildCompanySettings(overrides: Partial<NewCompanySettings> = {}
     companyCityStateZip: `${faker.location.city()}, TX ${faker.location.zipCode()}`,
     companyPhone:        faker.phone.number(),
     performedBy:         faker.person.fullName(),
+    ...overrides,
+  }
+}
+
+export function buildTechnician(overrides: Partial<NewTechnician> = {}): NewTechnician {
+  return {
+    name: faker.person.fullName(),
     ...overrides,
   }
 }

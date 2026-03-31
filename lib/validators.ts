@@ -25,6 +25,11 @@ export const companySettingsSchema = z.object({
   performedBy:         z.string().max(255).optional().default(''),
 })
 
-export type CreateClientInput    = z.infer<typeof createClientSchema>
-export type CreateSiteInput      = z.infer<typeof createSiteSchema>
-export type CompanySettingsInput = z.infer<typeof companySettingsSchema>
+export const createTechnicianSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255),
+})
+
+export type CreateClientInput      = z.infer<typeof createClientSchema>
+export type CreateSiteInput        = z.infer<typeof createSiteSchema>
+export type CompanySettingsInput   = z.infer<typeof companySettingsSchema>
+export type CreateTechnicianInput  = z.infer<typeof createTechnicianSchema>
