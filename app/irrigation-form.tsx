@@ -20,7 +20,7 @@ const LANDSCAPE_TYPES = ['Full-sun turf','Shade turf','Low demand beds','High de
 const IRRIGATION_TYPES = ['Rotor','MPR spray','Fan spray','Rotator nozzle','Drip','Micro spray','Bubbler']
 
 // UI-only types (React key `id` is ephemeral, not the DB primary key)
-type Controller = { id: number; location: string; manufacturer: string; model: string; sensors: string; numZones: string; masterValve: boolean; notes: string }
+type Controller = { id: number; location: string; manufacturer: string; model: string; sensors: string; numZones: string; masterValve: boolean; masterValveNotes: string; notes: string }
 type Zone       = { id: number; zoneNum: string; controller: string; description: string; landscapeTypes: string[]; irrigationTypes: string[]; notes: string }
 type Backflow   = { id: number; manufacturer: string; type: string; model: string; size: string }
 type QuoteItem  = { id: number; location: string; item: string; description: string; price: string; qty: string }
@@ -62,7 +62,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
 
   const [controllers, setControllers] = useState<Controller[]>(() =>
     initialData?.controllers ?? [
-      { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, notes: '' }
+      { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, masterValveNotes: '', notes: '' }
     ]
   )
   const [zones, setZones] = useState<Zone[]>(() =>
@@ -116,7 +116,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   // ── CONTROLLERS ──────────────────────────────────────────────────────────
 
   function addController() {
-    setControllers(c => [...c, { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, notes: '' }])
+    setControllers(c => [...c, { id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, masterValveNotes: '', notes: '' }])
   }
   function updateController(id: number, key: keyof Controller, value: string | boolean) {
     setControllers(c => c.map(ct => ct.id === id ? { ...ct, [key]: value } : ct))
@@ -413,7 +413,6 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               ['companyAddress',      'Company Address'],
               ['companyCityStateZip', 'City / State / Zip'],
               ['companyPhone',        'Company Phone'],
-              ['performedBy',         'Performed By'],
             ] as [keyof CompanySettings, string][]).map(([key, label]) => (
               <div className="field" key={key}>
                 <label>{label}</label>
@@ -658,7 +657,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <thead>
               <tr>
                 <th>#</th><th>Location</th><th>Manufacturer</th><th>Model</th>
-                <th>Sensors</th><th># Zones</th><th>Master Valve?</th><th>Internal Notes</th>
+                <th>Sensors</th><th># Zones</th><th>Master Valve?</th><th>MV Repair Notes</th><th>Internal Notes</th>
                 {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
@@ -671,7 +670,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                   <td><input value={ct.model} onChange={e => updateController(ct.id, 'model', e.target.value)} placeholder="Pro-HC" disabled={mode === 'readonly'} /></td>
                   <td><input value={ct.sensors} onChange={e => updateController(ct.id, 'sensors', e.target.value)} placeholder="Rain/Freeze" disabled={mode === 'readonly'} /></td>
                   <td><input type="number" style={{width:60}} value={ct.numZones} onChange={e => updateController(ct.id, 'numZones', e.target.value)} disabled={mode === 'readonly'} /></td>
-                  <td><input type="checkbox" checked={ct.masterValve} onChange={e => updateController(ct.id, 'masterValve', e.target.checked)} disabled={mode === 'readonly'} /></td>
+                  <td><input type="checkbox" checked={ct.masterValve} onChange={e => { updateController(ct.id, 'masterValve', e.target.checked); if (!e.target.checked) updateController(ct.id, 'masterValveNotes', '') }} disabled={mode === 'readonly'} /></td>
+                  <td>{ct.masterValve ? (<textarea rows={2} value={ct.masterValveNotes} onChange={e => updateController(ct.id, 'masterValveNotes', e.target.value)} placeholder="Repair notes..." style={{width:'100%',minWidth:160}} disabled={mode === 'readonly'} />) : <span style={{color:'#71717a'}}>—</span>}</td>
                   <td><input value={ct.notes} onChange={e => updateController(ct.id, 'notes', e.target.value)} placeholder="Notes" disabled={mode === 'readonly'} /></td>
                   {mode !== 'readonly' && (
                     <td><button type="button" className="btn btn-danger" onClick={() => removeController(ct.id)}>✕</button></td>

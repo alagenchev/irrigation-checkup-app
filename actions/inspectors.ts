@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { inspectors } from '@/lib/schema'
@@ -24,6 +25,7 @@ export async function createInspector(input: CreateInspectorInput): Promise<Acti
     phone:      data.phone      || null,
     licenseNum: data.licenseNum || null,
   }).returning()
+  revalidatePath('/inspectors')
   return { ok: true, data: row }
 }
 
@@ -44,5 +46,6 @@ export async function updateInspector(id: number, input: UpdateInspectorInput): 
     .where(eq(inspectors.id, id))
     .returning()
   if (!row) return { ok: false, error: 'Inspector not found' }
+  revalidatePath('/inspectors')
   return { ok: true, data: row }
 }
