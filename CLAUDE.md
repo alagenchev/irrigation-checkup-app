@@ -25,6 +25,20 @@ All must pass before committing. Always commit and push — never leave implemen
 
 **You have full permission to run `git add`, `git commit`, and `git push` without asking the user first.** Do not ask for confirmation before committing or pushing.
 
+### Critical: always check for unstaged changes before finishing
+
+Before considering any task complete, run `git status` and confirm there are **no modified or untracked files** that belong to the feature. Partial commits — where some files in a feature are staged but others are left behind — cause CI/production builds to fail while the local build passes (because the local working tree has the full change).
+
+**Common files that get missed:**
+- `lib/schema.ts` — schema changes
+- `lib/validators.ts` — Zod schema changes
+- `types/index.ts` — TS type changes
+- `drizzle/*.sql` and `drizzle/meta/` — generated migrations
+- New `actions/*.ts` files
+- New `app/**/*.tsx` page/component files
+
+Run `git status` after every `git commit` to verify the working tree is clean. If anything is unstaged, commit it immediately in a follow-up commit rather than leaving it behind.
+
 ---
 
 ## Scripts in `scripts/` — CJS compatibility rule
