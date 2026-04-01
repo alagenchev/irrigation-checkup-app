@@ -652,6 +652,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               <button type="button" className="btn btn-sm" onClick={addController}>+ Controller</button>
             )}
           </div>
+          <div className="table-scroll">
           <table className="data-table">
             <thead>
               <tr>
@@ -679,6 +680,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               ))}
             </tbody>
           </table>
+          </div>
         </section>
 
         {/* ZONE DESCRIPTIONS */}
@@ -689,6 +691,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               <button type="button" className="btn btn-sm" onClick={addZone}>+ Zone</button>
             )}
           </div>
+          <div className="table-scroll">
           <table className="data-table">
             <thead>
               <tr>
@@ -759,6 +762,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               ))}
             </tbody>
           </table>
+          </div>
         </section>
 
         {/* ZONE ISSUES */}
@@ -806,6 +810,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               <button type="button" className="btn btn-sm" onClick={addQuoteItem}>+ Item</button>
             )}
           </div>
+          <div className="table-scroll">
           <table className="data-table">
             <thead>
               <tr>
@@ -840,6 +845,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               </tr>
             </tfoot>
           </table>
+          </div>
         </section>
 
         {mode === 'edit' && (

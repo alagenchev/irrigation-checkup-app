@@ -114,6 +114,7 @@ body {
 .btn-lg { padding: 10px 28px; font-size: 15px; }
 
 /* TABLES */
+.table-scroll { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .data-table th {
   background: #f4f4f5;
