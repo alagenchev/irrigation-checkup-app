@@ -3,9 +3,8 @@
 import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
-import { ensureTechnicianExists } from '@/actions/technicians'
 import { saveInspection } from '@/actions/save-inspection'
-import type { Client, CompanySettings, Technician, IrrigationFormInitialData } from '@/types'
+import type { Client, CompanySettings, Inspector, IrrigationFormInitialData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
 const ISSUE_TYPES = [
@@ -30,11 +29,13 @@ interface IrrigationFormProps {
   clients:      Client[]
   sites:        SiteWithClient[]
   company:      CompanySettings
-  technicians:  Technician[]
+  inspectors:   Inspector[]
   initialData?: IrrigationFormInitialData
 }
 
-export function IrrigationForm({ clients, sites, company, technicians, initialData }: IrrigationFormProps) {
+function today() { return new Date().toISOString().split('T')[0] }
+
+export function IrrigationForm({ clients, sites, company, inspectors, initialData }: IrrigationFormProps) {
   // ── ID COUNTER (useRef so lazy initializers don't conflict with loaded IDs) ─
   const maxInitialId = initialData
     ? Math.max(
@@ -52,8 +53,8 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
 
   const [form, setForm] = useState(() => initialData?.form ?? {
     clientName: '', clientAddress: '', siteName: '', siteAddress: '',
-    datePerformed: '', inspectionType: 'Repair Inspection', accountType: 'Commercial',
-    accountNumber: '', status: 'New', dueDate: '', assignedTechnician: '',
+    datePerformed: today(), inspectionType: 'Repair Inspection', accountType: 'Commercial',
+    accountNumber: '', status: 'New', dueDate: today(), inspectorId: '',
     repairEstimate: '', inspectionNotes: '', internalNotes: '',
     staticPressure: '', backflowInstalled: false, backflowServiceable: false,
     isolationValve: false, systemNotes: '',
@@ -95,14 +96,15 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
 
-  const clientOptions     = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
-  const technicianOptions = technicians.map(t => ({ label: t.name }))
-  const siteOptions       = sites.map(s => ({
+  const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
+  const siteOptions = sites.map(s => ({
     label:         s.name,
     address:       s.address       ?? undefined,
     clientName:    s.clientName    ?? undefined,
     clientAddress: s.clientAddress ?? undefined,
   }))
+
+  const selectedInspector = inspectors.find(i => String(i.id) === form.inspectorId) ?? null
 
   // ── FIELD HANDLERS ──────────────────────────────────────────────────────
 
@@ -225,10 +227,10 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
     try {
       const result = await saveInspection({
         siteName:      form.siteName.trim(),
-        siteAddress:   form.siteAddress.trim()        || undefined,
-        clientName:    form.clientName.trim()          || undefined,
-        clientAddress: form.clientAddress.trim()       || undefined,
-        technicianName: form.assignedTechnician.trim() || undefined,
+        siteAddress:   form.siteAddress.trim()  || undefined,
+        clientName:    form.clientName.trim()   || undefined,
+        clientAddress: form.clientAddress.trim() || undefined,
+        inspectorId:   form.inspectorId ? parseInt(form.inspectorId, 10) : undefined,
 
         datePerformed:   form.datePerformed,
         inspectionType:  form.inspectionType,
@@ -273,6 +275,8 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
     const fd = new FormData()
     Object.entries(company).forEach(([k, v]) => { if (v !== null) fd.append(k, String(v)) })
     Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)))
+    fd.append('inspectorName', selectedInspector ? `${selectedInspector.firstName} ${selectedInspector.lastName}` : '')
+    fd.append('inspectorLicenseNum', selectedInspector?.licenseNum ?? '')
     fd.append('controllers', JSON.stringify(controllers))
     fd.append('zones',       JSON.stringify(zones))
     fd.append('backflows',   JSON.stringify(backflows))
@@ -312,8 +316,7 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
   async function generatePDF() {
     setLoading(true)
     try {
-      if (form.clientName.trim())       await ensureClientExists(form.clientName.trim(), form.clientAddress.trim() || undefined)
-      if (form.assignedTechnician.trim()) await ensureTechnicianExists(form.assignedTechnician.trim())
+      if (form.clientName.trim()) await ensureClientExists(form.clientName.trim(), form.clientAddress.trim() || undefined)
 
       const res = await fetch('/api/generate-pdf', { method: 'POST', body: buildReportFormData() })
       if (!res.ok) throw new Error((await res.json()).error || 'Failed')
@@ -422,6 +425,39 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
                 </p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* INSPECTOR */}
+        <section className="card">
+          <h2>Inspected By</h2>
+          <div className="grid-2">
+            <div className="field">
+              <label>Inspector</label>
+              <select
+                value={form.inspectorId}
+                onChange={e => setField('inspectorId', e.target.value)}
+                disabled={mode === 'readonly'}
+              >
+                <option value="">— Select Inspector —</option>
+                {inspectors.map(i => (
+                  <option key={i.id} value={String(i.id)}>
+                    {i.firstName} {i.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedInspector && (
+              <div className="field">
+                <label>License #</label>
+                <p style={{
+                  padding: '7px 10px', border: '1px solid #3a3a3c', borderRadius: 6,
+                  fontSize: 13, color: '#ffffff', background: '#2c2c2e', margin: 0,
+                }}>
+                  {selectedInspector.licenseNum || <span style={{ color: '#71717a' }}>—</span>}
+                </p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -539,18 +575,6 @@ export function IrrigationForm({ clients, sites, company, technicians, initialDa
             <div className="field">
               <label>Due Date</label>
               <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} disabled={mode === 'readonly'} />
-            </div>
-            <div className="field">
-              <label>Assigned Technician</label>
-              <Autocomplete
-                name="assignedTechnician"
-                value={form.assignedTechnician}
-                onChange={v => setField('assignedTechnician', v)}
-                onSelect={opt => setField('assignedTechnician', opt.label)}
-                options={technicianOptions}
-                placeholder="Type or select a technician"
-                disabled={mode === 'readonly'}
-              />
             </div>
             <div className="field">
               <label>Total System Repair Estimate ($)</label>

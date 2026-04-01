@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
 import {
-  sites, clients, technicians,
+  sites, clients, inspectors,
   siteVisits, siteControllers, siteZones, siteBackflows,
 } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
@@ -31,10 +31,8 @@ async function ensureClient(db: PostgresJsDatabase<typeof schema>, name: string)
   return row
 }
 
-async function ensureTechnician(db: PostgresJsDatabase<typeof schema>, name: string) {
-  const [ex] = await db.select().from(technicians).where(eq(technicians.name, name)).limit(1)
-  if (ex) return ex
-  const [row] = await db.insert(technicians).values({ name }).returning()
+async function ensureInspector(db: PostgresJsDatabase<typeof schema>, firstName: string, lastName: string) {
+  const [row] = await db.insert(inspectors).values({ firstName, lastName }).returning()
   return row
 }
 
@@ -127,19 +125,19 @@ describe('saveInspection — DB integration', () => {
     })
   })
 
-  test('links client and technician to the visit', async () => {
+  test('links client and inspector to the visit', async () => {
     await withRollback(async (db) => {
-      const site  = await ensureSite(db, 'Linked Visit Site')
-      const client = await ensureClient(db, 'Linked Client')
-      const tech   = await ensureTechnician(db, 'Linked Tech')
+      const site      = await ensureSite(db, 'Linked Visit Site')
+      const client    = await ensureClient(db, 'Linked Client')
+      const inspector = await ensureInspector(db, 'Linked', 'Inspector')
 
       const [visit] = await db
         .insert(siteVisits)
-        .values({ siteId: site.id, datePerformed: '2025-08-01', clientId: client.id, technicianId: tech.id })
+        .values({ siteId: site.id, datePerformed: '2025-08-01', clientId: client.id, inspectorId: inspector.id })
         .returning()
 
       expect(visit.clientId).toBe(client.id)
-      expect(visit.technicianId).toBe(tech.id)
+      expect(visit.inspectorId).toBe(inspector.id)
     })
   })
 

@@ -50,6 +50,13 @@
       "when": 1774967619993,
       "tag": "0006_strong_eddie_brock",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775000000000,
+      "tag": "0007_add_inspectors",
+      "breakpoints": true
     }
   ]
 }

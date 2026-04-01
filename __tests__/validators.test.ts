@@ -1,6 +1,6 @@
 import {
   createClientSchema, createSiteSchema, companySettingsSchema,
-  createTechnicianSchema, createSiteVisitSchema,
+  createTechnicianSchema, createInspectorSchema, createSiteVisitSchema,
   createSiteControllerSchema, createSiteZoneSchema, createSiteBackflowSchema,
   saveInspectionSchema,
 } from '@/lib/validators'
@@ -106,6 +106,50 @@ describe('createTechnicianSchema', () => {
   })
 })
 
+describe('createInspectorSchema', () => {
+  test('accepts a valid inspector with all fields', () => {
+    const result = createInspectorSchema.safeParse({
+      firstName: 'Jane', lastName: 'Smith',
+      email: 'jane@example.com', phone: '555-1234', licenseNum: 'TX-001',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  test('accepts an inspector with only required fields', () => {
+    expect(createInspectorSchema.safeParse({ firstName: 'Jane', lastName: 'Smith' }).success).toBe(true)
+  })
+
+  test('rejects when firstName is missing', () => {
+    const result = createInspectorSchema.safeParse({ lastName: 'Smith' })
+    expect(result.success).toBe(false)
+  })
+
+  test('rejects when firstName is empty', () => {
+    const result = createInspectorSchema.safeParse({ firstName: '', lastName: 'Smith' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/first name is required/i)
+  })
+
+  test('rejects when lastName is missing', () => {
+    const result = createInspectorSchema.safeParse({ firstName: 'Jane' })
+    expect(result.success).toBe(false)
+  })
+
+  test('rejects when email is not a valid email address', () => {
+    const result = createInspectorSchema.safeParse({ firstName: 'Jane', lastName: 'Smith', email: 'not-an-email' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/invalid email/i)
+  })
+
+  test('accepts an empty string email (field left blank)', () => {
+    expect(createInspectorSchema.safeParse({ firstName: 'Jane', lastName: 'Smith', email: '' }).success).toBe(true)
+  })
+
+  test('optional fields (phone, licenseNum) are truly optional', () => {
+    expect(createInspectorSchema.safeParse({ firstName: 'Jane', lastName: 'Smith' }).success).toBe(true)
+  })
+})
+
 describe('createSiteVisitSchema', () => {
   const VALID: Parameters<typeof createSiteVisitSchema.safeParse>[0] = {
     siteId:        1,
@@ -143,8 +187,8 @@ describe('createSiteVisitSchema', () => {
   test('accepts all optional fields (no equipment arrays — those live in their own tables)', () => {
     const r = createSiteVisitSchema.safeParse({
       ...VALID,
-      clientId:     2,
-      technicianId: 3,
+      clientId:    2,
+      inspectorId: 3,
       inspectionType:  'Start-up',
       accountType:  'Commercial',
       accountNumber: 'A123',
@@ -259,7 +303,7 @@ describe('saveInspectionSchema', () => {
     const r = saveInspectionSchema.safeParse({
       ...VALID,
       clientName: 'Acme Corp', clientAddress: '1 Main St',
-      technicianName: 'Jane Smith',
+      inspectorId: 1,
       inspectionType: 'Start-up', accountType: 'Commercial', accountNumber: 'A1',
       status: 'In Progress', dueDate: '2025-07-01', repairEstimate: '350.00',
       inspectionNotes: 'All clear.', internalNotes: 'Note.',

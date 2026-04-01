@@ -3,6 +3,7 @@ export type {
   Site, NewSite,
   CompanySettings, NewCompanySettings,
   Technician, NewTechnician,
+  Inspector, NewInspector,
   SiteController, NewSiteController,
   SiteZone, NewSiteZone,
   SiteBackflow, NewSiteBackflow,
@@ -37,7 +38,7 @@ export type QuoteItemFormData = {
 export type IrrigationFormFieldValues = {
   clientName: string; clientAddress: string; siteName: string; siteAddress: string
   datePerformed: string; inspectionType: string; accountType: string
-  accountNumber: string; status: string; dueDate: string; assignedTechnician: string
+  accountNumber: string; status: string; dueDate: string; inspectorId: string
   repairEstimate: string; inspectionNotes: string; internalNotes: string
   staticPressure: string; backflowInstalled: boolean; backflowServiceable: boolean
   isolationValve: boolean; systemNotes: string

@@ -1,15 +1,15 @@
 import { getClients } from '@/actions/clients'
 import { getSites } from '@/actions/sites'
 import { getCompanySettings } from '@/actions/company-settings'
-import { getTechnicians } from '@/actions/technicians'
+import { getInspectors } from '@/actions/inspectors'
 import { IrrigationForm } from './irrigation-form'
 
 export default async function Home() {
-  const [clients, sites, company, technicians] = await Promise.all([
+  const [clients, sites, company, inspectors] = await Promise.all([
     getClients(),
     getSites(),
     getCompanySettings(),
-    getTechnicians(),
+    getInspectors(),
   ])
-  return <IrrigationForm clients={clients} sites={sites} company={company} technicians={technicians} />
+  return <IrrigationForm clients={clients} sites={sites} company={company} inspectors={inspectors} />
 }

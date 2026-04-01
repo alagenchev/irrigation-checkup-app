@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
 import { buildClient } from '../test/helpers/factories'
-import { clients, sites, technicians, siteVisits } from '@/lib/schema'
+import { clients, inspectors, sites, technicians, siteVisits } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
 
 beforeAll(async () => {
@@ -27,6 +27,11 @@ async function insertClient(db: PostgresJsDatabase<typeof schema>, name = 'Test 
 
 async function insertTechnician(db: PostgresJsDatabase<typeof schema>, name = 'Jane Smith') {
   const [row] = await db.insert(technicians).values({ name }).returning()
+  return row
+}
+
+async function insertInspector(db: PostgresJsDatabase<typeof schema>, firstName = 'Jane', lastName = 'Smith') {
+  const [row] = await db.insert(inspectors).values({ firstName, lastName }).returning()
   return row
 }
 
@@ -62,19 +67,19 @@ describe('site_visits — DB integration', () => {
     })
   })
 
-  test('stores FK references to client and technician', async () => {
+  test('stores FK references to client and inspector', async () => {
     await withRollback(async (db) => {
-      const site   = await insertSite(db)
-      const client = await insertClient(db)
-      const tech   = await insertTechnician(db)
+      const site      = await insertSite(db)
+      const client    = await insertClient(db)
+      const inspector = await insertInspector(db)
 
       const visit = await insertVisit(db, site.id, '2025-06-15', {
-        clientId:     client.id,
-        technicianId: tech.id,
+        clientId:    client.id,
+        inspectorId: inspector.id,
       })
 
       expect(visit.clientId).toBe(client.id)
-      expect(visit.technicianId).toBe(tech.id)
+      expect(visit.inspectorId).toBe(inspector.id)
     })
   })
 
@@ -110,19 +115,19 @@ describe('site_visits — DB integration', () => {
     })
   })
 
-  test('nullifies technicianId when technician is deleted (onDelete: set null)', async () => {
+  test('nullifies inspectorId when inspector is deleted (onDelete: set null)', async () => {
     await withRollback(async (db) => {
-      const site  = await insertSite(db)
-      const tech  = await insertTechnician(db)
-      const visit = await insertVisit(db, site.id, '2025-06-15', { technicianId: tech.id })
+      const site      = await insertSite(db)
+      const inspector = await insertInspector(db)
+      const visit     = await insertVisit(db, site.id, '2025-06-15', { inspectorId: inspector.id })
 
-      await db.delete(technicians).where(eq(technicians.id, tech.id))
+      await db.delete(inspectors).where(eq(inspectors.id, inspector.id))
 
       const [row] = await db
         .select()
         .from(siteVisits)
         .where(eq(siteVisits.siteVisitId, visit.siteVisitId))
-      expect(row.technicianId).toBeNull()
+      expect(row.inspectorId).toBeNull()
     })
   })
 

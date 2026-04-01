@@ -10,7 +10,6 @@ import {
 import { saveInspectionSchema } from '@/lib/validators'
 import { ensureSiteExists } from '@/actions/sites'
 import { ensureClientExists } from '@/actions/clients'
-import { ensureTechnicianExists } from '@/actions/technicians'
 import type { ActionResult, SiteVisit } from '@/types'
 import type { SaveInspectionInput } from '@/lib/validators'
 
@@ -21,7 +20,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
   }
   const data = parsed.data
 
-  // Resolve / create site, client, technician outside the transaction
+  // Resolve / create site and client outside the transaction
   // (these are idempotent lookups safe to run before the atomic block)
   const site = await ensureSiteExists(data.siteName, data.siteAddress ?? undefined)
 
@@ -31,11 +30,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     clientId = client.id
   }
 
-  let technicianId: number | null = null
-  if (data.technicianName?.trim()) {
-    const tech = await ensureTechnicianExists(data.technicianName.trim())
-    technicianId = tech.id
-  }
+  const inspectorId: number | null = data.inspectorId ?? null
 
   // Atomically sync equipment and upsert the visit
   const visit = await db.transaction(async (tx) => {
@@ -102,9 +97,9 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     // ── Upsert visit (create or update for same site + date) ──────────────
 
     const visitData = {
-      siteId:              site.id,
+      siteId:      site.id,
       clientId,
-      technicianId,
+      inspectorId,
       datePerformed:       data.datePerformed,
       inspectionType:      data.inspectionType,
       accountType:         data.accountType    || null,

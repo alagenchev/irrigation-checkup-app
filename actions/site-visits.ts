@@ -1,8 +1,8 @@
 'use server'
 
-import { and, count, desc, eq, lt } from 'drizzle-orm'
+import { and, count, desc, eq, lt, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { clients, siteVisits, sites, technicians, type ZoneIssueData, type QuoteItemData } from '@/lib/schema'
+import { clients, inspectors, siteVisits, sites, type ZoneIssueData, type QuoteItemData } from '@/lib/schema'
 import { createSiteVisitSchema } from '@/lib/validators'
 import type { ActionResult, SiteVisit } from '@/types'
 import type { CreateSiteVisitInput } from '@/lib/validators'
@@ -16,7 +16,7 @@ type InspectionRow = {
   status:         string
   siteName:       string
   clientName:     string | null
-  technicianName: string | null
+  inspectorName:  string | null
 }
 
 export async function getInspections(page: number): Promise<{ rows: InspectionRow[]; total: number; pageSize: number }> {
@@ -29,14 +29,14 @@ export async function getInspections(page: number): Promise<{ rows: InspectionRo
         datePerformed:  siteVisits.datePerformed,
         inspectionType: siteVisits.inspectionType,
         status:         siteVisits.status,
-        siteName:       sites.name,
-        clientName:     clients.name,
-        technicianName: technicians.name,
+        siteName:      sites.name,
+        clientName:    clients.name,
+        inspectorName: sql<string | null>`nullif(concat(${inspectors.firstName}, ' ', ${inspectors.lastName}), ' ')`,
       })
       .from(siteVisits)
-      .leftJoin(sites,        eq(siteVisits.siteId,       sites.id))
-      .leftJoin(clients,      eq(siteVisits.clientId,     clients.id))
-      .leftJoin(technicians,  eq(siteVisits.technicianId, technicians.id))
+      .leftJoin(sites,       eq(siteVisits.siteId,       sites.id))
+      .leftJoin(clients,     eq(siteVisits.clientId,     clients.id))
+      .leftJoin(inspectors,  eq(siteVisits.inspectorId,  inspectors.id))
       .orderBy(desc(siteVisits.datePerformed))
       .limit(INSPECTIONS_PAGE_SIZE)
       .offset(offset),
@@ -116,9 +116,9 @@ export async function createSiteVisit(input: CreateSiteVisitInput): Promise<Acti
   const [visit] = await db
     .insert(siteVisits)
     .values({
-      siteId:       data.siteId,
-      clientId:     data.clientId     ?? null,
-      technicianId: data.technicianId ?? null,
+      siteId:      data.siteId,
+      clientId:    data.clientId    ?? null,
+      inspectorId: data.inspectorId ?? null,
 
       datePerformed:   data.datePerformed,
       inspectionType:  data.inspectionType,

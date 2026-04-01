@@ -1,7 +1,7 @@
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
 import {
-  sites, clients, technicians, siteVisits, siteControllers, siteZones, siteBackflows,
+  sites, clients, inspectors, siteVisits, siteControllers, siteZones, siteBackflows,
 } from '@/lib/schema'
 import { getInspectionForEdit } from '@/actions/inspections'
 import type * as schema from '@/lib/schema'
@@ -19,7 +19,7 @@ afterAll(async () => {
 async function insertFixture(db: PostgresJsDatabase<typeof schema>) {
   const [site]       = await db.insert(sites).values({ name: 'Acme HQ', address: '1 Main St' }).returning()
   const [client]     = await db.insert(clients).values({ name: 'Acme Corp', address: '2 Corp Ave' }).returning()
-  const [tech]       = await db.insert(technicians).values({ name: 'Jane Smith' }).returning()
+  const [inspector]  = await db.insert(inspectors).values({ firstName: 'Jane', lastName: 'Smith' }).returning()
   const [controller] = await db.insert(siteControllers).values({
     siteId: site.id, location: 'Front', manufacturer: 'Hunter', model: 'Pro-HC',
     sensors: 'Rain', numZones: '6', masterValve: true,
@@ -38,9 +38,9 @@ async function insertFixture(db: PostgresJsDatabase<typeof schema>) {
   const quoteItems = [{ id: 1, location: 'C1-Z1', item: 'Replace head', description: 'Pop-up', price: '45.00', qty: '2' }]
 
   const [visit] = await db.insert(siteVisits).values({
-    siteId:       site.id,
-    clientId:     client.id,
-    technicianId: tech.id,
+    siteId:      site.id,
+    clientId:    client.id,
+    inspectorId: inspector.id,
     datePerformed: '2025-06-15',
     inspectionType: 'Start-up',
     status:        'In Progress',
@@ -56,7 +56,7 @@ async function insertFixture(db: PostgresJsDatabase<typeof schema>) {
     quoteItems,
   }).returning()
 
-  return { site, client, tech, controller, zone, backflow, visit }
+  return { site, client, inspector, controller, zone, backflow, visit }
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ describe('getInspectionForEdit', () => {
 
   test('returns correctly mapped initial data for an existing visit', async () => {
     await withRollback(async (db) => {
-      const { visit, client, tech, controller, zone } = await insertFixture(db)
+      const { visit, client, inspector } = await insertFixture(db)
 
       const data = await getInspectionForEdit(visit.siteVisitId)
       expect(data).not.toBeNull()
@@ -84,7 +84,7 @@ describe('getInspectionForEdit', () => {
       expect(data.form.siteAddress).toBe('1 Main St')
       expect(data.form.clientName).toBe(client.name)
       expect(data.form.clientAddress).toBe(client.address)
-      expect(data.form.assignedTechnician).toBe(tech.name)
+      expect(data.form.inspectorId).toBe(String(inspector.id))
       expect(data.form.datePerformed).toBe('2025-06-15')
       expect(data.form.inspectionType).toBe('Start-up')
       expect(data.form.status).toBe('In Progress')

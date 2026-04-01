@@ -37,6 +37,16 @@ export const technicians = pgTable('technicians', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+export const inspectors = pgTable('inspectors', {
+  id:         serial('id').primaryKey(),
+  firstName:  text('first_name').notNull(),
+  lastName:   text('last_name').notNull(),
+  email:      text('email'),
+  phone:      text('phone'),
+  licenseNum: text('license_num'),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
 // ── Site-level equipment (persists across visits) ─────────────────────────
 
 export const siteControllers = pgTable('site_controllers', {
@@ -85,9 +95,9 @@ export const siteVisits = pgTable('site_visits', {
   siteVisitId: serial('site_visit_id').primaryKey(),
 
   // References
-  siteId:       integer('site_id').notNull().references(() => sites.id, { onDelete: 'restrict' }),
-  clientId:     integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
-  technicianId: integer('technician_id').references(() => technicians.id, { onDelete: 'set null' }),
+  siteId:      integer('site_id').notNull().references(() => sites.id, { onDelete: 'restrict' }),
+  clientId:    integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
+  inspectorId: integer('inspector_id').references(() => inspectors.id, { onDelete: 'set null' }),
 
   // Inspection details
   datePerformed:   date('date_performed').notNull(),
@@ -130,6 +140,9 @@ export type NewSite      = typeof sites.$inferInsert
 
 export type Technician    = typeof technicians.$inferSelect
 export type NewTechnician = typeof technicians.$inferInsert
+
+export type Inspector    = typeof inspectors.$inferSelect
+export type NewInspector = typeof inspectors.$inferInsert
 
 export type SiteController    = typeof siteControllers.$inferSelect
 export type NewSiteController = typeof siteControllers.$inferInsert

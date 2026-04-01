@@ -14,7 +14,7 @@ const FIELDS: [keyof CompanySettings, string][] = [
   ['companyAddress',      'Company Address'],
   ['companyCityStateZip', 'City / State / Zip'],
   ['companyPhone',        'Company Phone'],
-  ['performedBy',         'Performed By'],
+  ['performedBy',         'Inspected By'],
 ]
 
 export function CompanySettingsForm({ initial }: CompanySettingsFormProps) {

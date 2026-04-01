@@ -536,8 +536,8 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     <td>${esc(formData.clientName)}</td>
     <td class="label">Site Name:</td>
     <td>${esc(formData.siteName)}</td>
-    <td class="label">Performed by:</td>
-    <td>${esc(formData.performedBy)}</td>
+    <td class="label">Inspected by:</td>
+    <td>${esc(formData.inspectorName || '')}</td>
   </tr>
   <tr>
     <td class="label">Address:</td>
@@ -545,7 +545,7 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     <td class="label">Site Address:</td>
     <td>${esc(formData.siteAddress)}</td>
     <td class="label">License #:</td>
-    <td>${esc(formData.licenseNum)}</td>
+    <td>${esc(formData.inspectorLicenseNum || '')}</td>
   </tr>
 </table>
 

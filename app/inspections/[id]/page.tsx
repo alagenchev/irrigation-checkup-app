@@ -3,7 +3,7 @@ import { getInspectionForEdit } from '@/actions/inspections'
 import { getClients } from '@/actions/clients'
 import { getSites } from '@/actions/sites'
 import { getCompanySettings } from '@/actions/company-settings'
-import { getTechnicians } from '@/actions/technicians'
+import { getInspectors } from '@/actions/inspectors'
 import { IrrigationForm } from '@/app/irrigation-form'
 
 export default async function InspectionDetailPage({
@@ -16,12 +16,12 @@ export default async function InspectionDetailPage({
 
   if (isNaN(siteVisitId)) notFound()
 
-  const [initialData, clients, sites, company, technicians] = await Promise.all([
+  const [initialData, clients, sites, company, inspectors] = await Promise.all([
     getInspectionForEdit(siteVisitId),
     getClients(),
     getSites(),
     getCompanySettings(),
-    getTechnicians(),
+    getInspectors(),
   ])
 
   if (!initialData) notFound()
@@ -32,7 +32,7 @@ export default async function InspectionDetailPage({
       clients={clients}
       sites={sites}
       company={company}
-      technicians={technicians}
+      inspectors={inspectors}
     />
   )
 }

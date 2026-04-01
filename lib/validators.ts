@@ -29,6 +29,15 @@ export const createTechnicianSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
 })
 
+export const createInspectorSchema = z.object({
+  firstName:  z.string().min(1, 'First name is required').max(255),
+  lastName:   z.string().min(1, 'Last name is required').max(255),
+  email:      z.union([z.string().email('Invalid email'), z.literal('')]).optional(),
+  phone:      z.string().max(50).optional(),
+  licenseNum: z.string().max(100).optional(),
+})
+export const updateInspectorSchema = createInspectorSchema.partial()
+
 // ── Site equipment ────────────────────────────────────────────────────────
 
 export const createSiteControllerSchema = z.object({
@@ -78,9 +87,9 @@ export const updateSiteBackflowSchema = createSiteBackflowSchema
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
 
 export const createSiteVisitSchema = z.object({
-  siteId:       z.number().int().positive(),
-  clientId:     z.number().int().positive().nullable().optional(),
-  technicianId: z.number().int().positive().nullable().optional(),
+  siteId:      z.number().int().positive(),
+  clientId:    z.number().int().positive().nullable().optional(),
+  inspectorId: z.number().int().positive().nullable().optional(),
 
   // Inspection details
   datePerformed:   isoDate,
@@ -131,7 +140,7 @@ export const saveInspectionSchema = z.object({
   siteAddress:   z.string().optional(),
   clientName:    z.string().optional(),
   clientAddress: z.string().optional(),
-  technicianName: z.string().optional(),
+  inspectorId: z.number().int().positive().nullable().optional(),
 
   datePerformed:   isoDate,
   inspectionType:  z.string().max(100).optional().default('Repair Inspection'),
@@ -160,6 +169,8 @@ export type CreateClientInput         = z.infer<typeof createClientSchema>
 export type CreateSiteInput           = z.infer<typeof createSiteSchema>
 export type CompanySettingsInput      = z.infer<typeof companySettingsSchema>
 export type CreateTechnicianInput     = z.infer<typeof createTechnicianSchema>
+export type CreateInspectorInput      = z.infer<typeof createInspectorSchema>
+export type UpdateInspectorInput      = z.infer<typeof updateInspectorSchema>
 export type CreateSiteControllerInput = z.infer<typeof createSiteControllerSchema>
 export type UpdateSiteControllerInput = z.infer<typeof updateSiteControllerSchema>
 export type CreateSiteZoneInput       = z.infer<typeof createSiteZoneSchema>

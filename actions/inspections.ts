@@ -3,7 +3,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
-  siteVisits, sites, clients, technicians,
+  siteVisits, sites, clients,
   siteControllers, siteZones, siteBackflows,
   type ZoneIssueData, type QuoteItemData,
 } from '@/lib/schema'
@@ -18,13 +18,10 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
   })
   if (!visit) return null
 
-  const [site, client, technician, dbControllers, dbZones, dbBackflows] = await Promise.all([
+  const [site, client, dbControllers, dbZones, dbBackflows] = await Promise.all([
     db.query.sites.findFirst({ where: eq(sites.id, visit.siteId) }),
     visit.clientId
       ? db.query.clients.findFirst({ where: eq(clients.id, visit.clientId) })
-      : Promise.resolve(null),
-    visit.technicianId
-      ? db.query.technicians.findFirst({ where: eq(technicians.id, visit.technicianId) })
       : Promise.resolve(null),
     db.select().from(siteControllers).where(eq(siteControllers.siteId, visit.siteId)).orderBy(siteControllers.id),
     db.select().from(siteZones).where(eq(siteZones.siteId, visit.siteId)).orderBy(siteZones.id),
@@ -103,9 +100,9 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
       accountType:         visit.accountType     ?? 'Commercial',
       accountNumber:       visit.accountNumber   ?? '',
       status:              visit.status,
-      dueDate:             visit.dueDate         ?? '',
-      assignedTechnician:  technician?.name      ?? '',
-      repairEstimate:      visit.repairEstimate  ?? '',
+      dueDate:         visit.dueDate         ?? '',
+      inspectorId:     String(visit.inspectorId ?? ''),
+      repairEstimate:  visit.repairEstimate  ?? '',
       inspectionNotes:     visit.inspectionNotes ?? '',
       internalNotes:       visit.internalNotes   ?? '',
       staticPressure:      visit.staticPressure  ?? '',

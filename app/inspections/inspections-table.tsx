@@ -9,7 +9,7 @@ type InspectionRow = {
   status:         string
   siteName:       string
   clientName:     string | null
-  technicianName: string | null
+  inspectorName:  string | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -53,7 +53,7 @@ export function InspectionsTable({ rows }: { rows: InspectionRow[] }) {
           <th>Date</th>
           <th>Site</th>
           <th>Client</th>
-          <th>Technician</th>
+          <th>Inspector</th>
           <th>Type</th>
           <th>Status</th>
         </tr>
@@ -68,7 +68,7 @@ export function InspectionsTable({ rows }: { rows: InspectionRow[] }) {
             <td style={{ whiteSpace: 'nowrap' }}>{formatDate(row.datePerformed)}</td>
             <td>{row.siteName}</td>
             <td style={{ color: row.clientName     ? '#ffffff' : '#71717a' }}>{row.clientName     ?? '—'}</td>
-            <td style={{ color: row.technicianName ? '#ffffff' : '#71717a' }}>{row.technicianName ?? '—'}</td>
+            <td style={{ color: row.inspectorName  ? '#ffffff' : '#71717a' }}>{row.inspectorName  ?? '—'}</td>
             <td>{row.inspectionType}</td>
             <td><StatusBadge status={row.status} /></td>
           </tr>
