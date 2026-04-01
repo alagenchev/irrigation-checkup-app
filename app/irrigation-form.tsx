@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
-import type { Client, CompanySettings, Inspector, IrrigationFormInitialData } from '@/types'
+import type { Client, CompanySettings, Inspector, IrrigationFormInitialData, ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
 const ISSUE_TYPES = [
@@ -19,11 +19,11 @@ const ISSUE_TYPES = [
 const LANDSCAPE_TYPES = ['Full-sun turf','Shade turf','Low demand beds','High demand beds','Trees','Shrubs','Ground cover','Slope']
 const IRRIGATION_TYPES = ['Rotor','MPR spray','Fan spray','Rotator nozzle','Drip','Micro spray','Bubbler']
 
-// UI-only types (React key `id` is ephemeral, not the DB primary key)
-type Controller = { id: number; location: string; manufacturer: string; model: string; sensors: string; numZones: string; masterValve: boolean; masterValveNotes: string; notes: string }
-type Zone       = { id: number; zoneNum: string; controller: string; description: string; landscapeTypes: string[]; irrigationTypes: string[]; notes: string }
-type Backflow   = { id: number; manufacturer: string; type: string; model: string; size: string }
-type QuoteItem  = { id: number; location: string; item: string; description: string; price: string; qty: string }
+// Aliases to the canonical form data types — never duplicate inline to avoid drift
+type Controller = ControllerFormData
+type Zone       = ZoneFormData
+type Backflow   = BackflowFormData
+type QuoteItem  = QuoteItemFormData
 
 interface IrrigationFormProps {
   clients:      Client[]
