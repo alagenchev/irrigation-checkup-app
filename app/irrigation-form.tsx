@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
@@ -657,26 +657,44 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <thead>
               <tr>
                 <th>#</th><th>Location</th><th>Manufacturer</th><th>Model</th>
-                <th>Sensors</th><th># Zones</th><th>Master Valve?</th><th>MV Repair Notes</th><th>Internal Notes</th>
+                <th>Sensors</th><th># Zones</th><th>Master Valve?</th>
                 {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
             <tbody>
               {controllers.map((ct, i) => (
-                <tr key={ct.id}>
-                  <td>{i+1}</td>
-                  <td><input value={ct.location} onChange={e => updateController(ct.id, 'location', e.target.value)} placeholder="e.g. Front of building" disabled={mode === 'readonly'} /></td>
-                  <td><input value={ct.manufacturer} onChange={e => updateController(ct.id, 'manufacturer', e.target.value)} placeholder="Hunter" disabled={mode === 'readonly'} /></td>
-                  <td><input value={ct.model} onChange={e => updateController(ct.id, 'model', e.target.value)} placeholder="Pro-HC" disabled={mode === 'readonly'} /></td>
-                  <td><input value={ct.sensors} onChange={e => updateController(ct.id, 'sensors', e.target.value)} placeholder="Rain/Freeze" disabled={mode === 'readonly'} /></td>
-                  <td><input type="number" style={{width:60}} value={ct.numZones} onChange={e => updateController(ct.id, 'numZones', e.target.value)} disabled={mode === 'readonly'} /></td>
-                  <td><input type="checkbox" checked={ct.masterValve} onChange={e => { updateController(ct.id, 'masterValve', e.target.checked); if (!e.target.checked) updateController(ct.id, 'masterValveNotes', '') }} disabled={mode === 'readonly'} /></td>
-                  <td>{ct.masterValve ? (<textarea rows={2} value={ct.masterValveNotes} onChange={e => updateController(ct.id, 'masterValveNotes', e.target.value)} placeholder="Repair notes..." style={{width:'100%',minWidth:160}} disabled={mode === 'readonly'} />) : <span style={{color:'#71717a'}}>—</span>}</td>
-                  <td><input value={ct.notes} onChange={e => updateController(ct.id, 'notes', e.target.value)} placeholder="Notes" disabled={mode === 'readonly'} /></td>
-                  {mode !== 'readonly' && (
-                    <td><button type="button" className="btn btn-danger" onClick={() => removeController(ct.id)}>✕</button></td>
-                  )}
-                </tr>
+                <React.Fragment key={ct.id}>
+                  <tr>
+                    <td style={{verticalAlign:'top',paddingTop:12}}>{i+1}</td>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input value={ct.location} onChange={e => updateController(ct.id, 'location', e.target.value)} placeholder="e.g. Front of building" disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input value={ct.manufacturer} onChange={e => updateController(ct.id, 'manufacturer', e.target.value)} placeholder="Hunter" disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input value={ct.model} onChange={e => updateController(ct.id, 'model', e.target.value)} placeholder="Pro-HC" disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input value={ct.sensors} onChange={e => updateController(ct.id, 'sensors', e.target.value)} placeholder="Rain/Freeze" disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input type="number" style={{width:60}} value={ct.numZones} onChange={e => updateController(ct.id, 'numZones', e.target.value)} disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top',paddingTop:10}}><input type="checkbox" checked={ct.masterValve} onChange={e => { updateController(ct.id, 'masterValve', e.target.checked); if (!e.target.checked) updateController(ct.id, 'masterValveNotes', '') }} disabled={mode === 'readonly'} /></td>
+                    {mode !== 'readonly' && (
+                      <td rowSpan={2} style={{verticalAlign:'middle'}}>
+                        <button type="button" className="btn btn-danger" onClick={() => removeController(ct.id)}>✕</button>
+                      </td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td colSpan={7} style={{paddingTop:4,paddingBottom:12,borderBottom:'2px solid #e4e4e7'}}>
+                      <div style={{display:'flex',gap:16}}>
+                        {ct.masterValve && (
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>MV Repair Notes</div>
+                            <textarea rows={2} value={ct.masterValveNotes} onChange={e => updateController(ct.id, 'masterValveNotes', e.target.value)} placeholder="Repair notes..." style={{width:'100%'}} disabled={mode === 'readonly'} />
+                          </div>
+                        )}
+                        <div style={{flex:2}}>
+                          <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Internal Notes</div>
+                          <textarea rows={2} value={ct.notes} onChange={e => updateController(ct.id, 'notes', e.target.value)} placeholder="Notes" style={{width:'100%'}} disabled={mode === 'readonly'} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
