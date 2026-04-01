@@ -1,0 +1,1 @@
+ALTER TABLE "site_controllers" ADD COLUMN "master_valve_notes" text;

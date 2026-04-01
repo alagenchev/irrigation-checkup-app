@@ -41,14 +41,15 @@ export const updateInspectorSchema = createInspectorSchema.partial()
 // ── Site equipment ────────────────────────────────────────────────────────
 
 export const createSiteControllerSchema = z.object({
-  siteId:       z.number().int().positive(),
-  location:     z.string().max(255).optional(),
-  manufacturer: z.string().max(255).optional(),
-  model:        z.string().max(255).optional(),
-  sensors:      z.string().max(255).optional(),
-  numZones:     z.string().max(10).optional().default('0'),
-  masterValve:  z.boolean().optional().default(false),
-  notes:        z.string().optional(),
+  siteId:           z.number().int().positive(),
+  location:         z.string().max(255).optional(),
+  manufacturer:     z.string().max(255).optional(),
+  model:            z.string().max(255).optional(),
+  sensors:          z.string().max(255).optional(),
+  numZones:         z.string().max(10).optional().default('0'),
+  masterValve:      z.boolean().optional().default(false),
+  masterValveNotes: z.string().optional(),
+  notes:            z.string().optional(),
 })
 
 export const updateSiteControllerSchema = createSiteControllerSchema
@@ -119,7 +120,7 @@ export const createSiteVisitSchema = z.object({
 const controllerRow = z.object({
   id: z.number(), location: z.string(), manufacturer: z.string(),
   model: z.string(), sensors: z.string(), numZones: z.string(),
-  masterValve: z.boolean(), notes: z.string(),
+  masterValve: z.boolean(), masterValveNotes: z.string(), notes: z.string(),
 })
 const zoneRow = z.object({
   id: z.number(), zoneNum: z.string(), controller: z.string(),

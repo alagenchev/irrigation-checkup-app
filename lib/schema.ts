@@ -57,9 +57,10 @@ export const siteControllers = pgTable('site_controllers', {
   model:        text('model'),
   sensors:      text('sensors'),
   numZones:     text('num_zones').notNull().default('0'),
-  masterValve:  boolean('master_valve').notNull().default(false),
-  notes:        text('notes'),
-  createdAt:    timestamp('created_at', { withTimezone: true }).defaultNow(),
+  masterValve:       boolean('master_valve').notNull().default(false),
+  masterValveNotes:  text('master_valve_notes'),
+  notes:             text('notes'),
+  createdAt:         timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
 export const siteZones = pgTable('site_zones', {

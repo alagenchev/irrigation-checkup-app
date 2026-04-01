@@ -47,14 +47,15 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
       const [row] = await tx
         .insert(siteControllers)
         .values({
-          siteId:       site.id,
-          location:     ctrl.location     || null,
-          manufacturer: ctrl.manufacturer || null,
-          model:        ctrl.model        || null,
-          sensors:      ctrl.sensors      || null,
-          numZones:     ctrl.numZones,
-          masterValve:  ctrl.masterValve,
-          notes:        ctrl.notes        || null,
+          siteId:            site.id,
+          location:          ctrl.location          || null,
+          manufacturer:      ctrl.manufacturer      || null,
+          model:             ctrl.model             || null,
+          sensors:           ctrl.sensors           || null,
+          numZones:          ctrl.numZones,
+          masterValve:       ctrl.masterValve,
+          masterValveNotes:  ctrl.masterValveNotes  || null,
+          notes:             ctrl.notes             || null,
         })
         .returning()
       controllerIdMap.set(String(ctrl.id), row.id)

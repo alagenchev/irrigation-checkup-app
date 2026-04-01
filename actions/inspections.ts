@@ -39,13 +39,14 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
     controllerEphemeralMap.set(c.id, id)
     return {
       id,
-      location:     c.location     ?? '',
-      manufacturer: c.manufacturer ?? '',
-      model:        c.model        ?? '',
-      sensors:      c.sensors      ?? '',
-      numZones:     c.numZones,
-      masterValve:  c.masterValve,
-      notes:        c.notes        ?? '',
+      location:          c.location          ?? '',
+      manufacturer:      c.manufacturer      ?? '',
+      model:             c.model             ?? '',
+      sensors:           c.sensors           ?? '',
+      numZones:          c.numZones,
+      masterValve:       c.masterValve,
+      masterValveNotes:  c.masterValveNotes  ?? '',
+      notes:             c.notes             ?? '',
     }
   })
 

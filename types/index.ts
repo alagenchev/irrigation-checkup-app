@@ -19,7 +19,7 @@ export type ActionResult<T = void> =
 
 export type ControllerFormData = {
   id: number; location: string; manufacturer: string; model: string
-  sensors: string; numZones: string; masterValve: boolean; notes: string
+  sensors: string; numZones: string; masterValve: boolean; masterValveNotes: string; notes: string
 }
 
 export type ZoneFormData = {
