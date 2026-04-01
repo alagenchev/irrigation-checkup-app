@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 import {
   siteVisits, sites, clients,
   siteControllers, siteZones, siteBackflows,
-  type ZoneIssueData, type QuoteItemData,
+  type ZoneIssueData, type QuoteItemData, type ZonePhotoData,
 } from '@/lib/schema'
 import type {
   IrrigationFormInitialData,
@@ -50,6 +50,14 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
     }
   })
 
+  // Zone photos from visit snapshot
+  const zonePhotoMap: Record<string, string[]> = {}
+  if (visit.zonePhotos) {
+    for (const zp of visit.zonePhotos as ZonePhotoData[]) {
+      zonePhotoMap[zp.zoneNum] = zp.urls
+    }
+  }
+
   const zones: ZoneFormData[] = dbZones.map(z => ({
     id:              eid++,
     zoneNum:         z.zoneNum,
@@ -58,6 +66,7 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
     landscapeTypes:  z.landscapeTypes  ?? [],
     irrigationTypes: z.irrigationTypes ?? [],
     notes:           z.notes           ?? '',
+    photoUrls:       zonePhotoMap[z.zoneNum] ?? [],
   }))
 
   const backflows: BackflowFormData[] = dbBackflows.map(bf => ({

@@ -310,7 +310,7 @@ describe('saveInspectionSchema', () => {
       staticPressure: '68.0', systemNotes: 'Hunter Pro-HC',
       backflowInstalled: true, backflowServiceable: true, isolationValve: true,
       controllers: [{ id: 1, location: 'Front', manufacturer: 'Hunter', model: 'Pro-HC', sensors: 'Rain', numZones: '6', masterValve: false, masterValveNotes: '', notes: '' }],
-      zones: [{ id: 2, zoneNum: '1', controller: '1', description: 'Lawn', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'], notes: '' }],
+      zones: [{ id: 2, zoneNum: '1', controller: '1', description: 'Lawn', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'], notes: '', photoUrls: [] }],
       backflows: [],
       quoteItems: [],
       zoneIssues: { '1': ['Runoff'] },

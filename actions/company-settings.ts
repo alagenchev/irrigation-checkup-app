@@ -15,6 +15,7 @@ const DEFAULTS = {
   companyCityStateZip: 'Grand Prairie, TX 75052',
   companyPhone:        '9038122010',
   performedBy:         'Tihomir Tony Alagenchev',
+  r2CompanyBucketId:   null,
   updatedAt:           null,
 } satisfies CompanySettings
 
@@ -36,6 +37,7 @@ export async function upsertCompanySettings(
     companyCityStateZip: formData.get('companyCityStateZip') || '',
     companyPhone:        formData.get('companyPhone')        || '',
     performedBy:         formData.get('performedBy')         || '',
+    r2CompanyBucketId:   formData.get('r2CompanyBucketId')   || '',
   }
 
   const parsed = companySettingsSchema.safeParse(raw)

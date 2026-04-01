@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
+import { uploadZonePhoto } from '@/actions/upload'
 import type { Client, CompanySettings, Inspector, IrrigationFormInitialData, ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
@@ -67,8 +68,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   )
   const [zones, setZones] = useState<Zone[]>(() =>
     initialData?.zones ?? [
-      { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
-      { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' },
+      { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoUrls: [] },
+      { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoUrls: [] },
     ]
   )
   const [backflows, setBackflows]   = useState<Backflow[]>(() => initialData?.backflows ?? [])
@@ -129,10 +130,13 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
 
   function addZone() {
     const num = String(zones.length + 1)
-    setZones(z => [...z, { id: uid(), zoneNum: num, controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '' }])
+    setZones(z => [...z, { id: uid(), zoneNum: num, controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoUrls: [] }])
   }
   function updateZone(id: number, key: keyof Zone, value: string | string[]) {
     setZones(z => z.map(zn => zn.id === id ? { ...zn, [key]: value } : zn))
+  }
+  function addZonePhotoUrl(id: number, url: string) {
+    setZones(zns => zns.map(zn => zn.id === id ? { ...zn, photoUrls: [...zn.photoUrls, url] } : zn))
   }
   function removeZone(id: number) {
     setZones(z => z.filter(zn => zn.id !== id))
@@ -768,17 +772,49 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                           <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Notes</div>
                           <textarea rows={2} value={zn.notes} onChange={e => updateZone(zn.id, 'notes', e.target.value)} placeholder="Notes..." style={{width:'100%'}} disabled={mode === 'readonly'} />
                         </div>
-                        {mode !== 'readonly' && (
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos</div>
-                            <input type="file" accept="image/*" multiple style={{display:'none'}} ref={el => { photoRefs.current[`zone_upload_${zn.id}`] = el }} />
-                            <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={el => { photoRefs.current[`zone_capture_${zn.id}`] = el }} />
-                            <div style={{display:'flex',gap:8}}>
-                              <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()}>Upload</button>
-                              <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()}>📷 Capture</button>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos</div>
+                          {mode !== 'readonly' && (
+                            <>
+                              <input type="file" accept="image/*" multiple style={{display:'none'}}
+                                ref={el => { photoRefs.current[`zone_upload_${zn.id}`] = el }}
+                                onChange={async e => {
+                                  const files = Array.from(e.target.files ?? [])
+                                  for (const file of files) {
+                                    const fd = new FormData()
+                                    fd.append('file', file)
+                                    fd.append('zoneNum', zn.zoneNum)
+                                    const res = await uploadZonePhoto(fd)
+                                    if (res.ok) addZonePhotoUrl(zn.id, res.data.key)
+                                  }
+                                  e.target.value = ''
+                                }}
+                              />
+                              <input type="file" accept="image/*" capture="environment" style={{display:'none'}}
+                                ref={el => { photoRefs.current[`zone_capture_${zn.id}`] = el }}
+                                onChange={async e => {
+                                  const file = e.target.files?.[0]
+                                  if (!file) return
+                                  const fd = new FormData()
+                                  fd.append('file', file)
+                                  fd.append('zoneNum', zn.zoneNum)
+                                  const res = await uploadZonePhoto(fd)
+                                  if (res.ok) addZonePhotoUrl(zn.id, res.data.key)
+                                  e.target.value = ''
+                                }}
+                              />
+                              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()}>Upload</button>
+                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()}>📷 Capture</button>
+                              </div>
+                            </>
+                          )}
+                          {zn.photoUrls.length > 0 && (
+                            <div style={{fontSize:11,color:'#a1a1aa',marginTop:4}}>
+                              {zn.photoUrls.length} photo{zn.photoUrls.length !== 1 ? 's' : ''} uploaded
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

@@ -8,6 +8,8 @@ export const companySettings = pgTable('company_settings', {
   companyCityStateZip: text('company_city_state_zip').notNull().default(''),
   companyPhone:        text('company_phone').notNull().default(''),
   performedBy:         text('performed_by').notNull().default(''),
+  // Cloudflare R2 — unique prefix for this company's files within the top-level app bucket
+  r2CompanyBucketId:   text('r2_company_bucket_id'),
   updatedAt:           timestamp('updated_at', { withTimezone: true }).defaultNow().$onUpdateFn(() => new Date()),
 })
 
@@ -89,6 +91,7 @@ export const siteBackflows = pgTable('site_backflows', {
 
 export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string }
 export type ZoneIssueData = { zoneNum: string; issues: string[] }
+export type ZonePhotoData = { zoneNum: string; urls: string[] }
 
 // ── site_visits ───────────────────────────────────────────────────────────
 
@@ -119,8 +122,9 @@ export const siteVisits = pgTable('site_visits', {
   systemNotes:         text('system_notes'),
 
   // Visit-specific snapshot data (not auto-populated)
-  zoneIssues: jsonb('zone_issues').$type<ZoneIssueData[]>(),
-  quoteItems: jsonb('quote_items').$type<QuoteItemData[]>(),
+  zoneIssues:  jsonb('zone_issues').$type<ZoneIssueData[]>(),
+  quoteItems:  jsonb('quote_items').$type<QuoteItemData[]>(),
+  zonePhotos:  jsonb('zone_photos').$type<ZonePhotoData[]>(),
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().$onUpdateFn(() => new Date()),

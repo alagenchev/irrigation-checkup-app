@@ -23,6 +23,7 @@ export const companySettingsSchema = z.object({
   companyCityStateZip: z.string().max(255).optional().default(''),
   companyPhone:        z.string().max(50).optional().default(''),
   performedBy:         z.string().max(255).optional().default(''),
+  r2CompanyBucketId:   z.string().max(255).optional().default(''),
 })
 
 export const createTechnicianSchema = z.object({
@@ -126,6 +127,7 @@ const zoneRow = z.object({
   id: z.number(), zoneNum: z.string(), controller: z.string(),
   description: z.string(), landscapeTypes: z.array(z.string()),
   irrigationTypes: z.array(z.string()), notes: z.string(),
+  photoUrls: z.array(z.string()),
 })
 const backflowRow = z.object({
   id: z.number(), manufacturer: z.string(), type: z.string(),

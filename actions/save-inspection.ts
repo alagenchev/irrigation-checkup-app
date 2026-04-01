@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   siteVisits, siteControllers, siteZones, siteBackflows,
-  type ZoneIssueData, type QuoteItemData,
+  type ZoneIssueData, type QuoteItemData, type ZonePhotoData,
 } from '@/lib/schema'
 import { saveInspectionSchema } from '@/lib/validators'
 import { ensureSiteExists } from '@/actions/sites'
@@ -90,6 +90,10 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
       issues:  (data.zoneIssues[z.zoneNum] ?? []) as string[],
     }))
 
+    const zonePhotos: ZonePhotoData[] = data.zones
+      .filter(z => z.photoUrls.length > 0)
+      .map(z => ({ zoneNum: z.zoneNum, urls: z.photoUrls }))
+
     const quoteItems: QuoteItemData[] = data.quoteItems.map(qi => ({
       id: qi.id, location: qi.location, item: qi.item,
       description: qi.description, price: qi.price, qty: qi.qty,
@@ -116,6 +120,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
       isolationValve:      data.isolationValve,
       systemNotes:         data.systemNotes    || null,
       zoneIssues,
+      zonePhotos,
       quoteItems,
     }
 

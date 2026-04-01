@@ -8,7 +8,7 @@ export type {
   SiteZone, NewSiteZone,
   SiteBackflow, NewSiteBackflow,
   SiteVisit, NewSiteVisit,
-  QuoteItemData, ZoneIssueData,
+  QuoteItemData, ZoneIssueData, ZonePhotoData,
 } from '@/lib/schema'
 
 export type ActionResult<T = void> =
@@ -25,6 +25,7 @@ export type ControllerFormData = {
 export type ZoneFormData = {
   id: number; zoneNum: string; controller: string; description: string
   landscapeTypes: string[]; irrigationTypes: string[]; notes: string
+  photoUrls: string[]
 }
 
 export type BackflowFormData = {

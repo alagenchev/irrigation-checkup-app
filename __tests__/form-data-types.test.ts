@@ -63,7 +63,7 @@ describe('form data shapes match Zod schemas', () => {
   test('zoneRow schema accepts a complete ZoneFormData object', () => {
     const zone: ZoneFormData = {
       id: 2, zoneNum: '1', controller: '1', description: 'Lawn',
-      landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'], notes: '',
+      landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'], notes: '', photoUrls: [],
     }
     const r = saveInspectionSchema.safeParse({ ...validBase, zones: [zone] })
     expect(r.success).toBe(true)
