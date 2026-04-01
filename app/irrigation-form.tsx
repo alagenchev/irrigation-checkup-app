@@ -673,7 +673,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                     <td style={{verticalAlign:'top',paddingTop:8}}><input type="number" style={{width:60}} value={ct.numZones} onChange={e => updateController(ct.id, 'numZones', e.target.value)} disabled={mode === 'readonly'} /></td>
                     <td style={{verticalAlign:'top',paddingTop:10}}><input type="checkbox" checked={ct.masterValve} onChange={e => { updateController(ct.id, 'masterValve', e.target.checked); if (!e.target.checked) updateController(ct.id, 'masterValveNotes', '') }} disabled={mode === 'readonly'} /></td>
                     {mode !== 'readonly' && (
-                      <td rowSpan={2} style={{verticalAlign:'middle'}}>
+                      <td rowSpan={2} style={{verticalAlign:'top',paddingTop:8}}>
                         <button type="button" className="btn btn-danger" onClick={() => removeController(ct.id)}>✕</button>
                       </td>
                     )}
@@ -687,7 +687,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                             <textarea rows={2} value={ct.masterValveNotes} onChange={e => updateController(ct.id, 'masterValveNotes', e.target.value)} placeholder="Repair notes..." style={{width:'100%'}} disabled={mode === 'readonly'} />
                           </div>
                         )}
-                        <div style={{flex:2}}>
+                        <div style={{flex:1}}>
                           <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Internal Notes</div>
                           <textarea rows={2} value={ct.notes} onChange={e => updateController(ct.id, 'notes', e.target.value)} placeholder="Notes" style={{width:'100%'}} disabled={mode === 'readonly'} />
                         </div>
