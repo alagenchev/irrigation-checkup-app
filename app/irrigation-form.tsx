@@ -409,7 +409,6 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           <div className="grid-2">
             {([
               ['companyName',         'Company Name'],
-              ['licenseNum',          'License #'],
               ['companyAddress',      'Company Address'],
               ['companyCityStateZip', 'City / State / Zip'],
               ['companyPhone',        'Company Phone'],
