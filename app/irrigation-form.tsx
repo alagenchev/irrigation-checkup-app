@@ -290,10 +290,13 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       }))
     ))
     zones.forEach(z => {
-      const input = photoRefs.current[`zone_${z.id}`]
-      if (input?.files) {
-        Array.from(input.files).forEach(file => fd.append(`photo_zone_${z.zoneNum}`, file))
-      }
+      const keys = [`zone_upload_${z.id}`, `zone_capture_${z.id}`]
+      keys.forEach(key => {
+        const input = photoRefs.current[key]
+        if (input?.files) {
+          Array.from(input.files).forEach(file => fd.append(`photo_zone_${z.zoneNum}`, file))
+        }
+      })
     })
     return fd
   }
@@ -768,7 +771,12 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                         {mode !== 'readonly' && (
                           <div style={{flex:1}}>
                             <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos</div>
-                            <input type="file" accept="image/*" multiple style={{fontSize:11}} ref={el => { photoRefs.current[`zone_${zn.id}`] = el }} />
+                            <input type="file" accept="image/*" multiple style={{display:'none'}} ref={el => { photoRefs.current[`zone_upload_${zn.id}`] = el }} />
+                            <input type="file" accept="image/*" capture="environment" style={{display:'none'}} ref={el => { photoRefs.current[`zone_capture_${zn.id}`] = el }} />
+                            <div style={{display:'flex',gap:8}}>
+                              <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()}>Upload</button>
+                              <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()}>📷 Capture</button>
+                            </div>
                           </div>
                         )}
                       </div>
