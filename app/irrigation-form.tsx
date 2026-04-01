@@ -714,69 +714,67 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <thead>
               <tr>
                 <th>Zone #</th><th>Controller</th><th>Description</th>
-                <th>Landscape Type(s)</th><th>Irrigation Type(s)</th><th>Notes</th>
-                {mode !== 'readonly' && <th>Photos</th>}
+                <th>Landscape Type(s)</th><th>Irrigation Type(s)</th>
                 {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
             <tbody>
               {zones.map(zn => (
-                <tr key={zn.id}>
-                  <td><input type="number" style={{width:55}} value={zn.zoneNum} onChange={e => updateZone(zn.id, 'zoneNum', e.target.value)} disabled={mode === 'readonly'} /></td>
-                  <td>
-                    <select value={zn.controller} onChange={e => updateZone(zn.id, 'controller', e.target.value)} style={{minWidth:120}} disabled={mode === 'readonly'}>
-                      <option value="">—</option>
-                      {controllers.map((ct, i) => (
-                        <option key={ct.id} value={String(ct.id)}>#{i+1} - {ct.manufacturer} {ct.model}{ct.location ? ' - '+ct.location : ''}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td><input value={zn.description} onChange={e => updateZone(zn.id, 'description', e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
-                  <td>
-                    <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                      {LANDSCAPE_TYPES.map(lt => (
-                        <label key={lt} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor: mode === 'readonly' ? 'default' : 'pointer'}}>
-                          <input type="checkbox" checked={zn.landscapeTypes.includes(lt)} onChange={() => toggleMultiSelect(zn.id,'landscapeTypes',lt)} disabled={mode === 'readonly'} />
-                          {lt}
-                        </label>
-                      ))}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                      {IRRIGATION_TYPES.map(it => (
-                        <label key={it} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor: mode === 'readonly' ? 'default' : 'pointer'}}>
-                          <input type="checkbox" checked={zn.irrigationTypes.includes(it)} onChange={() => toggleMultiSelect(zn.id,'irrigationTypes',it)} disabled={mode === 'readonly'} />
-                          {it}
-                        </label>
-                      ))}
-                    </div>
-                  </td>
-                  <td>
-                    <textarea
-                      rows={2}
-                      value={zn.notes}
-                      onChange={e => updateZone(zn.id, 'notes', e.target.value)}
-                      placeholder="Notes..."
-                      style={{width:'100%',minWidth:160}}
-                      disabled={mode === 'readonly'}
-                    />
-                  </td>
-                  {mode !== 'readonly' && (
-                    <td>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        style={{fontSize:11,maxWidth:140}}
-                        ref={el => { photoRefs.current[`zone_${zn.id}`] = el }}
-                      />
+                <React.Fragment key={zn.id}>
+                  <tr>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input type="number" style={{width:55}} value={zn.zoneNum} onChange={e => updateZone(zn.id, 'zoneNum', e.target.value)} disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top',paddingTop:8}}>
+                      <select value={zn.controller} onChange={e => updateZone(zn.id, 'controller', e.target.value)} style={{minWidth:120}} disabled={mode === 'readonly'}>
+                        <option value="">—</option>
+                        {controllers.map((ct, i) => (
+                          <option key={ct.id} value={String(ct.id)}>#{i+1} - {ct.manufacturer} {ct.model}{ct.location ? ' - '+ct.location : ''}</option>
+                        ))}
+                      </select>
                     </td>
-                  )}
-                  {mode !== 'readonly' && (
-                    <td><button type="button" className="btn btn-danger" onClick={() => removeZone(zn.id)}>✕</button></td>
-                  )}
-                </tr>
+                    <td style={{verticalAlign:'top',paddingTop:8}}><input value={zn.description} onChange={e => updateZone(zn.id, 'description', e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
+                    <td style={{verticalAlign:'top'}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        {LANDSCAPE_TYPES.map(lt => (
+                          <label key={lt} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor: mode === 'readonly' ? 'default' : 'pointer'}}>
+                            <input type="checkbox" checked={zn.landscapeTypes.includes(lt)} onChange={() => toggleMultiSelect(zn.id,'landscapeTypes',lt)} disabled={mode === 'readonly'} />
+                            {lt}
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{verticalAlign:'top'}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        {IRRIGATION_TYPES.map(it => (
+                          <label key={it} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,cursor: mode === 'readonly' ? 'default' : 'pointer'}}>
+                            <input type="checkbox" checked={zn.irrigationTypes.includes(it)} onChange={() => toggleMultiSelect(zn.id,'irrigationTypes',it)} disabled={mode === 'readonly'} />
+                            {it}
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                    {mode !== 'readonly' && (
+                      <td rowSpan={2} style={{verticalAlign:'top',paddingTop:8}}>
+                        <button type="button" className="btn btn-danger" onClick={() => removeZone(zn.id)}>✕</button>
+                      </td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td colSpan={5} style={{paddingTop:4,paddingBottom:12,borderBottom:'2px solid #e4e4e7'}}>
+                      <div style={{display:'flex',gap:16}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Notes</div>
+                          <textarea rows={2} value={zn.notes} onChange={e => updateZone(zn.id, 'notes', e.target.value)} placeholder="Notes..." style={{width:'100%'}} disabled={mode === 'readonly'} />
+                        </div>
+                        {mode !== 'readonly' && (
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos</div>
+                            <input type="file" accept="image/*" multiple style={{fontSize:11}} ref={el => { photoRefs.current[`zone_${zn.id}`] = el }} />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
