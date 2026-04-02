@@ -6,8 +6,9 @@ CREATE TABLE "companies" (
 );
 --> statement-breakpoint
 ALTER TABLE "technicians" DROP CONSTRAINT "technicians_name_unique";--> statement-breakpoint
-ALTER TABLE "company_settings" ALTER COLUMN "id" SET DATA TYPE serial;--> statement-breakpoint
-ALTER TABLE "company_settings" ALTER COLUMN "id" DROP DEFAULT;--> statement-breakpoint
+CREATE SEQUENCE "company_settings_id_seq";--> statement-breakpoint
+ALTER TABLE "company_settings" ALTER COLUMN "id" SET DEFAULT nextval('"company_settings_id_seq"');--> statement-breakpoint
+ALTER SEQUENCE "company_settings_id_seq" OWNED BY "company_settings"."id";--> statement-breakpoint
 ALTER TABLE "clients" ADD COLUMN "company_id" integer NOT NULL;--> statement-breakpoint
 ALTER TABLE "company_settings" ADD COLUMN "company_id" integer NOT NULL;--> statement-breakpoint
 ALTER TABLE "inspectors" ADD COLUMN "company_id" integer NOT NULL;--> statement-breakpoint

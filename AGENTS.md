@@ -33,7 +33,13 @@ A multi-tenant SaaS field-service tool for irrigation inspection companies. Tech
    ```bash
    npm run test:migrate
    ```
-4. **Commit and push** all changes once build and tests pass:
+4. **If `lib/schema.ts` was modified**, apply the migration to the local database immediately so the local schema stays in sync:
+   ```bash
+   npx drizzle-kit generate          # generate the migration file
+   DATABASE_URL=postgresql://localhost:5432/irrigation_test npx tsx scripts/migrate.ts  # apply locally
+   ```
+   Never leave the local DB behind the migration history — local and Railway must always run the same schema.
+5. **Commit and push** all changes once build and tests pass:
    ```bash
    git add <relevant files>
    git commit -m "..."
@@ -199,9 +205,25 @@ After any `lib/schema.ts` change:
 
 ```bash
 npx drizzle-kit generate   # creates drizzle/XXXX_*.sql
+DATABASE_URL=postgresql://localhost:5432/irrigation_test npx tsx scripts/migrate.ts  # apply locally
 ```
 
+**Always apply the migration to the local DB immediately after generating it.** The local `irrigation_test` database and Railway must always run the same schema. Never leave them out of sync.
+
 Commit **all** of: `lib/schema.ts`, `lib/validators.ts`, `types/index.ts`, any affected actions, the new `drizzle/*.sql`, and `drizzle/meta/`. Partial commits cause production builds to fail while local builds pass.
+
+### Drizzle-kit SQL generation caveat
+
+`drizzle-kit generate` occasionally emits invalid PostgreSQL when altering column types — for example `ALTER COLUMN "id" SET DATA TYPE serial` (`serial` is a pseudo-type and cannot be used in ALTER). If a migration fails with `type "serial" does not exist`, replace that statement with the correct sequence idiom:
+
+```sql
+-- Instead of: ALTER TABLE "t" ALTER COLUMN "id" SET DATA TYPE serial;
+CREATE SEQUENCE "t_id_seq";
+ALTER TABLE "t" ALTER COLUMN "id" SET DEFAULT nextval('"t_id_seq"');
+ALTER SEQUENCE "t_id_seq" OWNED BY "t"."id";
+```
+
+Also remove any `ALTER COLUMN "id" DROP DEFAULT` line that follows — the sequence default must be kept.
 
 ---
 
