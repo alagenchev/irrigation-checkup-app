@@ -2,8 +2,12 @@
  * Cloudflare R2 client (S3-compatible).
  *
  * Required env vars — add to .env.local:
- *   CLOUDFLARE_ACCOUNT_ID   Your Cloudflare account ID
- *                           → dash.cloudflare.com → right sidebar "Account ID"
+ *   R2_ENDPOINT             S3-compatible endpoint for your R2 bucket.
+ *                           Use the jurisdiction-specific URL from the R2 dashboard,
+ *                           e.g. https://<account-id>.r2.cloudflarestorage.com
+ *                           or   https://<account-id>.eu.r2.cloudflarestorage.com
+ *                           Found at: Cloudflare Dashboard → R2 → your bucket → Settings
+ *                           → S3 API → "Jurisdiction-specific endpoint for S3 clients"
  *   R2_ACCESS_KEY_ID        R2 API token Access Key ID
  *                           → Cloudflare Dashboard → R2 → Manage R2 API Tokens
  *                             → Create API Token → Object Read & Write
@@ -17,19 +21,19 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 
 function buildClient(): S3Client {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+  const endpoint = process.env.R2_ENDPOINT
   const accessKeyId = process.env.R2_ACCESS_KEY_ID
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
 
-  if (!accountId || !accessKeyId || !secretAccessKey) {
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
     throw new Error(
-      'Missing R2 env vars. Set CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY in .env.local.',
+      'Missing R2 env vars. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY in .env.local.',
     )
   }
 
   return new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint,
     credentials: { accessKeyId, secretAccessKey },
   })
 }
