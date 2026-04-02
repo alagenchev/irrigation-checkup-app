@@ -348,6 +348,29 @@ export default defineConfig({
 
 ---
 
+## Multi-Tenancy Invariant
+
+This is a multi-tenant SaaS app. Every table (except `companies`) carries a `companyId` foreign key that ties each row to exactly one customer company. **This invariant must never be violated.**
+
+### Rules
+
+1. **Every query must filter by `companyId`.** No SELECT, UPDATE, or DELETE may touch rows without `AND company_id = $companyId` in the WHERE clause (or an equivalent Drizzle `.where` condition).
+2. **Every insert must include `companyId`.** Never insert a row without explicitly setting `companyId` — the DB enforces `NOT NULL` on all tenant-scoped tables as a last line of defence.
+3. **Get `companyId` from auth, never from user input.** Always call `getRequiredCompanyId()` from `lib/tenant.ts` at the top of every Server Action, Route Handler, and Server Component that touches the DB. Never accept a `companyId` from form data or request bodies.
+4. **`getRequiredCompanyId()` is the single source of truth.** It reads the Clerk `orgId`, looks up the `companies` table, and auto-provisions the company row on first access. Import it from `@/lib/tenant`.
+5. **Update/delete mutations need the guard too.** Use `and(eq(table.companyId, companyId), eq(table.id, id))` in WHERE clauses — this prevents cross-tenant mutation even if a client sends a foreign ID.
+6. **Integration tests.** Use `TEST_COMPANY_ID` from `test/helpers/db.ts` for all DB fixtures. Tests that call server actions must mock `@/lib/tenant` via `jest.mock('@/lib/tenant', () => ({ getRequiredCompanyId: jest.fn() }))`.
+
+### Common files
+
+| File | Role |
+|---|---|
+| `lib/tenant.ts` | `getRequiredCompanyId()` — the only place that reads Clerk `orgId` |
+| `lib/schema.ts` | Every table definition — check that new tables include `companyId` |
+| `test/helpers/db.ts` | `TEST_COMPANY_ID` — used in all integration tests |
+
+---
+
 ## Security
 
 - Validate and sanitize all user inputs on the server — never trust the client.

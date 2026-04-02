@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
+import { startTestDb, stopTestDb, withRollback, TEST_COMPANY_ID } from '../test/helpers/db'
 import {
   sites, clients, inspectors,
   siteVisits, siteControllers, siteZones, siteBackflows,
@@ -18,21 +18,25 @@ afterAll(async () => {
 // ── helpers that mirror saveCheckup logic ──────────────────────────────────
 
 async function ensureSite(db: PostgresJsDatabase<typeof schema>, name: string, address?: string) {
-  const [ex] = await db.select().from(sites).where(eq(sites.name, name)).limit(1)
+  const [ex] = await db
+    .select()
+    .from(sites)
+    .where(eq(sites.name, name))
+    .limit(1)
   if (ex) return ex
-  const [row] = await db.insert(sites).values({ name, address: address ?? null }).returning()
+  const [row] = await db.insert(sites).values({ companyId: TEST_COMPANY_ID, name, address: address ?? null }).returning()
   return row
 }
 
 async function ensureClient(db: PostgresJsDatabase<typeof schema>, name: string) {
   const [ex] = await db.select().from(clients).where(eq(clients.name, name)).limit(1)
   if (ex) return ex
-  const [row] = await db.insert(clients).values({ name }).returning()
+  const [row] = await db.insert(clients).values({ companyId: TEST_COMPANY_ID, name }).returning()
   return row
 }
 
 async function ensureInspector(db: PostgresJsDatabase<typeof schema>, firstName: string, lastName: string) {
-  const [row] = await db.insert(inspectors).values({ firstName, lastName }).returning()
+  const [row] = await db.insert(inspectors).values({ companyId: TEST_COMPANY_ID, firstName, lastName }).returning()
   return row
 }
 
@@ -48,10 +52,11 @@ describe('saveInspection — DB integration', () => {
       await db.delete(siteControllers).where(eq(siteControllers.siteId, site.id))
       const [ctrl] = await db
         .insert(siteControllers)
-        .values({ siteId: site.id, manufacturer: 'Hunter', model: 'Pro-HC', numZones: '4' })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Hunter', model: 'Pro-HC', numZones: '4' })
         .returning()
 
       await db.insert(siteZones).values({
+        companyId:       TEST_COMPANY_ID,
         siteId:          site.id,
         controllerId:    ctrl.id,
         zoneNum:         '1',
@@ -62,6 +67,7 @@ describe('saveInspection — DB integration', () => {
       const [visit] = await db
         .insert(siteVisits)
         .values({
+          companyId:           TEST_COMPANY_ID,
           siteId:              site.id,
           datePerformed:       '2025-06-15',
           backflowInstalled:   true,
@@ -72,6 +78,7 @@ describe('saveInspection — DB integration', () => {
         .returning()
 
       expect(visit.siteVisitId).toBeDefined()
+      expect(visit.companyId).toBe(TEST_COMPANY_ID)
       expect(ctrl.manufacturer).toBe('Hunter')
     })
   })
@@ -81,15 +88,16 @@ describe('saveInspection — DB integration', () => {
       const site = await ensureSite(db, 'Upsert Site')
 
       await db.insert(siteVisits).values({
-        siteId:        site.id,
-        datePerformed: '2025-07-01',
+        companyId:        TEST_COMPANY_ID,
+        siteId:           site.id,
+        datePerformed:    '2025-07-01',
         inspectionNotes:  'First save',
       })
 
       // Simulate update (same site + date)
       await db
         .insert(siteVisits)
-        .values({ siteId: site.id, datePerformed: '2025-07-01', inspectionNotes: 'Updated save' })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, datePerformed: '2025-07-01', inspectionNotes: 'Updated save' })
         .onConflictDoUpdate({
           target: [siteVisits.siteId, siteVisits.datePerformed],
           set: { inspectionNotes: 'Updated save', updatedAt: new Date() },
@@ -107,8 +115,8 @@ describe('saveInspection — DB integration', () => {
 
       // First sync: 2 controllers
       await db.insert(siteControllers).values([
-        { siteId: site.id, manufacturer: 'Hunter' },
-        { siteId: site.id, manufacturer: 'Rachio' },
+        { companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Hunter' },
+        { companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Rachio' },
       ])
 
       let ctrls = await db.select().from(siteControllers).where(eq(siteControllers.siteId, site.id))
@@ -117,7 +125,7 @@ describe('saveInspection — DB integration', () => {
       // Second sync: replace with 1 controller
       await db.delete(siteZones).where(eq(siteZones.siteId, site.id))
       await db.delete(siteControllers).where(eq(siteControllers.siteId, site.id))
-      await db.insert(siteControllers).values({ siteId: site.id, manufacturer: 'Orbit' })
+      await db.insert(siteControllers).values({ companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Orbit' })
 
       ctrls = await db.select().from(siteControllers).where(eq(siteControllers.siteId, site.id))
       expect(ctrls).toHaveLength(1)
@@ -133,7 +141,13 @@ describe('saveInspection — DB integration', () => {
 
       const [visit] = await db
         .insert(siteVisits)
-        .values({ siteId: site.id, datePerformed: '2025-08-01', clientId: client.id, inspectorId: inspector.id })
+        .values({
+          companyId:     TEST_COMPANY_ID,
+          siteId:        site.id,
+          datePerformed: '2025-08-01',
+          clientId:      client.id,
+          inspectorId:   inspector.id,
+        })
         .returning()
 
       expect(visit.clientId).toBe(client.id)
@@ -148,12 +162,12 @@ describe('saveInspection — DB integration', () => {
       // Simulate save: insert controller, then zone with FK to it
       const [ctrl] = await db
         .insert(siteControllers)
-        .values({ siteId: site.id, manufacturer: 'Hunter' })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Hunter' })
         .returning()
 
       const [zone] = await db
         .insert(siteZones)
-        .values({ siteId: site.id, zoneNum: '1', controllerId: ctrl.id })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, zoneNum: '1', controllerId: ctrl.id })
         .returning()
 
       expect(zone.controllerId).toBe(ctrl.id)
@@ -165,8 +179,8 @@ describe('saveInspection — DB integration', () => {
       const site = await ensureSite(db, 'Backflow Site')
 
       await db.insert(siteBackflows).values([
-        { siteId: site.id, type: 'RPZ', manufacturer: 'Febco' },
-        { siteId: site.id, type: 'PVB', manufacturer: 'Watts' },
+        { companyId: TEST_COMPANY_ID, siteId: site.id, type: 'RPZ', manufacturer: 'Febco' },
+        { companyId: TEST_COMPANY_ID, siteId: site.id, type: 'PVB', manufacturer: 'Watts' },
       ])
 
       let bfs = await db.select().from(siteBackflows).where(eq(siteBackflows.siteId, site.id))
@@ -174,7 +188,7 @@ describe('saveInspection — DB integration', () => {
 
       // Replace with single backflow
       await db.delete(siteBackflows).where(eq(siteBackflows.siteId, site.id))
-      await db.insert(siteBackflows).values({ siteId: site.id, type: 'DC', manufacturer: 'Wilkins' })
+      await db.insert(siteBackflows).values({ companyId: TEST_COMPANY_ID, siteId: site.id, type: 'DC', manufacturer: 'Wilkins' })
 
       bfs = await db.select().from(siteBackflows).where(eq(siteBackflows.siteId, site.id))
       expect(bfs).toHaveLength(1)
