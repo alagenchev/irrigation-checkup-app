@@ -93,6 +93,9 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [geoLoading,     setGeoLoading]     = useState(false)
   const [geoResults,     setGeoResults]     = useState<string[]>([])
   const [geoError,       setGeoError]       = useState<string | null>(null)
+  const [photoUploading, setPhotoUploading] = useState<Record<number, boolean>>({})
+  const [photoErrors,    setPhotoErrors]    = useState<Record<number, string>>({})
+  const [photoThumbs,    setPhotoThumbs]    = useState<Record<number, string[]>>({})
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
@@ -781,11 +784,30 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                 onChange={async e => {
                                   const files = Array.from(e.target.files ?? [])
                                   for (const file of files) {
-                                    const fd = new FormData()
-                                    fd.append('file', file)
-                                    fd.append('zoneNum', zn.zoneNum)
-                                    const res = await uploadZonePhoto(fd)
-                                    if (res.ok) addZonePhotoUrl(zn.id, res.data.key)
+                                    setPhotoUploading(p => ({...p, [zn.id]: true}))
+                                    setPhotoErrors(p => ({...p, [zn.id]: ''}))
+
+                                    try {
+                                      const reader = new FileReader()
+                                      reader.onload = () => {
+                                        setPhotoThumbs(t => ({...t, [zn.id]: [...(t[zn.id] ?? []), reader.result as string]}))
+                                      }
+                                      reader.readAsDataURL(file)
+
+                                      const fd = new FormData()
+                                      fd.append('file', file)
+                                      fd.append('zoneNum', zn.zoneNum)
+                                      const res = await uploadZonePhoto(fd)
+                                      if (res.ok) {
+                                        addZonePhotoUrl(zn.id, res.data.key)
+                                      } else {
+                                        setPhotoErrors(p => ({...p, [zn.id]: res.error || 'Upload failed'}))
+                                      }
+                                    } catch (err: any) {
+                                      setPhotoErrors(p => ({...p, [zn.id]: err.message || 'Upload error'}))
+                                    } finally {
+                                      setPhotoUploading(p => ({...p, [zn.id]: false}))
+                                    }
                                   }
                                   e.target.value = ''
                                 }}
@@ -795,23 +817,56 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                 onChange={async e => {
                                   const file = e.target.files?.[0]
                                   if (!file) return
-                                  const fd = new FormData()
-                                  fd.append('file', file)
-                                  fd.append('zoneNum', zn.zoneNum)
-                                  const res = await uploadZonePhoto(fd)
-                                  if (res.ok) addZonePhotoUrl(zn.id, res.data.key)
+
+                                  setPhotoUploading(p => ({...p, [zn.id]: true}))
+                                  setPhotoErrors(p => ({...p, [zn.id]: ''}))
+
+                                  try {
+                                    const reader = new FileReader()
+                                    reader.onload = () => {
+                                      setPhotoThumbs(t => ({...t, [zn.id]: [...(t[zn.id] ?? []), reader.result as string]}))
+                                    }
+                                    reader.readAsDataURL(file)
+
+                                    const fd = new FormData()
+                                    fd.append('file', file)
+                                    fd.append('zoneNum', zn.zoneNum)
+                                    const res = await uploadZonePhoto(fd)
+                                    if (res.ok) {
+                                      addZonePhotoUrl(zn.id, res.data.key)
+                                    } else {
+                                      setPhotoErrors(p => ({...p, [zn.id]: res.error || 'Upload failed'}))
+                                    }
+                                  } catch (err: any) {
+                                    setPhotoErrors(p => ({...p, [zn.id]: err.message || 'Upload error'}))
+                                  } finally {
+                                    setPhotoUploading(p => ({...p, [zn.id]: false}))
+                                  }
                                   e.target.value = ''
                                 }}
                               />
                               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()}>Upload</button>
-                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()}>📷 Capture</button>
+                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()} disabled={photoUploading[zn.id]}>Upload</button>
+                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()} disabled={photoUploading[zn.id]}>📷 Capture</button>
+                                {photoUploading[zn.id] && <span style={{fontSize:12,color:'#3b82f6'}}>⏳ Uploading...</span>}
                               </div>
                             </>
                           )}
+                          {photoErrors[zn.id] && (
+                            <div style={{fontSize:11,color:'#ef4444',marginTop:4,padding:4,backgroundColor:'#fee2e2',borderRadius:4}}>
+                              ❌ {photoErrors[zn.id]}
+                            </div>
+                          )}
+                          {(photoThumbs[zn.id]?.length ?? 0) > 0 && (
+                            <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:6}}>
+                              {photoThumbs[zn.id]?.map((thumb, idx) => (
+                                <img key={idx} src={thumb} alt={`Thumbnail ${idx + 1}`} style={{width:48,height:48,objectFit:'cover',borderRadius:4,border:'1px solid #e5e7eb'}} />
+                              ))}
+                            </div>
+                          )}
                           {zn.photoUrls.length > 0 && (
                             <div style={{fontSize:11,color:'#a1a1aa',marginTop:4}}>
-                              {zn.photoUrls.length} photo{zn.photoUrls.length !== 1 ? 's' : ''} uploaded
+                              ✓ {zn.photoUrls.length} photo{zn.photoUrls.length !== 1 ? 's' : ''} uploaded
                             </div>
                           )}
                         </div>
