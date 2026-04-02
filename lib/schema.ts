@@ -1,7 +1,20 @@
 import { pgTable, serial, text, timestamp, integer, jsonb, numeric, boolean, date, unique } from 'drizzle-orm/pg-core'
 
+// ── Companies (tenant root) ───────────────────────────────────────────────
+// Every piece of data in this app is owned by exactly one company.
+// The `companyId` foreign key on every table is the multi-tenancy invariant:
+// all queries MUST filter by companyId derived from the authenticated user's
+// Clerk organisation. Never query or mutate data without this filter.
+
+export const companies = pgTable('companies', {
+  id:         serial('id').primaryKey(),
+  clerkOrgId: text('clerk_org_id').notNull().unique(),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export const companySettings = pgTable('company_settings', {
-  id:                  integer('id').primaryKey().default(1),
+  id:                  serial('id').primaryKey(),
+  companyId:           integer('company_id').notNull().unique().references(() => companies.id, { onDelete: 'cascade' }),
   companyName:         text('company_name').notNull().default(''),
   licenseNum:          text('license_num').notNull().default(''),
   companyAddress:      text('company_address').notNull().default(''),
@@ -15,6 +28,7 @@ export const companySettings = pgTable('company_settings', {
 
 export const clients = pgTable('clients', {
   id:            serial('id').primaryKey(),
+  companyId:     integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name:          text('name').notNull(),
   address:       text('address'),
   phone:         text('phone'),
@@ -26,6 +40,7 @@ export const clients = pgTable('clients', {
 
 export const sites = pgTable('sites', {
   id:        serial('id').primaryKey(),
+  companyId: integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name:      text('name').notNull(),
   address:   text('address'),
   clientId:  integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
@@ -35,12 +50,16 @@ export const sites = pgTable('sites', {
 
 export const technicians = pgTable('technicians', {
   id:        serial('id').primaryKey(),
-  name:      text('name').notNull().unique(),
+  companyId: integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  name:      text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (table) => [
+  unique('technicians_company_name_uniq').on(table.companyId, table.name),
+])
 
 export const inspectors = pgTable('inspectors', {
   id:         serial('id').primaryKey(),
+  companyId:  integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   firstName:  text('first_name').notNull(),
   lastName:   text('last_name').notNull(),
   email:      text('email'),
@@ -53,6 +72,7 @@ export const inspectors = pgTable('inspectors', {
 
 export const siteControllers = pgTable('site_controllers', {
   id:           serial('id').primaryKey(),
+  companyId:    integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   siteId:       integer('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
   location:     text('location'),
   manufacturer: text('manufacturer'),
@@ -67,6 +87,7 @@ export const siteControllers = pgTable('site_controllers', {
 
 export const siteZones = pgTable('site_zones', {
   id:              serial('id').primaryKey(),
+  companyId:       integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   siteId:          integer('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
   controllerId:    integer('controller_id').references(() => siteControllers.id, { onDelete: 'set null' }),
   zoneNum:         text('zone_num').notNull(),
@@ -79,6 +100,7 @@ export const siteZones = pgTable('site_zones', {
 
 export const siteBackflows = pgTable('site_backflows', {
   id:           serial('id').primaryKey(),
+  companyId:    integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   siteId:       integer('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
   manufacturer: text('manufacturer'),
   type:         text('type'),
@@ -97,6 +119,9 @@ export type ZonePhotoData = { zoneNum: string; urls: string[] }
 
 export const siteVisits = pgTable('site_visits', {
   siteVisitId: serial('site_visit_id').primaryKey(),
+
+  // Tenant scope — must always be filtered by this when querying
+  companyId:   integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
 
   // References
   siteId:      integer('site_id').notNull().references(() => sites.id, { onDelete: 'restrict' }),
@@ -133,6 +158,9 @@ export const siteVisits = pgTable('site_visits', {
 ])
 
 // ── Inferred types ────────────────────────────────────────────────────────
+
+export type Company         = typeof companies.$inferSelect
+export type NewCompany      = typeof companies.$inferInsert
 
 export type CompanySettings    = typeof companySettings.$inferSelect
 export type NewCompanySettings = typeof companySettings.$inferInsert

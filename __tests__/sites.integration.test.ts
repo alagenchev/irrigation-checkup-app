@@ -1,8 +1,8 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
+import { startTestDb, stopTestDb, withRollback, TEST_COMPANY_ID } from '../test/helpers/db'
 import { buildClient } from '../test/helpers/factories'
-import { clients, sites } from '@/lib/schema'
+import { clients, companies, sites } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
 
 beforeAll(async () => {
@@ -16,7 +16,7 @@ afterAll(async () => {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 async function insertClient(db: PostgresJsDatabase<typeof schema>, name: string) {
-  const [row] = await db.insert(clients).values(buildClient({ name })).returning()
+  const [row] = await db.insert(clients).values(buildClient(TEST_COMPANY_ID, { name })).returning()
   return row
 }
 
@@ -25,7 +25,7 @@ async function insertSite(
   name: string,
   clientId: number | null = null,
 ) {
-  const [row] = await db.insert(sites).values({ name, clientId }).returning()
+  const [row] = await db.insert(sites).values({ companyId: TEST_COMPANY_ID, name, clientId }).returning()
   return row
 }
 
@@ -37,6 +37,7 @@ describe('sites — DB integration', () => {
       const site = await insertSite(db, 'Standalone Site')
       expect(site.id).toBeDefined()
       expect(site.name).toBe('Standalone Site')
+      expect(site.companyId).toBe(TEST_COMPANY_ID)
       expect(site.clientId).toBeNull()
     })
   })
@@ -60,6 +61,7 @@ describe('sites — DB integration', () => {
         .select({ siteName: sites.name, clientName: clients.name })
         .from(sites)
         .leftJoin(clients, eq(sites.clientId, clients.id))
+        .where(eq(sites.companyId, TEST_COMPANY_ID))
         .orderBy(asc(sites.name))
 
       expect(rows).toHaveLength(2)
@@ -84,7 +86,7 @@ describe('sites — DB integration', () => {
     await withRollback(async (db) => {
       const [client] = await db
         .insert(clients)
-        .values({ name: 'Address Client', address: '789 Client Ave' })
+        .values({ companyId: TEST_COMPANY_ID, name: 'Address Client', address: '789 Client Ave' })
         .returning()
       await insertSite(db, 'Address Site', client.id)
 
@@ -96,9 +98,28 @@ describe('sites — DB integration', () => {
         })
         .from(sites)
         .leftJoin(clients, eq(sites.clientId, clients.id))
+        .where(eq(sites.companyId, TEST_COMPANY_ID))
 
       expect(rows).toHaveLength(1)
       expect(rows[0].clientAddress).toBe('789 Client Ave')
+    })
+  })
+
+  test('sites from different companies are isolated', async () => {
+    await withRollback(async (db) => {
+      const [otherCompany] = await db
+        .insert(companies)
+        .values({ clerkOrgId: 'org_other_sites_test' })
+        .returning()
+      await db.insert(sites).values({ companyId: otherCompany.id, name: 'Other Co Site' })
+
+      const rows = await db
+        .select()
+        .from(sites)
+        .where(eq(sites.companyId, TEST_COMPANY_ID))
+
+      expect(rows.every(r => r.companyId === TEST_COMPANY_ID)).toBe(true)
+      expect(rows.find(r => r.name === 'Other Co Site')).toBeUndefined()
     })
   })
 

@@ -1,17 +1,25 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { clients } from '@/lib/schema'
 import { createClientSchema } from '@/lib/validators'
+import { getRequiredCompanyId } from '@/lib/tenant'
 import type { ActionResult, Client } from '@/types'
 
 export async function getClients(): Promise<Client[]> {
-  return db.select().from(clients).orderBy(asc(clients.name))
+  const companyId = await getRequiredCompanyId()
+  return db
+    .select()
+    .from(clients)
+    .where(eq(clients.companyId, companyId))
+    .orderBy(asc(clients.name))
 }
 
 export async function createClient(_prev: ActionResult<Client> | null, formData: FormData): Promise<ActionResult<Client>> {
+  const companyId = await getRequiredCompanyId()
+
   const raw = {
     name:          formData.get('name'),
     address:       formData.get('address') || undefined,
@@ -26,27 +34,29 @@ export async function createClient(_prev: ActionResult<Client> | null, formData:
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
   }
 
-  const [client] = await db.insert(clients).values(parsed.data).returning()
+  const [client] = await db.insert(clients).values({ ...parsed.data, companyId }).returning()
   revalidatePath('/clients')
   return { ok: true, data: client }
 }
 
 /**
- * Finds a client by name or creates one if no match exists.
+ * Finds a client by name within the current company or creates one if no match exists.
  * Used when generating an inspection PDF to persist new customer names.
  */
 export async function ensureClientExists(name: string, address?: string): Promise<Client> {
+  const companyId = await getRequiredCompanyId()
+
   const existing = await db
     .select()
     .from(clients)
-    .where(eq(clients.name, name))
+    .where(and(eq(clients.companyId, companyId), eq(clients.name, name)))
     .limit(1)
 
   if (existing.length > 0) return existing[0]
 
   const [created] = await db
     .insert(clients)
-    .values({ name, address: address || null })
+    .values({ companyId, name, address: address || null })
     .returning()
   revalidatePath('/clients')
   return created

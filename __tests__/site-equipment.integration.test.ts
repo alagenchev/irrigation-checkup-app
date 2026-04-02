@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
+import { startTestDb, stopTestDb, withRollback, TEST_COMPANY_ID } from '../test/helpers/db'
 import { sites, siteControllers, siteZones, siteBackflows } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
 
@@ -15,7 +15,7 @@ afterAll(async () => {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 async function insertSite(db: PostgresJsDatabase<typeof schema>, name = 'Test Site') {
-  const [row] = await db.insert(sites).values({ name }).returning()
+  const [row] = await db.insert(sites).values({ companyId: TEST_COMPANY_ID, name }).returning()
   return row
 }
 
@@ -27,11 +27,12 @@ describe('site_controllers — DB integration', () => {
       const site = await insertSite(db)
       const [ctrl] = await db
         .insert(siteControllers)
-        .values({ siteId: site.id, manufacturer: 'Hunter', model: 'Pro-HC', numZones: '6' })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Hunter', model: 'Pro-HC', numZones: '6' })
         .returning()
 
       expect(ctrl.id).toBeDefined()
       expect(ctrl.siteId).toBe(site.id)
+      expect(ctrl.companyId).toBe(TEST_COMPANY_ID)
       expect(ctrl.manufacturer).toBe('Hunter')
       expect(ctrl.masterValve).toBe(false)
     })
@@ -40,7 +41,7 @@ describe('site_controllers — DB integration', () => {
   test('cascades delete when site is deleted', async () => {
     await withRollback(async (db) => {
       const site = await insertSite(db)
-      await db.insert(siteControllers).values({ siteId: site.id, manufacturer: 'Rachio' })
+      await db.insert(siteControllers).values({ companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Rachio' })
 
       await db.delete(sites).where(eq(sites.id, site.id))
 
@@ -62,6 +63,7 @@ describe('site_zones — DB integration', () => {
       const [zone] = await db
         .insert(siteZones)
         .values({
+          companyId:       TEST_COMPANY_ID,
           siteId:          site.id,
           zoneNum:         '1',
           description:     'Front lawn',
@@ -71,6 +73,7 @@ describe('site_zones — DB integration', () => {
         .returning()
 
       expect(zone.id).toBeDefined()
+      expect(zone.companyId).toBe(TEST_COMPANY_ID)
       expect(zone.landscapeTypes).toEqual(['Full-sun turf', 'Slope'])
       expect(zone.irrigationTypes).toEqual(['Rotor'])
     })
@@ -81,11 +84,11 @@ describe('site_zones — DB integration', () => {
       const site = await insertSite(db)
       const [ctrl] = await db
         .insert(siteControllers)
-        .values({ siteId: site.id })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id })
         .returning()
       const [zone] = await db
         .insert(siteZones)
-        .values({ siteId: site.id, zoneNum: '2', controllerId: ctrl.id })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, zoneNum: '2', controllerId: ctrl.id })
         .returning()
 
       expect(zone.controllerId).toBe(ctrl.id)
@@ -95,10 +98,13 @@ describe('site_zones — DB integration', () => {
   test('sets controllerId to null when controller is deleted (onDelete: set null)', async () => {
     await withRollback(async (db) => {
       const site = await insertSite(db)
-      const [ctrl] = await db.insert(siteControllers).values({ siteId: site.id }).returning()
+      const [ctrl] = await db
+        .insert(siteControllers)
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id })
+        .returning()
       const [zone] = await db
         .insert(siteZones)
-        .values({ siteId: site.id, zoneNum: '1', controllerId: ctrl.id })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, zoneNum: '1', controllerId: ctrl.id })
         .returning()
 
       await db.delete(siteControllers).where(eq(siteControllers.id, ctrl.id))
@@ -111,7 +117,7 @@ describe('site_zones — DB integration', () => {
   test('cascades delete when site is deleted', async () => {
     await withRollback(async (db) => {
       const site = await insertSite(db)
-      await db.insert(siteZones).values({ siteId: site.id, zoneNum: '1' })
+      await db.insert(siteZones).values({ companyId: TEST_COMPANY_ID, siteId: site.id, zoneNum: '1' })
 
       await db.delete(sites).where(eq(sites.id, site.id))
 
@@ -129,11 +135,12 @@ describe('site_backflows — DB integration', () => {
       const site = await insertSite(db)
       const [bf] = await db
         .insert(siteBackflows)
-        .values({ siteId: site.id, manufacturer: 'Febco', type: 'RPZ', model: '825Y', size: '1' })
+        .values({ companyId: TEST_COMPANY_ID, siteId: site.id, manufacturer: 'Febco', type: 'RPZ', model: '825Y', size: '1' })
         .returning()
 
       expect(bf.id).toBeDefined()
       expect(bf.siteId).toBe(site.id)
+      expect(bf.companyId).toBe(TEST_COMPANY_ID)
       expect(bf.manufacturer).toBe('Febco')
     })
   })
@@ -141,8 +148,8 @@ describe('site_backflows — DB integration', () => {
   test('a site can have multiple backflow devices', async () => {
     await withRollback(async (db) => {
       const site = await insertSite(db)
-      await db.insert(siteBackflows).values({ siteId: site.id, type: 'RPZ' })
-      await db.insert(siteBackflows).values({ siteId: site.id, type: 'PVB' })
+      await db.insert(siteBackflows).values({ companyId: TEST_COMPANY_ID, siteId: site.id, type: 'RPZ' })
+      await db.insert(siteBackflows).values({ companyId: TEST_COMPANY_ID, siteId: site.id, type: 'PVB' })
 
       const all = await db.select().from(siteBackflows).where(eq(siteBackflows.siteId, site.id))
       expect(all).toHaveLength(2)
@@ -152,7 +159,7 @@ describe('site_backflows — DB integration', () => {
   test('cascades delete when site is deleted', async () => {
     await withRollback(async (db) => {
       const site = await insertSite(db)
-      await db.insert(siteBackflows).values({ siteId: site.id, type: 'RPZ' })
+      await db.insert(siteBackflows).values({ companyId: TEST_COMPANY_ID, siteId: site.id, type: 'RPZ' })
 
       await db.delete(sites).where(eq(sites.id, site.id))
 

@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
-import { technicians } from '@/lib/schema'
+import { startTestDb, stopTestDb, withRollback, TEST_COMPANY_ID } from '../test/helpers/db'
+import { companies, technicians } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
 
 beforeAll(async () => {
@@ -15,9 +15,13 @@ afterAll(async () => {
 // ── ensureTechnician helper (mirrors the action logic) ─────────────────────
 
 async function ensureTechnician(db: PostgresJsDatabase<typeof schema>, name: string) {
-  const existing = await db.select().from(technicians).where(eq(technicians.name, name)).limit(1)
+  const existing = await db
+    .select()
+    .from(technicians)
+    .where(and(eq(technicians.companyId, TEST_COMPANY_ID), eq(technicians.name, name)))
+    .limit(1)
   if (existing.length > 0) return existing[0]
-  const [created] = await db.insert(technicians).values({ name }).returning()
+  const [created] = await db.insert(technicians).values({ companyId: TEST_COMPANY_ID, name }).returning()
   return created
 }
 
@@ -29,6 +33,7 @@ describe('technicians — DB integration', () => {
       const row = await ensureTechnician(db, 'Jane Smith')
       expect(row.id).toBeDefined()
       expect(row.name).toBe('Jane Smith')
+      expect(row.companyId).toBe(TEST_COMPANY_ID)
       expect(row.createdAt).toBeDefined()
     })
   })
@@ -40,7 +45,10 @@ describe('technicians — DB integration', () => {
 
       expect(second.id).toBe(first.id)
 
-      const all = await db.select().from(technicians)
+      const all = await db
+        .select()
+        .from(technicians)
+        .where(eq(technicians.companyId, TEST_COMPANY_ID))
       expect(all).toHaveLength(1)
     })
   })
@@ -50,17 +58,37 @@ describe('technicians — DB integration', () => {
       await ensureTechnician(db, 'Alice')
       await ensureTechnician(db, 'Bob')
 
-      const all = await db.select().from(technicians)
+      const all = await db
+        .select()
+        .from(technicians)
+        .where(eq(technicians.companyId, TEST_COMPANY_ID))
       expect(all).toHaveLength(2)
     })
   })
 
-  test('name has a unique constraint at the DB level', async () => {
+  test('name is unique per company at the DB level', async () => {
     await withRollback(async (db) => {
-      await db.insert(technicians).values({ name: 'Duplicate Tech' })
+      await db.insert(technicians).values({ companyId: TEST_COMPANY_ID, name: 'Duplicate Tech' })
       await expect(
-        db.insert(technicians).values({ name: 'Duplicate Tech' })
+        db.insert(technicians).values({ companyId: TEST_COMPANY_ID, name: 'Duplicate Tech' })
       ).rejects.toThrow()
+    })
+  })
+
+  test('same name is allowed for different companies', async () => {
+    await withRollback(async (db) => {
+      const [otherCompany] = await db
+        .insert(companies)
+        .values({ clerkOrgId: 'org_other_tech_test' })
+        .returning()
+
+      await db.insert(technicians).values({ companyId: TEST_COMPANY_ID, name: 'Cross-Tenant Tech' })
+      // Should not throw — different company, same name is allowed
+      const [otherTech] = await db
+        .insert(technicians)
+        .values({ companyId: otherCompany.id, name: 'Cross-Tenant Tech' })
+        .returning()
+      expect(otherTech.id).toBeDefined()
     })
   })
 })

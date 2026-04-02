@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
+import { startTestDb, stopTestDb, withRollback, TEST_COMPANY_ID } from '../test/helpers/db'
 import { buildClient } from '../test/helpers/factories'
-import { clients, inspectors, sites, technicians, siteVisits } from '@/lib/schema'
+import { clients, companies, inspectors, sites, technicians, siteVisits } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
 
 beforeAll(async () => {
@@ -16,22 +16,22 @@ afterAll(async () => {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 async function insertSite(db: PostgresJsDatabase<typeof schema>, name = 'Test Site') {
-  const [row] = await db.insert(sites).values({ name }).returning()
+  const [row] = await db.insert(sites).values({ companyId: TEST_COMPANY_ID, name }).returning()
   return row
 }
 
 async function insertClient(db: PostgresJsDatabase<typeof schema>, name = 'Test Client') {
-  const [row] = await db.insert(clients).values(buildClient({ name })).returning()
+  const [row] = await db.insert(clients).values(buildClient(TEST_COMPANY_ID, { name })).returning()
   return row
 }
 
 async function insertTechnician(db: PostgresJsDatabase<typeof schema>, name = 'Jane Smith') {
-  const [row] = await db.insert(technicians).values({ name }).returning()
+  const [row] = await db.insert(technicians).values({ companyId: TEST_COMPANY_ID, name }).returning()
   return row
 }
 
 async function insertInspector(db: PostgresJsDatabase<typeof schema>, firstName = 'Jane', lastName = 'Smith') {
-  const [row] = await db.insert(inspectors).values({ firstName, lastName }).returning()
+  const [row] = await db.insert(inspectors).values({ companyId: TEST_COMPANY_ID, firstName, lastName }).returning()
   return row
 }
 
@@ -43,7 +43,7 @@ async function insertVisit(
 ) {
   const [row] = await db
     .insert(siteVisits)
-    .values({ siteId, datePerformed, ...overrides })
+    .values({ companyId: TEST_COMPANY_ID, siteId, datePerformed, ...overrides })
     .returning()
   return row
 }
@@ -58,6 +58,7 @@ describe('site_visits — DB integration', () => {
 
       expect(visit.siteVisitId).toBeDefined()
       expect(visit.siteId).toBe(site.id)
+      expect(visit.companyId).toBe(TEST_COMPANY_ID)
       expect(visit.datePerformed).toBe('2025-06-15')
       expect(visit.inspectionType).toBe('Repair Inspection')
       expect(visit.status).toBe('New')
@@ -145,6 +146,30 @@ describe('site_visits — DB integration', () => {
       expect(row.zoneIssues).toEqual(issues)
     })
   })
+
+  test('visits from different companies are isolated', async () => {
+    await withRollback(async (db) => {
+      const [otherCompany] = await db
+        .insert(companies)
+        .values({ clerkOrgId: 'org_other_visits_test' })
+        .returning()
+      const [otherSite] = await db
+        .insert(sites)
+        .values({ companyId: otherCompany.id, name: 'Other Site' })
+        .returning()
+      await db.insert(siteVisits).values({
+        companyId: otherCompany.id,
+        siteId:    otherSite.id,
+        datePerformed: '2025-06-15',
+      })
+
+      const ours = await db
+        .select()
+        .from(siteVisits)
+        .where(eq(siteVisits.companyId, TEST_COMPANY_ID))
+      expect(ours).toHaveLength(0)
+    })
+  })
 })
 
 describe('site_visits — system overview auto-population', () => {
@@ -161,7 +186,9 @@ describe('site_visits — system overview auto-population', () => {
       })
 
       // Simulate action: fetch prior and carry forward
-      const [prior] = await db.select().from(siteVisits).where(eq(siteVisits.siteId, site.id))
+      const [prior] = await db.select().from(siteVisits).where(
+        and(eq(siteVisits.companyId, TEST_COMPANY_ID), eq(siteVisits.siteId, site.id))
+      )
 
       const newVisit = await insertVisit(db, site.id, '2025-06-01', {
         staticPressure:      prior.staticPressure      ?? undefined,

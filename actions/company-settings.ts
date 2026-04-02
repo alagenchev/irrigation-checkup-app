@@ -5,31 +5,43 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { companySettings } from '@/lib/schema'
 import { companySettingsSchema } from '@/lib/validators'
+import { getRequiredCompanyId } from '@/lib/tenant'
 import type { ActionResult, CompanySettings } from '@/types'
 
-const DEFAULTS = {
-  id:                  1,
-  companyName:         'TM&F Services LLC',
-  licenseNum:          'TX LI0028463',
-  companyAddress:      '3811 Kentucky ct',
-  companyCityStateZip: 'Grand Prairie, TX 75052',
-  companyPhone:        '9038122010',
-  performedBy:         'Tihomir Tony Alagenchev',
-  r2CompanyBucketId:   null,
-  updatedAt:           null,
-} satisfies CompanySettings
-
+/**
+ * Returns the settings row for the current company, auto-creating it with
+ * empty defaults on first access so callers always receive a full record.
+ */
 export async function getCompanySettings(): Promise<CompanySettings> {
+  const companyId = await getRequiredCompanyId()
+
   const row = await db.query.companySettings.findFirst({
-    where: eq(companySettings.id, 1),
+    where: eq(companySettings.companyId, companyId),
   })
-  return row ?? DEFAULTS
+  if (row) return row
+
+  // Auto-provision settings for this company on first access.
+  // r2CompanyBucketId is a stable UUID generated once here and never changed.
+  const [created] = await db
+    .insert(companySettings)
+    .values({ companyId, r2CompanyBucketId: crypto.randomUUID() })
+    .onConflictDoNothing()
+    .returning()
+
+  if (created) return created
+
+  // Race condition: another request created it
+  return (await db.query.companySettings.findFirst({
+    where: eq(companySettings.companyId, companyId),
+  }))!
 }
 
 export async function upsertCompanySettings(
   _prev: ActionResult<CompanySettings> | null,
   formData: FormData,
 ): Promise<ActionResult<CompanySettings>> {
+  const companyId = await getRequiredCompanyId()
+
   const raw = {
     companyName:         formData.get('companyName'),
     licenseNum:          formData.get('licenseNum')          || '',
@@ -37,7 +49,6 @@ export async function upsertCompanySettings(
     companyCityStateZip: formData.get('companyCityStateZip') || '',
     companyPhone:        formData.get('companyPhone')        || '',
     performedBy:         formData.get('performedBy')         || '',
-    r2CompanyBucketId:   formData.get('r2CompanyBucketId')   || '',
   }
 
   const parsed = companySettingsSchema.safeParse(raw)
@@ -46,12 +57,14 @@ export async function upsertCompanySettings(
   }
 
   const data = parsed.data
+  // r2CompanyBucketId is set once at provisioning time and must never be overwritten here
+  const { r2CompanyBucketId: _ignored, ...updateFields } = { r2CompanyBucketId: undefined, ...data }
   const [row] = await db
     .insert(companySettings)
-    .values({ id: 1, ...data })
+    .values({ companyId, ...data })
     .onConflictDoUpdate({
-      target: companySettings.id,
-      set: { ...data, updatedAt: new Date() },
+      target: companySettings.companyId,
+      set: { ...updateFields, updatedAt: new Date() },
     })
     .returning()
 

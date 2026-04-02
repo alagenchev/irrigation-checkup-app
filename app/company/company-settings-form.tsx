@@ -39,22 +39,6 @@ export function CompanySettingsForm({ initial }: CompanySettingsFormProps) {
         ))}
       </div>
 
-      <div className="field" style={{ marginTop: 16 }}>
-        <label>R2 Company Bucket ID</label>
-        <input
-          type="text"
-          name="r2CompanyBucketId"
-          defaultValue={initial.r2CompanyBucketId ?? ''}
-          placeholder="e.g. acme-irrigation"
-          style={{ maxWidth: 320 }}
-        />
-        <p style={{ color: '#a1a1aa', fontSize: 12, marginTop: 4 }}>
-          Unique identifier for this company&apos;s files within the shared R2 bucket (e.g. <code>acme-irrigation</code>).
-          All uploaded photos will be stored under this prefix.
-          See the <em>Cloudflare R2 Setup</em> section below for configuration steps.
-        </p>
-      </div>
-
       {state && !state.ok && (
         <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{state.error}</p>
       )}

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   siteVisits, siteControllers, siteZones, siteBackflows,
@@ -10,6 +10,7 @@ import {
 import { saveInspectionSchema } from '@/lib/validators'
 import { ensureSiteExists } from '@/actions/sites'
 import { ensureClientExists } from '@/actions/clients'
+import { getRequiredCompanyId } from '@/lib/tenant'
 import type { ActionResult, SiteVisit } from '@/types'
 import type { SaveInspectionInput } from '@/lib/validators'
 
@@ -19,6 +20,10 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
   }
   const data = parsed.data
+
+  // Resolve companyId once — ensureSiteExists/ensureClientExists also call
+  // getRequiredCompanyId internally, but we need it here for the transaction.
+  const companyId = await getRequiredCompanyId()
 
   // Resolve / create site and client outside the transaction
   // (these are idempotent lookups safe to run before the atomic block)
@@ -37,9 +42,9 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     // ── Replace site equipment (full sync from form state) ────────────────
 
     // Delete zones first (FK → site_controllers)
-    await tx.delete(siteZones).where(eq(siteZones.siteId, site.id))
-    await tx.delete(siteControllers).where(eq(siteControllers.siteId, site.id))
-    await tx.delete(siteBackflows).where(eq(siteBackflows.siteId, site.id))
+    await tx.delete(siteZones).where(and(eq(siteZones.companyId, companyId), eq(siteZones.siteId, site.id)))
+    await tx.delete(siteControllers).where(and(eq(siteControllers.companyId, companyId), eq(siteControllers.siteId, site.id)))
+    await tx.delete(siteBackflows).where(and(eq(siteBackflows.companyId, companyId), eq(siteBackflows.siteId, site.id)))
 
     // Insert controllers; map ephemeral UI id → new DB id for zone FK resolution
     const controllerIdMap = new Map<string, number>()
@@ -47,6 +52,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
       const [row] = await tx
         .insert(siteControllers)
         .values({
+          companyId,
           siteId:            site.id,
           location:          ctrl.location          || null,
           manufacturer:      ctrl.manufacturer      || null,
@@ -63,6 +69,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
 
     for (const zone of data.zones) {
       await tx.insert(siteZones).values({
+        companyId,
         siteId:          site.id,
         controllerId:    zone.controller ? (controllerIdMap.get(zone.controller) ?? null) : null,
         zoneNum:         zone.zoneNum,
@@ -75,6 +82,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
 
     for (const bf of data.backflows) {
       await tx.insert(siteBackflows).values({
+        companyId,
         siteId:       site.id,
         manufacturer: bf.manufacturer || null,
         type:         bf.type         || null,
@@ -102,6 +110,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     // ── Upsert visit (create or update for same site + date) ──────────────
 
     const visitData = {
+      companyId,
       siteId:      site.id,
       clientId,
       inspectorId,

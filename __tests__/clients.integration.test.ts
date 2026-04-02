@@ -1,6 +1,6 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { startTestDb, stopTestDb, withRollback } from '../test/helpers/db'
+import { startTestDb, stopTestDb, withRollback, TEST_COMPANY_ID } from '../test/helpers/db'
 import { buildClient } from '../test/helpers/factories'
 import { clients } from '@/lib/schema'
 import type * as schema from '@/lib/schema'
@@ -12,9 +12,16 @@ async function ensureClient(
   name: string,
   address?: string,
 ) {
-  const existing = await db.select().from(clients).where(eq(clients.name, name)).limit(1)
+  const existing = await db
+    .select()
+    .from(clients)
+    .where(and(eq(clients.companyId, TEST_COMPANY_ID), eq(clients.name, name)))
+    .limit(1)
   if (existing.length > 0) return existing[0]
-  const [created] = await db.insert(clients).values({ name, address: address ?? null }).returning()
+  const [created] = await db
+    .insert(clients)
+    .values({ companyId: TEST_COMPANY_ID, name, address: address ?? null })
+    .returning()
   return created
 }
 
@@ -34,7 +41,11 @@ async function insertClient(db: PostgresJsDatabase<typeof schema>, data: ReturnT
 }
 
 async function listClients(db: PostgresJsDatabase<typeof schema>) {
-  return db.select().from(clients).orderBy(asc(clients.name))
+  return db
+    .select()
+    .from(clients)
+    .where(eq(clients.companyId, TEST_COMPANY_ID))
+    .orderBy(asc(clients.name))
 }
 
 // ── tests ──────────────────────────────────────────────────────────────────
@@ -42,11 +53,12 @@ async function listClients(db: PostgresJsDatabase<typeof schema>) {
 describe('clients — DB integration', () => {
   test('inserts a client and returns it with an id', async () => {
     await withRollback(async (db) => {
-      const input = buildClient({ name: 'Acme Irrigation' })
+      const input = buildClient(TEST_COMPANY_ID, { name: 'Acme Irrigation' })
       const row = await insertClient(db, input)
 
       expect(row.id).toBeDefined()
       expect(row.name).toBe('Acme Irrigation')
+      expect(row.companyId).toBe(TEST_COMPANY_ID)
       expect(row.email).toBe(input.email)
       expect(row.createdAt).toBeDefined()
     })
@@ -54,9 +66,9 @@ describe('clients — DB integration', () => {
 
   test('lists clients sorted alphabetically by name', async () => {
     await withRollback(async (db) => {
-      await insertClient(db, buildClient({ name: 'Zephyr Farms' }))
-      await insertClient(db, buildClient({ name: 'Acme Corp' }))
-      await insertClient(db, buildClient({ name: 'Midtown HOA' }))
+      await insertClient(db, buildClient(TEST_COMPANY_ID, { name: 'Zephyr Farms' }))
+      await insertClient(db, buildClient(TEST_COMPANY_ID, { name: 'Acme Corp' }))
+      await insertClient(db, buildClient(TEST_COMPANY_ID, { name: 'Midtown HOA' }))
 
       const rows = await listClients(db)
       const names = rows.map(r => r.name)
@@ -78,6 +90,22 @@ describe('clients — DB integration', () => {
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toMatch(/required/i)
   })
+
+  test('clients from different companies are isolated', async () => {
+    await withRollback(async (db) => {
+      // Insert client for another company
+      const [otherCompany] = await db
+        .insert(require('@/lib/schema').companies)
+        .values({ clerkOrgId: 'org_other_clients_test' })
+        .returning()
+      await db.insert(clients).values({ companyId: otherCompany.id, name: 'Other Corp' })
+
+      // Our company's client list should not include it
+      const rows = await listClients(db)
+      expect(rows.every(r => r.companyId === TEST_COMPANY_ID)).toBe(true)
+      expect(rows.find(r => r.name === 'Other Corp')).toBeUndefined()
+    })
+  })
 })
 
 describe('ensureClientExists — DB integration', () => {
@@ -87,8 +115,9 @@ describe('ensureClientExists — DB integration', () => {
       expect(client.id).toBeDefined()
       expect(client.name).toBe('New Owner LLC')
       expect(client.address).toBe('123 Main St')
+      expect(client.companyId).toBe(TEST_COMPANY_ID)
 
-      const all = await db.select().from(clients)
+      const all = await db.select().from(clients).where(eq(clients.companyId, TEST_COMPANY_ID))
       expect(all).toHaveLength(1)
     })
   })
@@ -102,7 +131,7 @@ describe('ensureClientExists — DB integration', () => {
       // address should NOT have been updated — we returned the existing row
       expect(second.address).toBe(first.address)
 
-      const all = await db.select().from(clients)
+      const all = await db.select().from(clients).where(eq(clients.companyId, TEST_COMPANY_ID))
       expect(all).toHaveLength(1)
     })
   })
@@ -112,7 +141,27 @@ describe('ensureClientExists — DB integration', () => {
       await ensureClient(db, 'Owner A')
       await ensureClient(db, 'Owner B')
 
-      const all = await db.select().from(clients)
+      const all = await db.select().from(clients).where(eq(clients.companyId, TEST_COMPANY_ID))
+      expect(all).toHaveLength(2)
+    })
+  })
+
+  test('same name in different companies creates separate clients', async () => {
+    await withRollback(async (db) => {
+      const { companies } = await import('@/lib/schema')
+      const [otherCompany] = await db
+        .insert(companies)
+        .values({ clerkOrgId: 'org_other_ensure_test' })
+        .returning()
+
+      // Create client with same name in the other company
+      await db.insert(clients).values({ companyId: otherCompany.id, name: 'Shared Name Corp' })
+
+      // ensureClient for our company should create a NEW row
+      const ours = await ensureClient(db, 'Shared Name Corp')
+      expect(ours.companyId).toBe(TEST_COMPANY_ID)
+
+      const all = await db.select().from(clients).where(eq(clients.name, 'Shared Name Corp'))
       expect(all).toHaveLength(2)
     })
   })

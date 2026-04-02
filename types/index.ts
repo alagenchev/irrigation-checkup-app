@@ -1,4 +1,5 @@
 export type {
+  Company, NewCompany,
   Client, NewClient,
   Site, NewSite,
   CompanySettings, NewCompanySettings,

@@ -1,31 +1,45 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   siteVisits, sites, clients,
   siteControllers, siteZones, siteBackflows,
   type ZoneIssueData, type QuoteItemData, type ZonePhotoData,
 } from '@/lib/schema'
+import { getRequiredCompanyId } from '@/lib/tenant'
 import type {
   IrrigationFormInitialData,
   ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData,
 } from '@/types'
 
 export async function getInspectionForEdit(siteVisitId: number): Promise<IrrigationFormInitialData | null> {
+  const companyId = await getRequiredCompanyId()
+
+  // Verify the visit belongs to this company before returning any data
   const visit = await db.query.siteVisits.findFirst({
-    where: eq(siteVisits.siteVisitId, siteVisitId),
+    where: and(eq(siteVisits.companyId, companyId), eq(siteVisits.siteVisitId, siteVisitId)),
   })
   if (!visit) return null
 
   const [site, client, dbControllers, dbZones, dbBackflows] = await Promise.all([
-    db.query.sites.findFirst({ where: eq(sites.id, visit.siteId) }),
+    db.query.sites.findFirst({
+      where: and(eq(sites.companyId, companyId), eq(sites.id, visit.siteId)),
+    }),
     visit.clientId
-      ? db.query.clients.findFirst({ where: eq(clients.id, visit.clientId) })
+      ? db.query.clients.findFirst({
+          where: and(eq(clients.companyId, companyId), eq(clients.id, visit.clientId)),
+        })
       : Promise.resolve(null),
-    db.select().from(siteControllers).where(eq(siteControllers.siteId, visit.siteId)).orderBy(siteControllers.id),
-    db.select().from(siteZones).where(eq(siteZones.siteId, visit.siteId)).orderBy(siteZones.id),
-    db.select().from(siteBackflows).where(eq(siteBackflows.siteId, visit.siteId)).orderBy(siteBackflows.id),
+    db.select().from(siteControllers)
+      .where(and(eq(siteControllers.companyId, companyId), eq(siteControllers.siteId, visit.siteId)))
+      .orderBy(siteControllers.id),
+    db.select().from(siteZones)
+      .where(and(eq(siteZones.companyId, companyId), eq(siteZones.siteId, visit.siteId)))
+      .orderBy(siteZones.id),
+    db.select().from(siteBackflows)
+      .where(and(eq(siteBackflows.companyId, companyId), eq(siteBackflows.siteId, visit.siteId)))
+      .orderBy(siteBackflows.id),
   ])
 
   if (!site) return null

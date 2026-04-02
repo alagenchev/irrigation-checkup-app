@@ -2,11 +2,17 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import postgres, { type Sql, type TransactionSql } from 'postgres'
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import { eq } from 'drizzle-orm'
 import * as schema from '@/lib/schema'
 
 let container: StartedPostgreSqlContainer | undefined
 let sql: Sql
 export let testDb: PostgresJsDatabase<typeof schema>
+
+/** Stable company ID used across all integration tests. Set by startTestDb(). */
+export let TEST_COMPANY_ID: number
+
+const TEST_CLERK_ORG_ID = 'org_test_integration'
 
 class RollbackSignal extends Error {}
 
@@ -26,6 +32,24 @@ export async function startTestDb(): Promise<void> {
   sql = postgres(connectionString, { max: 1 })
   testDb = drizzle(sql, { schema })
   await migrate(testDb, { migrationsFolder: './drizzle' })
+
+  // Provision a persistent test company (committed, not in a transaction) so
+  // all withRollback tests can reference a stable companyId.
+  const [existing] = await testDb
+    .select({ id: schema.companies.id })
+    .from(schema.companies)
+    .where(eq(schema.companies.clerkOrgId, TEST_CLERK_ORG_ID))
+    .limit(1)
+
+  if (existing) {
+    TEST_COMPANY_ID = existing.id
+  } else {
+    const [created] = await testDb
+      .insert(schema.companies)
+      .values({ clerkOrgId: TEST_CLERK_ORG_ID })
+      .returning({ id: schema.companies.id })
+    TEST_COMPANY_ID = created.id
+  }
 }
 
 /** Stops the connection and container (if one was started). Call in afterAll(). */

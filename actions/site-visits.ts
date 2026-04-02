@@ -4,6 +4,7 @@ import { and, count, desc, eq, lt, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { clients, inspectors, siteVisits, sites, type ZoneIssueData, type QuoteItemData } from '@/lib/schema'
 import { createSiteVisitSchema } from '@/lib/validators'
+import { getRequiredCompanyId } from '@/lib/tenant'
 import type { ActionResult, SiteVisit } from '@/types'
 import type { CreateSiteVisitInput } from '@/lib/validators'
 
@@ -20,6 +21,7 @@ type InspectionRow = {
 }
 
 export async function getInspections(page: number): Promise<{ rows: InspectionRow[]; total: number; pageSize: number }> {
+  const companyId = await getRequiredCompanyId()
   const offset = (page - 1) * INSPECTIONS_PAGE_SIZE
 
   const [rows, [{ total }]] = await Promise.all([
@@ -37,20 +39,25 @@ export async function getInspections(page: number): Promise<{ rows: InspectionRo
       .leftJoin(sites,       eq(siteVisits.siteId,       sites.id))
       .leftJoin(clients,     eq(siteVisits.clientId,     clients.id))
       .leftJoin(inspectors,  eq(siteVisits.inspectorId,  inspectors.id))
+      .where(eq(siteVisits.companyId, companyId))
       .orderBy(desc(siteVisits.datePerformed))
       .limit(INSPECTIONS_PAGE_SIZE)
       .offset(offset),
-    db.select({ total: count() }).from(siteVisits),
+    db
+      .select({ total: count() })
+      .from(siteVisits)
+      .where(eq(siteVisits.companyId, companyId)),
   ])
 
   return { rows: rows as InspectionRow[], total, pageSize: INSPECTIONS_PAGE_SIZE }
 }
 
 export async function getSiteVisitsForSite(siteId: number): Promise<SiteVisit[]> {
+  const companyId = await getRequiredCompanyId()
   return db
     .select()
     .from(siteVisits)
-    .where(eq(siteVisits.siteId, siteId))
+    .where(and(eq(siteVisits.companyId, companyId), eq(siteVisits.siteId, siteId)))
     .orderBy(desc(siteVisits.datePerformed))
 }
 
@@ -59,8 +66,9 @@ export async function getSiteVisitsForSite(siteId: number): Promise<SiteVisit[]>
  * Used to pre-populate new visits with existing system state.
  */
 export async function getLatestSystemDataForSite(siteId: number) {
+  const companyId = await getRequiredCompanyId()
   return db.query.siteVisits.findFirst({
-    where: eq(siteVisits.siteId, siteId),
+    where: and(eq(siteVisits.companyId, companyId), eq(siteVisits.siteId, siteId)),
     orderBy: [desc(siteVisits.datePerformed)],
     columns: {
       staticPressure:      true,
@@ -86,6 +94,8 @@ export async function getLatestSystemDataForSite(siteId: number) {
  * auto-populated.
  */
 export async function createSiteVisit(input: CreateSiteVisitInput): Promise<ActionResult<SiteVisit>> {
+  const companyId = await getRequiredCompanyId()
+
   const parsed = createSiteVisitSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
@@ -96,6 +106,7 @@ export async function createSiteVisit(input: CreateSiteVisitInput): Promise<Acti
   // Fetch most recent prior visit for system overview auto-population
   const priorVisit = await db.query.siteVisits.findFirst({
     where: and(
+      eq(siteVisits.companyId, companyId),
       eq(siteVisits.siteId, data.siteId),
       lt(siteVisits.datePerformed, data.datePerformed),
     ),
@@ -116,6 +127,7 @@ export async function createSiteVisit(input: CreateSiteVisitInput): Promise<Acti
   const [visit] = await db
     .insert(siteVisits)
     .values({
+      companyId,
       siteId:      data.siteId,
       clientId:    data.clientId    ?? null,
       inspectorId: data.inspectorId ?? null,
