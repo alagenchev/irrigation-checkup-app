@@ -15,7 +15,7 @@ const EDIT_FIELDS: [keyof Inspector, string][] = [
 ]
 
 export function InspectorsTable({ inspectors }: Props) {
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<Inspector>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +32,7 @@ export function InspectorsTable({ inspectors }: Props) {
     setError(null)
   }
 
-  async function handleSave(id: number) {
+  async function handleSave(id: string) {
     setSaving(true)
     setError(null)
     try {

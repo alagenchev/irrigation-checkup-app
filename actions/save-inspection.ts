@@ -29,13 +29,13 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
   // (these are idempotent lookups safe to run before the atomic block)
   const site = await ensureSiteExists(data.siteName, data.siteAddress ?? undefined)
 
-  let clientId: number | null = null
+  let clientId: string | null = null
   if (data.clientName?.trim()) {
     const client = await ensureClientExists(data.clientName.trim(), data.clientAddress?.trim() ?? undefined)
     clientId = client.id
   }
 
-  const inspectorId: number | null = data.inspectorId ?? null
+  const inspectorId: string | null = data.inspectorId ?? null
 
   // Atomically sync equipment and upsert the visit
   const visit = await db.transaction(async (tx) => {
@@ -47,7 +47,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     await tx.delete(siteBackflows).where(and(eq(siteBackflows.companyId, companyId), eq(siteBackflows.siteId, site.id)))
 
     // Insert controllers; map ephemeral UI id → new DB id for zone FK resolution
-    const controllerIdMap = new Map<string, number>()
+    const controllerIdMap = new Map<string, string>()
     for (const ctrl of data.controllers) {
       const [row] = await tx
         .insert(siteControllers)

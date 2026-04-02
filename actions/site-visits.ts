@@ -11,7 +11,7 @@ import type { CreateSiteVisitInput } from '@/lib/validators'
 const INSPECTIONS_PAGE_SIZE = 10
 
 type InspectionRow = {
-  siteVisitId:    number
+  siteVisitId:    string
   datePerformed:  string
   inspectionType: string
   status:         string
@@ -52,7 +52,7 @@ export async function getInspections(page: number): Promise<{ rows: InspectionRo
   return { rows: rows as InspectionRow[], total, pageSize: INSPECTIONS_PAGE_SIZE }
 }
 
-export async function getSiteVisitsForSite(siteId: number): Promise<SiteVisit[]> {
+export async function getSiteVisitsForSite(siteId: string): Promise<SiteVisit[]> {
   const companyId = await getRequiredCompanyId()
   return db
     .select()
@@ -65,7 +65,7 @@ export async function getSiteVisitsForSite(siteId: number): Promise<SiteVisit[]>
  * Returns the most recent visit's system overview snapshot for a site.
  * Used to pre-populate new visits with existing system state.
  */
-export async function getLatestSystemDataForSite(siteId: number) {
+export async function getLatestSystemDataForSite(siteId: string) {
   const companyId = await getRequiredCompanyId()
   return db.query.siteVisits.findFirst({
     where: and(eq(siteVisits.companyId, companyId), eq(siteVisits.siteId, siteId)),

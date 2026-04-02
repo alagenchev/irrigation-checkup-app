@@ -10,7 +10,7 @@ let sql: Sql
 export let testDb: PostgresJsDatabase<typeof schema>
 
 /** Stable company ID used across all integration tests. Set by startTestDb(). */
-export let TEST_COMPANY_ID: number
+export let TEST_COMPANY_ID: string
 
 const TEST_CLERK_ORG_ID = 'org_test_integration'
 

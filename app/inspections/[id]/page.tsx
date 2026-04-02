@@ -12,12 +12,9 @@ export default async function InspectionDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const siteVisitId = parseInt(id, 10)
-
-  if (isNaN(siteVisitId)) notFound()
 
   const [initialData, clients, sites, company, inspectors] = await Promise.all([
-    getInspectionForEdit(siteVisitId),
+    getInspectionForEdit(id),
     getClients(),
     getSites(),
     getCompanySettings(),

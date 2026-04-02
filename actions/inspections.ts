@@ -13,7 +13,7 @@ import type {
   ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData,
 } from '@/types'
 
-export async function getInspectionForEdit(siteVisitId: number): Promise<IrrigationFormInitialData | null> {
+export async function getInspectionForEdit(siteVisitId: string): Promise<IrrigationFormInitialData | null> {
   const companyId = await getRequiredCompanyId()
 
   // Verify the visit belongs to this company before returning any data
@@ -46,7 +46,7 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
 
   // Assign stable ephemeral IDs starting at 1 for controller FK resolution
   let eid = 1
-  const controllerEphemeralMap = new Map<number, number>()
+  const controllerEphemeralMap = new Map<string, number>()
 
   const controllers: ControllerFormData[] = dbControllers.map(c => {
     const id = eid++
@@ -125,7 +125,7 @@ export async function getInspectionForEdit(siteVisitId: number): Promise<Irrigat
       accountNumber:       visit.accountNumber   ?? '',
       status:              visit.status,
       dueDate:         visit.dueDate         ?? '',
-      inspectorId:     String(visit.inspectorId ?? ''),
+      inspectorId:     visit.inspectorId ?? '',
       repairEstimate:  visit.repairEstimate  ?? '',
       inspectionNotes:     visit.inspectionNotes ?? '',
       internalNotes:       visit.internalNotes   ?? '',

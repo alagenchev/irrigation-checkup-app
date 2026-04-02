@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 
 type InspectionRow = {
-  siteVisitId:    number
+  siteVisitId:    string
   datePerformed:  string
   inspectionType: string
   status:         string

@@ -152,7 +152,7 @@ describe('createInspectorSchema', () => {
 
 describe('createSiteVisitSchema', () => {
   const VALID: Parameters<typeof createSiteVisitSchema.safeParse>[0] = {
-    siteId:        1,
+    siteId:        'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     datePerformed: '2025-06-15',
   }
 
@@ -175,11 +175,11 @@ describe('createSiteVisitSchema', () => {
   })
 
   test('rejects when datePerformed is missing', () => {
-    expect(createSiteVisitSchema.safeParse({ siteId: 1 }).success).toBe(false)
+    expect(createSiteVisitSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' }).success).toBe(false)
   })
 
   test('rejects an invalid date format', () => {
-    const r = createSiteVisitSchema.safeParse({ siteId: 1, datePerformed: '15/06/2025' })
+    const r = createSiteVisitSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', datePerformed: '15/06/2025' })
     expect(r.success).toBe(false)
     expect(r.error?.issues[0]?.message).toMatch(/YYYY-MM-DD/i)
   })
@@ -187,8 +187,8 @@ describe('createSiteVisitSchema', () => {
   test('accepts all optional fields (no equipment arrays — those live in their own tables)', () => {
     const r = createSiteVisitSchema.safeParse({
       ...VALID,
-      clientId:    2,
-      inspectorId: 3,
+      clientId:    'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+      inspectorId: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
       inspectionType:  'Start-up',
       accountType:  'Commercial',
       accountNumber: 'A123',
@@ -212,13 +212,13 @@ describe('createSiteVisitSchema', () => {
 describe('createSiteControllerSchema', () => {
   test('accepts valid controller with all fields', () => {
     expect(createSiteControllerSchema.safeParse({
-      siteId: 1, location: 'Front', manufacturer: 'Hunter',
+      siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', location: 'Front', manufacturer: 'Hunter',
       model: 'Pro-HC', sensors: 'Rain', numZones: '6', masterValve: true,
     }).success).toBe(true)
   })
 
   test('accepts controller with only siteId (all equipment fields optional)', () => {
-    expect(createSiteControllerSchema.safeParse({ siteId: 1 }).success).toBe(true)
+    expect(createSiteControllerSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' }).success).toBe(true)
   })
 
   test('rejects when siteId is missing', () => {
@@ -226,7 +226,7 @@ describe('createSiteControllerSchema', () => {
   })
 
   test('defaults numZones to "0" and masterValve to false', () => {
-    const r = createSiteControllerSchema.safeParse({ siteId: 1 })
+    const r = createSiteControllerSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' })
     expect(r.success && r.data.numZones).toBe('0')
     expect(r.success && r.data.masterValve).toBe(false)
   })
@@ -235,16 +235,16 @@ describe('createSiteControllerSchema', () => {
 describe('createSiteZoneSchema', () => {
   test('accepts a valid zone', () => {
     expect(createSiteZoneSchema.safeParse({
-      siteId: 1, zoneNum: '3', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'],
+      siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', zoneNum: '3', landscapeTypes: ['Full-sun turf'], irrigationTypes: ['Rotor'],
     }).success).toBe(true)
   })
 
   test('rejects when zoneNum is missing', () => {
-    expect(createSiteZoneSchema.safeParse({ siteId: 1 }).success).toBe(false)
+    expect(createSiteZoneSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' }).success).toBe(false)
   })
 
   test('defaults landscapeTypes and irrigationTypes to empty arrays', () => {
-    const r = createSiteZoneSchema.safeParse({ siteId: 1, zoneNum: '1' })
+    const r = createSiteZoneSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', zoneNum: '1' })
     expect(r.success && r.data.landscapeTypes).toEqual([])
     expect(r.success && r.data.irrigationTypes).toEqual([])
   })
@@ -253,12 +253,12 @@ describe('createSiteZoneSchema', () => {
 describe('createSiteBackflowSchema', () => {
   test('accepts a valid backflow device', () => {
     expect(createSiteBackflowSchema.safeParse({
-      siteId: 1, manufacturer: 'Febco', type: 'RPZ', model: '825Y', size: '1',
+      siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', manufacturer: 'Febco', type: 'RPZ', model: '825Y', size: '1',
     }).success).toBe(true)
   })
 
   test('accepts with only siteId (all device fields optional)', () => {
-    expect(createSiteBackflowSchema.safeParse({ siteId: 1 }).success).toBe(true)
+    expect(createSiteBackflowSchema.safeParse({ siteId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' }).success).toBe(true)
   })
 
   test('rejects when siteId is missing', () => {
@@ -303,7 +303,7 @@ describe('saveInspectionSchema', () => {
     const r = saveInspectionSchema.safeParse({
       ...VALID,
       clientName: 'Acme Corp', clientAddress: '1 Main St',
-      inspectorId: 1,
+      inspectorId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       inspectionType: 'Start-up', accountType: 'Commercial', accountNumber: 'A1',
       status: 'In Progress', dueDate: '2025-07-01', repairEstimate: '350.00',
       inspectionNotes: 'All clear.', internalNotes: 'Note.',

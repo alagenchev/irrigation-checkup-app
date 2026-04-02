@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, numeric, boolean, date, unique } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, jsonb, numeric, boolean, date, unique } from 'drizzle-orm/pg-core'
 
 // ── Companies (tenant root) ───────────────────────────────────────────────
 // Every piece of data in this app is owned by exactly one company.
@@ -7,14 +7,14 @@ import { pgTable, serial, text, timestamp, integer, jsonb, numeric, boolean, dat
 // Clerk organisation. Never query or mutate data without this filter.
 
 export const companies = pgTable('companies', {
-  id:         serial('id').primaryKey(),
+  id:         uuid('id').primaryKey().defaultRandom(),
   clerkOrgId: text('clerk_org_id').notNull().unique(),
   createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const companySettings = pgTable('company_settings', {
-  id:                  serial('id').primaryKey(),
-  companyId:           integer('company_id').notNull().unique().references(() => companies.id, { onDelete: 'cascade' }),
+  id:                  uuid('id').primaryKey().defaultRandom(),
+  companyId:           uuid('company_id').notNull().unique().references(() => companies.id, { onDelete: 'cascade' }),
   companyName:         text('company_name').notNull().default(''),
   licenseNum:          text('license_num').notNull().default(''),
   companyAddress:      text('company_address').notNull().default(''),
@@ -27,8 +27,8 @@ export const companySettings = pgTable('company_settings', {
 })
 
 export const clients = pgTable('clients', {
-  id:            serial('id').primaryKey(),
-  companyId:     integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  id:            uuid('id').primaryKey().defaultRandom(),
+  companyId:     uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name:          text('name').notNull(),
   address:       text('address'),
   phone:         text('phone'),
@@ -39,18 +39,18 @@ export const clients = pgTable('clients', {
 })
 
 export const sites = pgTable('sites', {
-  id:        serial('id').primaryKey(),
-  companyId: integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  id:        uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name:      text('name').notNull(),
   address:   text('address'),
-  clientId:  integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
+  clientId:  uuid('client_id').references(() => clients.id, { onDelete: 'set null' }),
   notes:     text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
 export const technicians = pgTable('technicians', {
-  id:        serial('id').primaryKey(),
-  companyId: integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  id:        uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name:      text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (table) => [
@@ -58,8 +58,8 @@ export const technicians = pgTable('technicians', {
 ])
 
 export const inspectors = pgTable('inspectors', {
-  id:         serial('id').primaryKey(),
-  companyId:  integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  id:         uuid('id').primaryKey().defaultRandom(),
+  companyId:  uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   firstName:  text('first_name').notNull(),
   lastName:   text('last_name').notNull(),
   email:      text('email'),
@@ -71,9 +71,9 @@ export const inspectors = pgTable('inspectors', {
 // ── Site-level equipment (persists across visits) ─────────────────────────
 
 export const siteControllers = pgTable('site_controllers', {
-  id:           serial('id').primaryKey(),
-  companyId:    integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  siteId:       integer('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
+  id:           uuid('id').primaryKey().defaultRandom(),
+  companyId:    uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  siteId:       uuid('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
   location:     text('location'),
   manufacturer: text('manufacturer'),
   model:        text('model'),
@@ -86,10 +86,10 @@ export const siteControllers = pgTable('site_controllers', {
 })
 
 export const siteZones = pgTable('site_zones', {
-  id:              serial('id').primaryKey(),
-  companyId:       integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  siteId:          integer('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
-  controllerId:    integer('controller_id').references(() => siteControllers.id, { onDelete: 'set null' }),
+  id:              uuid('id').primaryKey().defaultRandom(),
+  companyId:       uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  siteId:          uuid('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
+  controllerId:    uuid('controller_id').references(() => siteControllers.id, { onDelete: 'set null' }),
   zoneNum:         text('zone_num').notNull(),
   description:     text('description'),
   landscapeTypes:  text('landscape_types').array(),
@@ -99,9 +99,9 @@ export const siteZones = pgTable('site_zones', {
 })
 
 export const siteBackflows = pgTable('site_backflows', {
-  id:           serial('id').primaryKey(),
-  companyId:    integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  siteId:       integer('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
+  id:           uuid('id').primaryKey().defaultRandom(),
+  companyId:    uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  siteId:       uuid('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
   manufacturer: text('manufacturer'),
   type:         text('type'),
   model:        text('model'),
@@ -118,15 +118,15 @@ export type ZonePhotoData = { zoneNum: string; urls: string[] }
 // ── site_visits ───────────────────────────────────────────────────────────
 
 export const siteVisits = pgTable('site_visits', {
-  siteVisitId: serial('site_visit_id').primaryKey(),
+  siteVisitId: uuid('site_visit_id').primaryKey().defaultRandom(),
 
   // Tenant scope — must always be filtered by this when querying
-  companyId:   integer('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  companyId:   uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
 
   // References
-  siteId:      integer('site_id').notNull().references(() => sites.id, { onDelete: 'restrict' }),
-  clientId:    integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
-  inspectorId: integer('inspector_id').references(() => inspectors.id, { onDelete: 'set null' }),
+  siteId:      uuid('site_id').notNull().references(() => sites.id, { onDelete: 'restrict' }),
+  clientId:    uuid('client_id').references(() => clients.id, { onDelete: 'set null' }),
+  inspectorId: uuid('inspector_id').references(() => inspectors.id, { onDelete: 'set null' }),
 
   // Inspection details
   datePerformed:   date('date_performed').notNull(),

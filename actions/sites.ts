@@ -53,7 +53,7 @@ export async function createSite(_prev: ActionResult<Site> | null, formData: For
 
   const { name, address, clientName, notes } = parsed.data
 
-  let clientId: number | null = null
+  let clientId: string | null = null
   if (clientName) {
     const existing = await db
       .select({ id: clients.id })

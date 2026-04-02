@@ -47,7 +47,7 @@ export type IrrigationFormFieldValues = {
 }
 
 export type IrrigationFormInitialData = {
-  siteVisitId:  number
+  siteVisitId:  string
   form:         IrrigationFormFieldValues
   controllers:  ControllerFormData[]
   zones:        ZoneFormData[]

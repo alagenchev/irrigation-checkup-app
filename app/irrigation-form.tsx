@@ -105,7 +105,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
     clientAddress: s.clientAddress ?? undefined,
   }))
 
-  const selectedInspector = inspectors.find(i => String(i.id) === form.inspectorId) ?? null
+  const selectedInspector = inspectors.find(i => i.id === form.inspectorId) ?? null
 
   // ── FIELD HANDLERS ──────────────────────────────────────────────────────
 
@@ -234,7 +234,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
         siteAddress:   form.siteAddress.trim()  || undefined,
         clientName:    form.clientName.trim()   || undefined,
         clientAddress: form.clientAddress.trim() || undefined,
-        inspectorId:   form.inspectorId ? parseInt(form.inspectorId, 10) : undefined,
+        inspectorId:   form.inspectorId || undefined,
 
         datePerformed:   form.datePerformed,
         inspectionType:  form.inspectionType,

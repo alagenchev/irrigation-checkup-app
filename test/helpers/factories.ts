@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker'
 import type { NewClient, NewCompanySettings, NewTechnician } from '@/lib/schema'
 
-export function buildCompanySettings(companyId: number, overrides: Partial<NewCompanySettings> = {}): NewCompanySettings {
+export function buildCompanySettings(companyId: string, overrides: Partial<NewCompanySettings> = {}): NewCompanySettings {
   return {
     companyId,
     companyName:         faker.company.name(),
@@ -15,7 +15,7 @@ export function buildCompanySettings(companyId: number, overrides: Partial<NewCo
   }
 }
 
-export function buildTechnician(companyId: number, overrides: Partial<NewTechnician> = {}): NewTechnician {
+export function buildTechnician(companyId: string, overrides: Partial<NewTechnician> = {}): NewTechnician {
   return {
     companyId,
     name: faker.person.fullName(),
@@ -23,7 +23,7 @@ export function buildTechnician(companyId: number, overrides: Partial<NewTechnic
   }
 }
 
-export function buildClient(companyId: number, overrides: Partial<NewClient> = {}): NewClient {
+export function buildClient(companyId: string, overrides: Partial<NewClient> = {}): NewClient {
   return {
     companyId,
     name:          faker.company.name(),

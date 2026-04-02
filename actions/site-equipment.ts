@@ -16,7 +16,7 @@ import type { ActionResult, SiteController, SiteZone, SiteBackflow } from '@/typ
 
 // ── Controllers ───────────────────────────────────────────────────────────
 
-export async function getSiteControllers(siteId: number): Promise<SiteController[]> {
+export async function getSiteControllers(siteId: string): Promise<SiteController[]> {
   const companyId = await getRequiredCompanyId()
   return db
     .select()
@@ -33,7 +33,7 @@ export async function createSiteController(input: unknown): Promise<ActionResult
   return { ok: true, data: row }
 }
 
-export async function updateSiteController(id: number, input: unknown): Promise<ActionResult<SiteController>> {
+export async function updateSiteController(id: string, input: unknown): Promise<ActionResult<SiteController>> {
   const companyId = await getRequiredCompanyId()
   const parsed = updateSiteControllerSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
@@ -47,7 +47,7 @@ export async function updateSiteController(id: number, input: unknown): Promise<
   return { ok: true, data: row }
 }
 
-export async function deleteSiteController(id: number): Promise<ActionResult> {
+export async function deleteSiteController(id: string): Promise<ActionResult> {
   const companyId = await getRequiredCompanyId()
   await db
     .delete(siteControllers)
@@ -57,7 +57,7 @@ export async function deleteSiteController(id: number): Promise<ActionResult> {
 
 // ── Zones ─────────────────────────────────────────────────────────────────
 
-export async function getSiteZones(siteId: number): Promise<SiteZone[]> {
+export async function getSiteZones(siteId: string): Promise<SiteZone[]> {
   const companyId = await getRequiredCompanyId()
   return db
     .select()
@@ -75,7 +75,7 @@ export async function createSiteZone(input: unknown): Promise<ActionResult<SiteZ
   return { ok: true, data: row }
 }
 
-export async function updateSiteZone(id: number, input: unknown): Promise<ActionResult<SiteZone>> {
+export async function updateSiteZone(id: string, input: unknown): Promise<ActionResult<SiteZone>> {
   const companyId = await getRequiredCompanyId()
   const parsed = updateSiteZoneSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
@@ -89,7 +89,7 @@ export async function updateSiteZone(id: number, input: unknown): Promise<Action
   return { ok: true, data: row }
 }
 
-export async function deleteSiteZone(id: number): Promise<ActionResult> {
+export async function deleteSiteZone(id: string): Promise<ActionResult> {
   const companyId = await getRequiredCompanyId()
   await db
     .delete(siteZones)
@@ -99,7 +99,7 @@ export async function deleteSiteZone(id: number): Promise<ActionResult> {
 
 // ── Backflow devices ──────────────────────────────────────────────────────
 
-export async function getSiteBackflows(siteId: number): Promise<SiteBackflow[]> {
+export async function getSiteBackflows(siteId: string): Promise<SiteBackflow[]> {
   const companyId = await getRequiredCompanyId()
   return db
     .select()
@@ -116,7 +116,7 @@ export async function createSiteBackflow(input: unknown): Promise<ActionResult<S
   return { ok: true, data: row }
 }
 
-export async function updateSiteBackflow(id: number, input: unknown): Promise<ActionResult<SiteBackflow>> {
+export async function updateSiteBackflow(id: string, input: unknown): Promise<ActionResult<SiteBackflow>> {
   const companyId = await getRequiredCompanyId()
   const parsed = updateSiteBackflowSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
@@ -130,7 +130,7 @@ export async function updateSiteBackflow(id: number, input: unknown): Promise<Ac
   return { ok: true, data: row }
 }
 
-export async function deleteSiteBackflow(id: number): Promise<ActionResult> {
+export async function deleteSiteBackflow(id: string): Promise<ActionResult> {
   const companyId = await getRequiredCompanyId()
   await db
     .delete(siteBackflows)

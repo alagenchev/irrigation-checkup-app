@@ -41,7 +41,7 @@ export const updateInspectorSchema = createInspectorSchema.partial()
 // ── Site equipment ────────────────────────────────────────────────────────
 
 export const createSiteControllerSchema = z.object({
-  siteId:           z.number().int().positive(),
+  siteId:           z.string().uuid(),
   location:         z.string().max(255).optional(),
   manufacturer:     z.string().max(255).optional(),
   model:            z.string().max(255).optional(),
@@ -57,8 +57,8 @@ export const updateSiteControllerSchema = createSiteControllerSchema
   .partial()
 
 export const createSiteZoneSchema = z.object({
-  siteId:          z.number().int().positive(),
-  controllerId:    z.number().int().positive().nullable().optional(),
+  siteId:          z.string().uuid(),
+  controllerId:    z.string().uuid().nullable().optional(),
   zoneNum:         z.string().min(1, 'Zone number is required').max(20),
   description:     z.string().max(500).optional(),
   landscapeTypes:  z.array(z.string()).optional().default([]),
@@ -72,7 +72,7 @@ export const updateSiteZoneSchema = createSiteZoneSchema
   .extend({ zoneNum: z.string().min(1).max(20).optional() })
 
 export const createSiteBackflowSchema = z.object({
-  siteId:       z.number().int().positive(),
+  siteId:       z.string().uuid(),
   manufacturer: z.string().max(255).optional(),
   type:         z.string().max(255).optional(),
   model:        z.string().max(255).optional(),
@@ -88,9 +88,9 @@ export const updateSiteBackflowSchema = createSiteBackflowSchema
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
 
 export const createSiteVisitSchema = z.object({
-  siteId:      z.number().int().positive(),
-  clientId:    z.number().int().positive().nullable().optional(),
-  inspectorId: z.number().int().positive().nullable().optional(),
+  siteId:      z.string().uuid(),
+  clientId:    z.string().uuid().nullable().optional(),
+  inspectorId: z.string().uuid().nullable().optional(),
 
   // Inspection details
   datePerformed:   isoDate,
@@ -142,7 +142,7 @@ export const saveInspectionSchema = z.object({
   siteAddress:   z.string().optional(),
   clientName:    z.string().optional(),
   clientAddress: z.string().optional(),
-  inspectorId: z.number().int().positive().nullable().optional(),
+  inspectorId: z.string().uuid().nullable().optional(),
 
   datePerformed:   isoDate,
   inspectionType:  z.string().max(100).optional().default('Repair Inspection'),

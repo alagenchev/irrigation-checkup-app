@@ -12,7 +12,7 @@ import { companies } from './schema'
  * Throws if the authenticated user has no active Clerk organisation — every
  * user must belong to an org for the multi-tenant invariant to hold.
  */
-export async function getRequiredCompanyId(): Promise<number> {
+export async function getRequiredCompanyId(): Promise<string> {
   const { orgId } = await auth()
   if (!orgId) {
     throw new Error(
@@ -26,16 +26,25 @@ export async function getRequiredCompanyId(): Promise<number> {
   })
   if (existing) return existing.id
 
-  // First access: provision the company row, handling a potential race condition
+  // Claim any company seeded by the data migration before creating a fresh one
+  const pending = await db.query.companies.findFirst({
+    where: eq(companies.clerkOrgId, '__pending_claim__'),
+    columns: { id: true },
+  })
+  if (pending) {
+    await db.update(companies).set({ clerkOrgId: orgId }).where(eq(companies.id, pending.id))
+    return pending.id
+  }
+
+  // First access: provision a new company row, handling a race condition
   const [created] = await db
     .insert(companies)
     .values({ clerkOrgId: orgId })
     .onConflictDoNothing()
     .returning({ id: companies.id })
-
   if (created) return created.id
 
-  // A concurrent request won the race — fetch the winner's row
+  // A concurrent request won the race — fetch the winner
   const [winner] = await db
     .select({ id: companies.id })
     .from(companies)

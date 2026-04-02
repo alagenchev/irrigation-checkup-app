@@ -38,7 +38,7 @@ export async function createInspector(input: CreateInspectorInput): Promise<Acti
   return { ok: true, data: row }
 }
 
-export async function updateInspector(id: number, input: UpdateInspectorInput): Promise<ActionResult<Inspector>> {
+export async function updateInspector(id: string, input: UpdateInspectorInput): Promise<ActionResult<Inspector>> {
   const companyId = await getRequiredCompanyId()
 
   const parsed = updateInspectorSchema.safeParse(input)

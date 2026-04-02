@@ -92,7 +92,7 @@ afterEach(async () => {
 
 describe('getInspectionForEdit', () => {
   test('returns null for a non-existent siteVisitId', async () => {
-    const result = await getInspectionForEdit(999999)
+    const result = await getInspectionForEdit('00000000-0000-0000-0000-000000000000')
     expect(result).toBeNull()
   })
 
@@ -110,7 +110,7 @@ describe('getInspectionForEdit', () => {
     expect(data.form.siteAddress).toBe('1 Main St')
     expect(data.form.clientName).toBe(client.name)
     expect(data.form.clientAddress).toBe(client.address)
-    expect(data.form.inspectorId).toBe(String(inspector.id))
+    expect(data.form.inspectorId).toBe(inspector.id)
     expect(data.form.datePerformed).toBe('2025-06-15')
     expect(data.form.inspectionType).toBe('Start-up')
     expect(data.form.status).toBe('In Progress')
@@ -140,7 +140,7 @@ describe('getInspectionForEdit', () => {
     expect(z.landscapeTypes).toEqual(['Full-sun turf'])
     expect(z.irrigationTypes).toEqual(['Rotor'])
     expect(z.notes).toBe('Needs adjustment')
-    expect(z.controller).toBe(String(ctrl.id))
+    expect(z.controller).toBe('1')
 
     // Backflows
     expect(data.backflows).toHaveLength(1)
