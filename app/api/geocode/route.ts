@@ -88,33 +88,25 @@ export async function GET(req: NextRequest) {
     }
 
     const ua = 'IrrigationInspectionApp/1.0 (contact@example.com)'
-    const base = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lon}`
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lon}`
 
-    // Fetch at zoom 18 (building) and zoom 16 (street) for two levels of detail
-    const [r18, r16] = await Promise.all([
-      fetchNominatim(`${base}&zoom=18`, ua),
-      fetchNominatim(`${base}&zoom=16`, ua),
-    ])
+    // Single request to Nominatim
+    const result = await fetchNominatim(url, ua)
 
-    // Handle failure cases
-    if (!r18 && !r16) {
-      console.error('[geocode] Both Nominatim requests failed', { lat, lon })
+    // Handle failure
+    if (!result) {
+      console.error('[geocode] Nominatim request failed', { lat, lon })
       return NextResponse.json(
-        { error: 'Geocoding service unavailable (both zoom levels failed)' },
+        { error: 'Geocoding service unavailable' },
         { status: 503 }
       )
     }
 
-    const seen = new Set<string>()
     const results: string[] = []
-
-    for (const result of [r18, r16]) {
-      if (result?.address) {
-        const formatted = formatAddress(result.address)
-        if (formatted && !seen.has(formatted)) {
-          seen.add(formatted)
-          results.push(formatted)
-        }
+    if (result.address) {
+      const formatted = formatAddress(result.address)
+      if (formatted) {
+        results.push(formatted)
       }
     }
 
