@@ -268,6 +268,46 @@ Also remove any `ALTER COLUMN "id" DROP DEFAULT` line that follows — the seque
 
 - Use `SignedIn` / `SignedOut` components from `@clerk/nextjs` — `Show` is not exported.
 - `getRequiredCompanyId()` in `lib/tenant.ts` reads `auth().orgId` and resolves it to the internal `companies.id`. It auto-provisions the company row on first call.
+- **Organizations are required** — every user must belong to a Clerk org to use the app. The org ID is the multi-tenancy boundary.
+
+### Customer-facing branding (UX requirements)
+
+**Never expose Clerk terminology to customers.** They don't care about "organizations" or "Clerk." Use business language instead:
+
+- Never show "Clerk" branding or logos on your UI
+- Never say "Organization" — say "Company", "Team", "Account", or "Workspace" (pick one term and use consistently)
+- Custom sign-up/login forms branded as the app, not Clerk
+- "Invite team member" button in your app (not "Invite to Clerk org")
+- When they sign up, auto-create a Clerk org in the background silently
+- Invite acceptance link: `yourapp.com/join?token=xyz` (not a Clerk domain)
+- Settings page shows their team/company members, not "Clerk organization members"
+
+This is a **future implementation** requirement. For now, the Clerk org machinery is correct — just document that the UX must be hidden.
+
+### Handling existing users without orgs
+
+If a user signed up before orgs were required, they exist in Clerk but have no `orgId`. They will see: "No organisation context" error.
+
+**Temporary fix (manual):**
+1. Clerk dashboard → Organizations → Create organization (name it after their company)
+2. Copy the org ID (`org_...`)
+3. Members → Invite → add their email
+4. They accept the invite
+5. Prod DB: `UPDATE companies SET clerk_org_id = 'org_...' WHERE clerk_org_id = '__pending_claim__';`
+6. They log in again → works
+
+**Permanent fix (sketch in progress):**
+Build an onboarding flow:
+- `app/onboard/page.tsx` — form to collect company name (sketch exists)
+- `app/api/onboard/create-org/route.ts` — backend to create Clerk org and add user (sketch exists)
+- Middleware (`middleware.ts`) — redirect signed-in users without `orgId` to `/onboard`
+
+The sketch is a starting point. When implementing, add:
+- Form validation improvements
+- Error handling for org creation failures
+- Optional company details (logo, address, etc.)
+- Success message or progress indicator
+- Link back to home after org is created
 
 ---
 
