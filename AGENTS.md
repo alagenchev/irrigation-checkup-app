@@ -271,6 +271,46 @@ Also remove any `ALTER COLUMN "id" DROP DEFAULT` line that follows — the seque
 
 ---
 
+## Seat-based billing — planned (not yet implemented)
+
+These decisions are made and should be followed when implementing seat billing.
+
+### Architecture
+
+| Concern | Owner |
+|---|---|
+| User login / sessions | Clerk |
+| Org identity (`clerkOrgId`) | Clerk → mapped to `companies.id` in the DB |
+| Who is a member of which org | Clerk |
+| How many seats a company is allowed | DB (`company_settings.max_seats`) |
+| Whether a seat is available before inviting | App code (checked before sending Clerk invite) |
+| Billing / subscription state | DB (synced from Stripe webhooks) |
+
+### Seat limit enforcement
+
+- Add `max_seats integer NOT NULL DEFAULT 1` to `company_settings`.
+- Before sending a Clerk org invite, query the Clerk Backend API for current member count and compare against `max_seats`. Reject with an upgrade prompt if at the limit.
+- Do **not** rely on Clerk's `max_allowed_memberships` setting to enforce limits — enforce in app code only. Set the Clerk dashboard default to a large number (e.g. 100) to stay out of the way.
+- Upgrading a plan = update `max_seats` in the DB. No Clerk API call needed.
+
+### Clerk → DB sync (webhooks)
+
+Add a webhook handler at `POST /api/webhooks/clerk`. Verify the payload with the `svix` library using `CLERK_WEBHOOK_SECRET`.
+
+Handle these events:
+- `organizationMembership.created` — a seat was consumed (can trigger usage tracking or emails)
+- `organizationMembership.deleted` — a seat was freed
+- `organization.deleted` — cascade-delete the company (or mark it inactive)
+
+Do not duplicate membership data in the DB — Clerk is the source of truth for who is in an org. The webhook is only for reacting to changes, not for storing a copy of the member list.
+
+### Plans
+
+- **Beginner**: 1 seat included.
+- Additional seats charged on top. Exact pricing TBD — implement when billing is added.
+
+---
+
 ## TypeScript
 
 - Always use strict TypeScript (`"strict": true` in tsconfig).
