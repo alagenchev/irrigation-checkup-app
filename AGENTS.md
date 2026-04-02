@@ -33,12 +33,13 @@ A multi-tenant SaaS field-service tool for irrigation inspection companies. Tech
    ```bash
    npm run test:migrate
    ```
-4. **If `lib/schema.ts` was modified**, apply the migration to the local database immediately so the local schema stays in sync:
+4. **If `lib/schema.ts` was modified**, apply the migration to the local database and verify it with the integration test suite before pushing:
    ```bash
    npx drizzle-kit generate          # generate the migration file
    DATABASE_URL=postgresql://localhost:5432/irrigation_test npx tsx scripts/migrate.ts  # apply locally
+   npm run test:db                   # must pass — confirms the schema and queries work end-to-end
    ```
-   Never leave the local DB behind the migration history — local and Railway must always run the same schema.
+   Never leave the local DB behind the migration history, and never push a migration that hasn't been tested locally.
 5. **Commit and push** all changes once build and tests pass:
    ```bash
    git add <relevant files>
@@ -209,6 +210,14 @@ DATABASE_URL=postgresql://localhost:5432/irrigation_test npx tsx scripts/migrate
 ```
 
 **Always apply the migration to the local DB immediately after generating it.** The local `irrigation_test` database and Railway must always run the same schema. Never leave them out of sync.
+
+**Test every migration and SQL change against the local instance before pushing.** After applying a migration locally, run the integration test suite to confirm the schema works correctly end-to-end:
+
+```bash
+npm run test:db   # integration tests against local Postgres — must pass before pushing
+```
+
+Never push a migration that has not been successfully applied and tested locally first. If a migration fails locally, fix it before pushing — Railway will run the same SQL and will also fail.
 
 Commit **all** of: `lib/schema.ts`, `lib/validators.ts`, `types/index.ts`, any affected actions, the new `drizzle/*.sql`, and `drizzle/meta/`. Partial commits cause production builds to fail while local builds pass.
 
@@ -495,10 +504,12 @@ await db.delete(users).where(eq(users.id, id))
   ```bash
   npx drizzle-kit generate
   ```
-- Apply migrations:
+- Apply the migration to the local database and verify it succeeds before pushing:
   ```bash
-  npx drizzle-kit migrate
+  DATABASE_URL=postgresql://localhost:5432/irrigation_test npx tsx scripts/migrate.ts
+  npm run test:db   # must pass — confirms schema + queries work correctly
   ```
+- **Never push a migration that has not been applied and tested locally.** If `npm run test:db` fails after applying a migration, fix the issue first.
 - Never edit files inside `drizzle/` manually — they are the migration history.
 - `drizzle.config.ts` lives at the project root and points to `lib/schema.ts`.
 
