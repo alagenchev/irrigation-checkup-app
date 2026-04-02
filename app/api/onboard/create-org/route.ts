@@ -25,13 +25,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { companyName } = bodySchema.parse(body)
 
+    // Get the Clerk client
+    const clerk = await clerkClient()
+
     // Create the organization
-    const org = await clerkClient.organizations.createOrganization({
+    const org = await clerk.organizations.createOrganization({
       name: companyName,
     })
 
     // Add the user to the organization as admin
-    await clerkClient.organizations.createOrganizationMembership({
+    await clerk.organizations.createOrganizationMembership({
       organizationId: org.id,
       userId,
       role: 'org:admin',

@@ -24,6 +24,10 @@ function formatAddress(addr: NominatimAddress): string {
   return [street, locality, addr.state, addr.postcode].filter(Boolean).join(', ')
 }
 
+// In-memory cache for geocoding results
+// Key: "lat,lon" → Value: array of formatted addresses
+const geocodeCache = new Map<string, string[]>()
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const lat = searchParams.get('lat')
@@ -31,6 +35,13 @@ export async function GET(req: NextRequest) {
 
   if (!lat || !lon) {
     return NextResponse.json({ error: 'lat and lon are required' }, { status: 400 })
+  }
+
+  const cacheKey = `${lat},${lon}`
+
+  // Return cached result if available
+  if (geocodeCache.has(cacheKey)) {
+    return NextResponse.json(geocodeCache.get(cacheKey))
   }
 
   const ua = 'IrrigationInspectionApp/1.0 (contact@example.com)'
@@ -54,6 +65,9 @@ export async function GET(req: NextRequest) {
       }
     }
   }
+
+  // Cache the result
+  geocodeCache.set(cacheKey, results)
 
   return NextResponse.json(results)
 }
