@@ -13,8 +13,7 @@ export const companies = pgTable('companies', {
 })
 
 export const companySettings = pgTable('company_settings', {
-  id:                  uuid('id').primaryKey().defaultRandom(),
-  companyId:           uuid('company_id').notNull().unique().references(() => companies.id, { onDelete: 'cascade' }),
+  companyId:           uuid('company_id').primaryKey().references(() => companies.id, { onDelete: 'cascade' }),
   companyName:         text('company_name').notNull().default(''),
   licenseNum:          text('license_num').notNull().default(''),
   companyAddress:      text('company_address').notNull().default(''),
