@@ -19,20 +19,40 @@ A multi-tenant SaaS field-service tool for irrigation inspection companies. Tech
 
 ---
 
+## Pre-commit Checklist (MANDATORY)
+
+**Before running `git commit` — every single time — run these in order:**
+
+```bash
+npm run build    # ← MUST pass; catches all TypeScript errors
+npm test         # ← MUST pass; catches test failures
+```
+
+If either fails, **STOP** — fix the error before committing. Do not commit broken code.
+
+**Why this is non-negotiable:** Local build is your last defense before code reaches production. TypeScript errors that pass locally but fail in CI/production waste hours of debugging. Always verify the build locally first.
+
+---
+
 ## After every code change
 
 1. **Run the build** to catch TypeScript and compilation errors:
    ```bash
    npm run build
    ```
+   This step is **mandatory**. It is the only way to catch type mismatches like optional fields, missing annotations, and schema divergence. Do not skip it.
+
 2. **Run unit tests** to catch regressions:
    ```bash
    npm test
    ```
+   Must pass before committing.
+
 3. **If `scripts/` was modified**, run the migration test to verify it executes without runtime errors:
    ```bash
    npm run test:migrate
    ```
+
 4. **If `lib/schema.ts` was modified**, apply the migration to the local database and verify it with the integration test suite before pushing:
    ```bash
    npx drizzle-kit generate          # generate the migration file
@@ -40,6 +60,7 @@ A multi-tenant SaaS field-service tool for irrigation inspection companies. Tech
    npm run test:db                   # must pass — confirms the schema and queries work end-to-end
    ```
    Never leave the local DB behind the migration history, and never push a migration that hasn't been tested locally.
+
 5. **Commit and push** all changes once build and tests pass:
    ```bash
    git add <relevant files>
