@@ -1,42 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-interface NominatimAddress {
-  house_number?: string
-  road?: string
-  suburb?: string
-  city?: string
-  town?: string
-  village?: string
-  county?: string
-  state?: string
-  postcode?: string
+interface MapboxFeature {
+  place_name: string
 }
 
-interface NominatimResult {
-  address?: NominatimAddress
-}
-
-function formatAddress(addr: NominatimAddress): string {
-  const street = addr.house_number && addr.road
-    ? `${addr.house_number} ${addr.road}`
-    : addr.road ?? ''
-  const locality = addr.city ?? addr.town ?? addr.village ?? addr.suburb ?? addr.county ?? ''
-  return [street, locality, addr.state, addr.postcode].filter(Boolean).join(', ')
+interface MapboxResponse {
+  features?: MapboxFeature[]
 }
 
 // In-memory cache for geocoding results
 // Key: "lat,lon" → Value: array of formatted addresses
 const geocodeCache = new Map<string, string[]>()
 
-async function fetchNominatim(url: string, ua: string): Promise<NominatimResult | null> {
+async function fetchMapbox(url: string): Promise<MapboxResponse | null> {
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': ua } })
+    const res = await fetch(url)
 
     // Check HTTP status
     if (!res.ok) {
       const status = res.status
       const text = await res.text()
-      console.error(`[geocode] Nominatim HTTP ${status}`, {
+      console.error(`[geocode] Mapbox HTTP ${status}`, {
         url,
         status,
         statusText: res.statusText,
@@ -48,11 +32,11 @@ async function fetchNominatim(url: string, ua: string): Promise<NominatimResult 
 
     // Parse JSON
     try {
-      const data = await res.json() as NominatimResult
+      const data = await res.json() as MapboxResponse
       return data
     } catch (parseErr) {
       const text = await res.text()
-      console.error('[geocode] Failed to parse Nominatim JSON response', {
+      console.error('[geocode] Failed to parse Mapbox JSON response', {
         url,
         parseError: parseErr instanceof Error ? parseErr.message : String(parseErr),
         responseLength: text.length,
@@ -62,7 +46,7 @@ async function fetchNominatim(url: string, ua: string): Promise<NominatimResult 
       return null
     }
   } catch (err) {
-    console.error('[geocode] Nominatim fetch failed', {
+    console.error('[geocode] Mapbox fetch failed', {
       url,
       error: err instanceof Error ? err.message : String(err),
     })
@@ -87,15 +71,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(geocodeCache.get(cacheKey))
     }
 
-    const ua = 'IrrigationInspectionApp/1.0 (contact@example.com)'
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lon}`
+    const token = process.env.MAPBOX_ACCESS_TOKEN
+    if (!token) {
+      console.error('[geocode] MAPBOX_ACCESS_TOKEN is not set')
+      return NextResponse.json(
+        { error: 'Geocoding service not configured' },
+        { status: 500 }
+      )
+    }
 
-    // Single request to Nominatim
-    const result = await fetchNominatim(url, ua)
+    // Mapbox reverse geocoding: {lon},{lat}
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${token}`
+
+    // Single request to Mapbox
+    const result = await fetchMapbox(url)
 
     // Handle failure
     if (!result) {
-      console.error('[geocode] Nominatim request failed', { lat, lon })
+      console.error('[geocode] Mapbox request failed', { lat, lon })
       return NextResponse.json(
         { error: 'Geocoding service unavailable' },
         { status: 503 }
@@ -103,10 +96,11 @@ export async function GET(req: NextRequest) {
     }
 
     const results: string[] = []
-    if (result.address) {
-      const formatted = formatAddress(result.address)
-      if (formatted) {
-        results.push(formatted)
+    if (result.features && result.features.length > 0) {
+      // Use the first (most relevant) result
+      const placeName = result.features[0].place_name
+      if (placeName) {
+        results.push(placeName)
       }
     }
 
