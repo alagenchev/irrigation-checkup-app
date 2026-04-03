@@ -8,6 +8,7 @@ import {
   type ZoneIssueData, type QuoteItemData, type ZonePhotoData,
 } from '@/lib/schema'
 import { getRequiredCompanyId } from '@/lib/tenant'
+import { r2PublicUrl } from '@/lib/r2'
 import type {
   IrrigationFormInitialData,
   ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData,
@@ -64,11 +65,15 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
     }
   })
 
-  // Zone photos from visit snapshot
+  // Zone photos from visit snapshot — convert keys to full URLs if needed
   const zonePhotoMap: Record<string, { url: string; annotation: string }[]> = {}
   if (visit.zonePhotos) {
     for (const zp of visit.zonePhotos as ZonePhotoData[]) {
-      zonePhotoMap[zp.zoneNum] = zp.photos
+      zonePhotoMap[zp.zoneNum] = zp.photos.map(photo => ({
+        ...photo,
+        // If URL is just a key (no http), convert to full public URL
+        url: photo.url.startsWith('http') ? photo.url : (r2PublicUrl(photo.url) || photo.url),
+      }))
     }
   }
 

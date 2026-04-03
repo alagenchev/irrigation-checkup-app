@@ -906,14 +906,6 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                               ))}
                             </div>
                           )}
-
-                          {(photoThumbs[zn.id]?.length ?? 0) > 0 && (
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(48px, 1fr))',gap:4,marginTop:8}}>
-                              {photoThumbs[zn.id]?.map((thumb, idx) => (
-                                <img key={idx} src={thumb} alt={`Thumbnail ${idx + 1}`} style={{width:'100%',height:48,objectFit:'cover',borderRadius:4,border:'1px solid #e5e7eb',opacity:0.6}} />
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </td>
