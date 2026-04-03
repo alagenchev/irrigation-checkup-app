@@ -70,7 +70,19 @@ If either fails, **STOP** — fix the error before committing. Do not commit bro
 
 All must pass before committing. Always commit and push — never leave implemented work uncommitted.
 
-**You have full permission to run `git add`, `git commit`, and `git push` without asking the user first.** Do not ask for confirmation before committing or pushing.
+### Workflow: Plan → Approve → Implement → Review → Commit
+
+**This is the required workflow for all feature changes:**
+
+1. **User gives a command** (e.g., "add photo annotations to the form")
+2. **You provide an overview** — describe what files you'll change, what the changes do, and why (2-3 bullet points max)
+3. **Wait for explicit approval** — user must say "yes", "proceed", "approved", etc. Do not proceed without this.
+4. **Implement the changes** locally
+5. **User reviews locally** — user tests the changes on their machine, sees the results
+6. **Wait for commit permission** — user says "commit and push" or similar. Do not commit/push without explicit permission.
+7. **Commit and push** once approved
+
+**Do not commit or push without explicit user permission.** Always wait for step 6 before running `git commit` and `git push`.
 
 ### Critical: always check for unstaged changes before finishing
 
