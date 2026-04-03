@@ -26,7 +26,7 @@ export type ControllerFormData = {
 export type ZoneFormData = {
   id: number; zoneNum: string; controller: string; description: string
   landscapeTypes: string[]; irrigationTypes: string[]; notes: string
-  photoUrls: string[]
+  photoData: { url: string; annotation: string }[]
 }
 
 export type BackflowFormData = {

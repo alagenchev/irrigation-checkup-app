@@ -112,7 +112,7 @@ export const siteBackflows = pgTable('site_backflows', {
 
 export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string }
 export type ZoneIssueData = { zoneNum: string; issues: string[] }
-export type ZonePhotoData = { zoneNum: string; urls: string[] }
+export type ZonePhotoData = { zoneNum: string; photos: { url: string; annotation?: string }[] }
 
 // ── site_visits ───────────────────────────────────────────────────────────
 

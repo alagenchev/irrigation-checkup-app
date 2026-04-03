@@ -65,10 +65,10 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
   })
 
   // Zone photos from visit snapshot
-  const zonePhotoMap: Record<string, string[]> = {}
+  const zonePhotoMap: Record<string, { url: string; annotation: string }[]> = {}
   if (visit.zonePhotos) {
     for (const zp of visit.zonePhotos as ZonePhotoData[]) {
-      zonePhotoMap[zp.zoneNum] = zp.urls
+      zonePhotoMap[zp.zoneNum] = zp.photos
     }
   }
 
@@ -80,7 +80,7 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
     landscapeTypes:  z.landscapeTypes  ?? [],
     irrigationTypes: z.irrigationTypes ?? [],
     notes:           z.notes           ?? '',
-    photoUrls:       zonePhotoMap[z.zoneNum] ?? [],
+    photoData:       zonePhotoMap[z.zoneNum] ?? [],
   }))
 
   const backflows: BackflowFormData[] = dbBackflows.map(bf => ({

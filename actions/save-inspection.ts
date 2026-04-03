@@ -99,8 +99,8 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
     }))
 
     const zonePhotos: ZonePhotoData[] = data.zones
-      .filter(z => z.photoUrls.length > 0)
-      .map(z => ({ zoneNum: z.zoneNum, urls: z.photoUrls }))
+      .filter(z => z.photoData.length > 0)
+      .map(z => ({ zoneNum: z.zoneNum, photos: z.photoData }))
 
     const quoteItems: QuoteItemData[] = data.quoteItems.map(qi => ({
       id: qi.id, location: qi.location, item: qi.item,

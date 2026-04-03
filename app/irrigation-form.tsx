@@ -68,8 +68,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   )
   const [zones, setZones] = useState<Zone[]>(() =>
     initialData?.zones ?? [
-      { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoUrls: [] },
-      { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoUrls: [] },
+      { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+      { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
     ]
   )
   const [backflows, setBackflows]   = useState<Backflow[]>(() => initialData?.backflows ?? [])
@@ -133,13 +133,21 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
 
   function addZone() {
     const num = String(zones.length + 1)
-    setZones(z => [...z, { id: uid(), zoneNum: num, controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoUrls: [] }])
+    setZones(z => [...z, { id: uid(), zoneNum: num, controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] }])
   }
   function updateZone(id: number, key: keyof Zone, value: string | string[]) {
     setZones(z => z.map(zn => zn.id === id ? { ...zn, [key]: value } : zn))
   }
   function addZonePhotoUrl(id: number, url: string) {
-    setZones(zns => zns.map(zn => zn.id === id ? { ...zn, photoUrls: [...zn.photoUrls, url] } : zn))
+    setZones(zns => zns.map(zn => zn.id === id ? { ...zn, photoData: [...zn.photoData, { url, annotation: '' }] } : zn))
+  }
+
+  function updateZonePhotoAnnotation(zoneId: number, photoIdx: number, annotation: string) {
+    setZones(zns => zns.map(zn =>
+      zn.id === zoneId
+        ? { ...zn, photoData: zn.photoData.map((p, i) => i === photoIdx ? { ...p, annotation } : p) }
+        : zn
+    ))
   }
   function removeZone(id: number) {
     setZones(z => z.filter(zn => zn.id !== id))
@@ -285,7 +293,10 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
     fd.append('inspectorName', selectedInspector ? `${selectedInspector.firstName} ${selectedInspector.lastName}` : '')
     fd.append('inspectorLicenseNum', selectedInspector?.licenseNum ?? '')
     fd.append('controllers', JSON.stringify(controllers))
-    fd.append('zones',       JSON.stringify(zones))
+    fd.append('zones',       JSON.stringify(zones.map(z => ({
+      ...z,
+      zonePhotos: { zoneNum: z.zoneNum, photos: z.photoData }
+    }))))
     fd.append('backflows',   JSON.stringify(backflows))
     fd.append('zoneIssues',  JSON.stringify(
       zones.map(z => ({ zoneNum: z.zoneNum, issues: zoneIssues[z.zoneNum] || [] }))
@@ -770,13 +781,17 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                   </tr>
                   <tr>
                     <td colSpan={5} style={{paddingTop:4,paddingBottom:12,borderBottom:'2px solid #e4e4e7'}}>
-                      <div style={{display:'flex',gap:16}}>
-                        <div style={{flex:1}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                        {/* NOTES BOX */}
+                        <div>
                           <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Notes</div>
                           <textarea rows={2} value={zn.notes} onChange={e => updateZone(zn.id, 'notes', e.target.value)} placeholder="Notes..." style={{width:'100%'}} disabled={mode === 'readonly'} />
                         </div>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos</div>
+
+                        {/* PHOTOS SECTION */}
+                        <div>
+                          <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos ({zn.photoData.length}/30)</div>
+
                           {mode !== 'readonly' && (
                             <>
                               <input type="file" accept="image/*" multiple style={{display:'none'}}
@@ -784,6 +799,10 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                 onChange={async e => {
                                   const files = Array.from(e.target.files ?? [])
                                   for (const file of files) {
+                                    if (zn.photoData.length >= 30) {
+                                      setPhotoErrors(p => ({...p, [zn.id]: 'Maximum 30 photos per zone reached'}))
+                                      return
+                                    }
                                     setPhotoUploading(p => ({...p, [zn.id]: true}))
                                     setPhotoErrors(p => ({...p, [zn.id]: ''}))
 
@@ -818,6 +837,11 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                   const file = e.target.files?.[0]
                                   if (!file) return
 
+                                  if (zn.photoData.length >= 30) {
+                                    setPhotoErrors(p => ({...p, [zn.id]: 'Maximum 30 photos per zone reached'}))
+                                    return
+                                  }
+
                                   setPhotoUploading(p => ({...p, [zn.id]: true}))
                                   setPhotoErrors(p => ({...p, [zn.id]: ''}))
 
@@ -845,28 +869,49 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                   e.target.value = ''
                                 }}
                               />
-                              <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()} disabled={photoUploading[zn.id]}>Upload</button>
-                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()} disabled={photoUploading[zn.id]}>📷 Capture</button>
+                              <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()} disabled={photoUploading[zn.id] || zn.photoData.length >= 30}>Upload</button>
+                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()} disabled={photoUploading[zn.id] || zn.photoData.length >= 30}>📷 Capture</button>
                                 {photoUploading[zn.id] && <span style={{fontSize:12,color:'#3b82f6'}}>⏳ Uploading...</span>}
                               </div>
                             </>
                           )}
+
                           {photoErrors[zn.id] && (
-                            <div style={{fontSize:11,color:'#ef4444',marginTop:4,padding:4,backgroundColor:'#fee2e2',borderRadius:4}}>
+                            <div style={{fontSize:11,color:'#ef4444',marginBottom:8,padding:8,backgroundColor:'#fee2e2',borderRadius:4}}>
                               ❌ {photoErrors[zn.id]}
                             </div>
                           )}
-                          {(photoThumbs[zn.id]?.length ?? 0) > 0 && (
-                            <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:6}}>
-                              {photoThumbs[zn.id]?.map((thumb, idx) => (
-                                <img key={idx} src={thumb} alt={`Thumbnail ${idx + 1}`} style={{width:48,height:48,objectFit:'cover',borderRadius:4,border:'1px solid #e5e7eb'}} />
+
+                          {/* RESPONSIVE PHOTO GRID WITH ANNOTATIONS */}
+                          {zn.photoData.length > 0 && (
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))',gap:8}}>
+                              {zn.photoData.map((photo, idx) => (
+                                <div key={idx} style={{display:'flex',flexDirection:'column',gap:4}}>
+                                  <img src={photo.url} alt={`Photo ${idx + 1}`} style={{width:'100%',height:120,objectFit:'cover',borderRadius:4,border:'1px solid #e5e7eb',backgroundColor:'#f5f5f5'}} />
+                                  {mode !== 'readonly' && (
+                                    <input
+                                      type="text"
+                                      placeholder="Annotation..."
+                                      value={photo.annotation}
+                                      onChange={e => updateZonePhotoAnnotation(zn.id, idx, e.target.value)}
+                                      maxLength={100}
+                                      style={{fontSize:11,padding:4,borderRadius:3,border:'1px solid #d4d4d8',width:'100%',boxSizing:'border-box'}}
+                                    />
+                                  )}
+                                  {mode === 'readonly' && photo.annotation && (
+                                    <div style={{fontSize:11,color:'#71717a',padding:4}}>{photo.annotation}</div>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           )}
-                          {zn.photoUrls.length > 0 && (
-                            <div style={{fontSize:11,color:'#a1a1aa',marginTop:4}}>
-                              ✓ {zn.photoUrls.length} photo{zn.photoUrls.length !== 1 ? 's' : ''} uploaded
+
+                          {(photoThumbs[zn.id]?.length ?? 0) > 0 && (
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(48px, 1fr))',gap:4,marginTop:8}}>
+                              {photoThumbs[zn.id]?.map((thumb, idx) => (
+                                <img key={idx} src={thumb} alt={`Thumbnail ${idx + 1}`} style={{width:'100%',height:48,objectFit:'cover',borderRadius:4,border:'1px solid #e5e7eb',opacity:0.6}} />
+                              ))}
                             </div>
                           )}
                         </div>

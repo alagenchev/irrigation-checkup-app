@@ -126,7 +126,7 @@ const zoneRow = z.object({
   id: z.number(), zoneNum: z.string(), controller: z.string(),
   description: z.string(), landscapeTypes: z.array(z.string()),
   irrigationTypes: z.array(z.string()), notes: z.string(),
-  photoUrls: z.array(z.string()),
+  photoData: z.array(z.object({ url: z.string(), annotation: z.string() })),
 })
 const backflowRow = z.object({
   id: z.number(), manufacturer: z.string(), type: z.string(),
