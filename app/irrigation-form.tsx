@@ -818,7 +818,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                       fd.append('zoneNum', zn.zoneNum)
                                       const res = await uploadZonePhoto(fd)
                                       if (res.ok) {
-                                        addZonePhotoUrl(zn.id, res.data.key)
+                                        addZonePhotoUrl(zn.id, res.data.publicUrl || res.data.key)
                                       } else {
                                         setPhotoErrors(p => ({...p, [zn.id]: res.error || 'Upload failed'}))
                                       }
@@ -857,7 +857,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                                     fd.append('zoneNum', zn.zoneNum)
                                     const res = await uploadZonePhoto(fd)
                                     if (res.ok) {
-                                      addZonePhotoUrl(zn.id, res.data.key)
+                                      addZonePhotoUrl(zn.id, res.data.publicUrl || res.data.key)
                                     } else {
                                       setPhotoErrors(p => ({...p, [zn.id]: res.error || 'Upload failed'}))
                                     }
