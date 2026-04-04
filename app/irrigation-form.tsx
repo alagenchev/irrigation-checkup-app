@@ -538,10 +538,12 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <div className="field">
               <label>Site Address</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                {mode === 'readonly'
-                  ? <input type="text" value={form.siteAddress} readOnly disabled style={{ flex: 1 }} />
-                  : <AddressAutocomplete name="siteAddress" value={form.siteAddress} onChange={v => setField('siteAddress', v)} placeholder="123 Main St, City, TX" />
-                }
+                <div style={{ flex: 1 }}>
+                  {mode === 'readonly'
+                    ? <input type="text" value={form.siteAddress} readOnly disabled style={{ width: '100%' }} />
+                    : <AddressAutocomplete name="siteAddress" value={form.siteAddress} onChange={v => setField('siteAddress', v)} placeholder="123 Main St, City, TX" />
+                  }
+                </div>
                 {mode !== 'readonly' && (
                 <button type="button" className="btn btn-sm" onClick={handleGetLocation} disabled={geoLoading} title="Use current location" style={{ flexShrink: 0 }}>
                   {geoLoading ? '…' : '📍'}
