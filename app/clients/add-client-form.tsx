@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { createClient } from '@/actions/clients'
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import type { ActionResult, Client } from '@/types'
 
 const ACCOUNT_TYPES = ['Commercial', 'Residential', 'HOA', 'Municipal']
@@ -11,6 +12,7 @@ export function AddClientForm() {
     createClient,
     null,
   )
+  const [address, setAddress] = useState('')
 
   return (
     <form action={formAction}>
@@ -28,8 +30,13 @@ export function AddClientForm() {
           <input type="email" name="email" placeholder="client@email.com" />
         </div>
         <div className="field">
-          <label>Address</label>
-          <input type="text" name="address" placeholder="123 Main St, City, TX" />
+          <AddressAutocomplete
+            name="address"
+            value={address}
+            onChange={setAddress}
+            label="Address"
+            placeholder="123 Main St, City, TX"
+          />
         </div>
         <div className="field">
           <label>Account Type</label>

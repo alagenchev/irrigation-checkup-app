@@ -142,6 +142,7 @@ export const saveInspectionSchema = z.object({
   siteAddress:   z.string().optional(),
   clientName:    z.string().optional(),
   clientAddress: z.string().optional(),
+  clientEmail:   z.string().email().optional(),
   inspectorId: z.string().uuid().nullable().optional(),
 
   datePerformed:   isoDate,

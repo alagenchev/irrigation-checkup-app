@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { createSite } from '@/actions/sites'
 import { Autocomplete } from '@/components/ui/autocomplete'
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import type { ActionResult, Client, Site } from '@/types'
 
 interface AddSiteFormProps {
@@ -16,6 +17,7 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
   )
 
   const [clientName, setClientName] = useState('')
+  const [address, setAddress] = useState('')
 
   const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
 
@@ -27,8 +29,13 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
           <input type="text" name="name" placeholder="e.g. Acme HQ – Building A" required />
         </div>
         <div className="field">
-          <label>Address</label>
-          <input type="text" name="address" placeholder="123 Main St, City, TX" />
+          <AddressAutocomplete
+            name="address"
+            value={address}
+            onChange={setAddress}
+            label="Address"
+            placeholder="123 Main St, City, TX"
+          />
         </div>
         <div className="field">
           <Autocomplete

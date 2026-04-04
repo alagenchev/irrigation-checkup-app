@@ -41,9 +41,10 @@ export async function createClient(_prev: ActionResult<Client> | null, formData:
 
 /**
  * Finds a client by name within the current company or creates one if no match exists.
- * Used when generating an inspection PDF to persist new customer names.
+ * If email is provided and differs from the existing client, updates it.
+ * Used when generating an inspection PDF to persist new customer names and update contact info.
  */
-export async function ensureClientExists(name: string, address?: string): Promise<Client> {
+export async function ensureClientExists(name: string, address?: string, email?: string): Promise<Client> {
   const companyId = await getRequiredCompanyId()
 
   const existing = await db
@@ -52,12 +53,57 @@ export async function ensureClientExists(name: string, address?: string): Promis
     .where(and(eq(clients.companyId, companyId), eq(clients.name, name)))
     .limit(1)
 
-  if (existing.length > 0) return existing[0]
+  if (existing.length > 0) {
+    const client = existing[0]
+    // If email is provided and differs from existing, update it
+    if (email && email !== client.email) {
+      const [updated] = await db
+        .update(clients)
+        .set({ email })
+        .where(eq(clients.id, client.id))
+        .returning()
+      revalidatePath('/clients')
+      return updated
+    }
+    return client
+  }
 
   const [created] = await db
     .insert(clients)
-    .values({ companyId, name, address: address || null })
+    .values({ companyId, name, address: address || null, email: email || null })
     .returning()
   revalidatePath('/clients')
   return created
+}
+
+/**
+ * Updates a client's fields. Only updates fields that are explicitly provided.
+ * Used for inline editing on the clients list page.
+ */
+export async function updateClient(id: string, input: {
+  name?: string
+  address?: string
+  email?: string
+  phone?: string
+  accountType?: string
+  accountNumber?: string
+}): Promise<ActionResult<Client>> {
+  const companyId = await getRequiredCompanyId()
+
+  const [row] = await db
+    .update(clients)
+    .set({
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.address !== undefined && { address: input.address || null }),
+      ...(input.email !== undefined && { email: input.email || null }),
+      ...(input.phone !== undefined && { phone: input.phone || null }),
+      ...(input.accountType !== undefined && { accountType: input.accountType || null }),
+      ...(input.accountNumber !== undefined && { accountNumber: input.accountNumber || null }),
+    })
+    .where(and(eq(clients.companyId, companyId), eq(clients.id, id)))
+    .returning()
+
+  if (!row) return { ok: false, error: 'Client not found' }
+  revalidatePath('/clients')
+  return { ok: true, data: row }
 }

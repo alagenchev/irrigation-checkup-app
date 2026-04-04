@@ -122,6 +122,7 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
     form: {
       clientName:          client?.name          ?? '',
       clientAddress:       client?.address       ?? '',
+      clientEmail:         client?.email         ?? '',
       siteName:            site.name,
       siteAddress:         site.address          ?? '',
       datePerformed:       visit.datePerformed,

@@ -38,7 +38,7 @@ export type QuoteItemFormData = {
 }
 
 export type IrrigationFormFieldValues = {
-  clientName: string; clientAddress: string; siteName: string; siteAddress: string
+  clientName: string; clientAddress: string; clientEmail: string; siteName: string; siteAddress: string
   datePerformed: string; inspectionType: string; accountType: string
   accountNumber: string; status: string; dueDate: string; inspectorId: string
   repairEstimate: string; inspectionNotes: string; internalNotes: string

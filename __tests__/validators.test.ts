@@ -302,7 +302,7 @@ describe('saveInspectionSchema', () => {
   test('accepts full input with all optional fields', () => {
     const r = saveInspectionSchema.safeParse({
       ...VALID,
-      clientName: 'Acme Corp', clientAddress: '1 Main St',
+      clientName: 'Acme Corp', clientAddress: '1 Main St', clientEmail: 'contact@acme.com',
       inspectorId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       inspectionType: 'Start-up', accountType: 'Commercial', accountNumber: 'A1',
       status: 'In Progress', dueDate: '2025-07-01', repairEstimate: '350.00',

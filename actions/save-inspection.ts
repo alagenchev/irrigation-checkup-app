@@ -31,7 +31,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
 
   let clientId: string | null = null
   if (data.clientName?.trim()) {
-    const client = await ensureClientExists(data.clientName.trim(), data.clientAddress?.trim() ?? undefined)
+    const client = await ensureClientExists(data.clientName.trim(), data.clientAddress?.trim() ?? undefined, data.clientEmail?.trim() ?? undefined)
     clientId = client.id
   }
 

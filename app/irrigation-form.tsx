@@ -53,7 +53,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const isDetailPage = initialData !== undefined
 
   const [form, setForm] = useState(() => initialData?.form ?? {
-    clientName: '', clientAddress: '', siteName: '', siteAddress: '',
+    clientName: '', clientAddress: '', clientEmail: '', siteName: '', siteAddress: '',
     datePerformed: today(), inspectionType: 'Repair Inspection', accountType: 'Commercial',
     accountNumber: '', status: 'New', dueDate: today(), inspectorId: '',
     repairEstimate: '', inspectionNotes: '', internalNotes: '',
@@ -100,7 +100,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
 
-  const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
+  const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined, email: c.email ?? undefined }))
   const siteOptions = sites.map(s => ({
     label:         s.name,
     address:       s.address       ?? undefined,
@@ -245,6 +245,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
         siteAddress:   form.siteAddress.trim()  || undefined,
         clientName:    form.clientName.trim()   || undefined,
         clientAddress: form.clientAddress.trim() || undefined,
+        clientEmail:   form.clientEmail.trim()   || undefined,
         inspectorId:   form.inspectorId || undefined,
 
         datePerformed:   form.datePerformed,
@@ -337,7 +338,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   async function generatePDF() {
     setLoading(true)
     try {
-      if (form.clientName.trim()) await ensureClientExists(form.clientName.trim(), form.clientAddress.trim() || undefined)
+      if (form.clientName.trim()) await ensureClientExists(form.clientName.trim(), form.clientAddress.trim() || undefined, form.clientEmail.trim() || undefined)
 
       const res = await fetch('/api/generate-pdf', { method: 'POST', body: buildReportFormData() })
       if (!res.ok) throw new Error((await res.json()).error || 'Failed')
@@ -493,6 +494,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                 onSelect={opt => {
                   setField('clientName', opt.label)
                   if (opt.address) setField('clientAddress', opt.address)
+                  if (opt.email) setField('clientEmail', opt.email)
                 }}
                 options={clientOptions}
                 placeholder="Type or select a client"
@@ -502,6 +504,10 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <div className="field">
               <label>Client Address</label>
               <input type="text" value={form.clientAddress} onChange={e => setField('clientAddress', e.target.value)} disabled={mode === 'readonly'} />
+            </div>
+            <div className="field">
+              <label>Client Email</label>
+              <input type="email" value={form.clientEmail} onChange={e => setField('clientEmail', e.target.value)} placeholder="email@example.com" disabled={mode === 'readonly'} />
             </div>
             <div className="field">
               <label>
