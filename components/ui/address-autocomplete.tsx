@@ -58,6 +58,13 @@ export function AddressAutocomplete({
     setActiveIdx(-1)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (newValue.length < 3) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(newValue)
     }, 300)
@@ -116,6 +123,7 @@ export function AddressAutocomplete({
         }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKeyDown}
+        style={{ width: '100%', boxSizing: 'border-box' }}
       />
       {!disabled && open && suggestions.length > 0 && (
         <ul

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
 import { uploadZonePhoto } from '@/actions/upload'
@@ -503,7 +504,10 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             </div>
             <div className="field">
               <label>Client Address</label>
-              <input type="text" value={form.clientAddress} onChange={e => setField('clientAddress', e.target.value)} disabled={mode === 'readonly'} />
+              {mode === 'readonly'
+                ? <input type="text" value={form.clientAddress} readOnly disabled />
+                : <AddressAutocomplete name="clientAddress" value={form.clientAddress} onChange={v => setField('clientAddress', v)} placeholder="123 Main St, City, TX" />
+              }
             </div>
             <div className="field">
               <label>Client Email</label>
@@ -534,7 +538,10 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <div className="field">
               <label>Site Address</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input type="text" value={form.siteAddress} onChange={e => setField('siteAddress', e.target.value)} style={{ flex: 1 }} disabled={mode === 'readonly'} />
+                {mode === 'readonly'
+                  ? <input type="text" value={form.siteAddress} readOnly disabled style={{ flex: 1 }} />
+                  : <AddressAutocomplete name="siteAddress" value={form.siteAddress} onChange={v => setField('siteAddress', v)} placeholder="123 Main St, City, TX" />
+                }
                 {mode !== 'readonly' && (
                 <button type="button" className="btn btn-sm" onClick={handleGetLocation} disabled={geoLoading} title="Use current location" style={{ flexShrink: 0 }}>
                   {geoLoading ? '…' : '📍'}
