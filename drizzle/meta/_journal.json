@@ -85,6 +85,27 @@
       "when": 1775173162173,
       "tag": "0011_cute_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775345891417,
+      "tag": "0012_slow_wraith",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775345892000,
+      "tag": "0013_seed_account_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775345893000,
+      "tag": "0014_rename_account_types",
+      "breakpoints": true
     }
   ]
 }

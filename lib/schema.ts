@@ -25,6 +25,15 @@ export const companySettings = pgTable('company_settings', {
   updatedAt:           timestamp('updated_at', { withTimezone: true }).defaultNow().$onUpdateFn(() => new Date()),
 })
 
+export const customerAccountTypes = pgTable('customer_account_types', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  type:      text('type').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => [
+  unique('customer_account_types_company_type_uniq').on(table.companyId, table.type),
+])
+
 export const clients = pgTable('clients', {
   id:            uuid('id').primaryKey().defaultRandom(),
   companyId:     uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -163,6 +172,9 @@ export type NewCompany      = typeof companies.$inferInsert
 
 export type CompanySettings    = typeof companySettings.$inferSelect
 export type NewCompanySettings = typeof companySettings.$inferInsert
+
+export type CustomerAccountType    = typeof customerAccountTypes.$inferSelect
+export type NewCustomerAccountType = typeof customerAccountTypes.$inferInsert
 
 export type Client       = typeof clients.$inferSelect
 export type NewClient    = typeof clients.$inferInsert

@@ -2,10 +2,13 @@
 
 import { useState } from 'react'
 import { updateClient } from '@/actions/clients'
-import type { Client } from '@/types'
+import { findOrCreateCustomerAccountType } from '@/actions/customer-account-types'
+import { Autocomplete } from '@/components/ui/autocomplete'
+import type { Client, CustomerAccountType, AutocompleteOption } from '@/types'
 
 interface ClientsTableProps {
   clients: Client[]
+  customerAccountTypes: CustomerAccountType[]
 }
 
 const EDIT_FIELDS: [keyof Client, string][] = [
@@ -17,7 +20,7 @@ const EDIT_FIELDS: [keyof Client, string][] = [
   ['accountNumber', 'Account #'],
 ]
 
-export function ClientsTable({ clients }: ClientsTableProps) {
+export function ClientsTable({ clients, customerAccountTypes }: ClientsTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<Client>>({})
   const [saving, setSaving] = useState(false)
@@ -40,12 +43,22 @@ export function ClientsTable({ clients }: ClientsTableProps) {
     setSaving(true)
     setError(null)
     try {
+      let accountType = editValues.accountType ? (editValues.accountType as string).trim() : undefined
+
+      // If user entered an account type, ensure it exists in the database
+      if (accountType) {
+        const existingType = customerAccountTypes.find(at => at.type === accountType)
+        if (!existingType) {
+          await findOrCreateCustomerAccountType(accountType)
+        }
+      }
+
       const result = await updateClient(id, {
         name:          editValues.name,
         address:       editValues.address       || undefined,
         email:         editValues.email         || undefined,
         phone:         editValues.phone         || undefined,
-        accountType:   editValues.accountType   || undefined,
+        accountType:   accountType || undefined,
         accountNumber: editValues.accountNumber || undefined,
       })
       if (result.ok) {
@@ -53,6 +66,8 @@ export function ClientsTable({ clients }: ClientsTableProps) {
       } else {
         setError(result.error)
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save client')
     } finally {
       setSaving(false)
     }
@@ -81,11 +96,21 @@ export function ClientsTable({ clients }: ClientsTableProps) {
             <tr key={c.id}>
               {EDIT_FIELDS.map(([field]) => (
                 <td key={field as string}>
-                  <input
-                    value={(editValues[field] as string) ?? ''}
-                    onChange={e => setEditValues(v => ({ ...v, [field]: e.target.value }))}
-                    style={{ width: '100%' }}
-                  />
+                  {field === 'accountType' ? (
+                    <Autocomplete
+                      name="accountType"
+                      value={(editValues.accountType as string) ?? ''}
+                      onChange={value => setEditValues(v => ({ ...v, accountType: value }))}
+                      options={customerAccountTypes.map(at => ({ label: at.type }))}
+                      placeholder="Select or type account type"
+                    />
+                  ) : (
+                    <input
+                      value={(editValues[field] as string) ?? ''}
+                      onChange={e => setEditValues(v => ({ ...v, [field]: e.target.value }))}
+                      style={{ width: '100%' }}
+                    />
+                  )}
                 </td>
               ))}
               <td style={{ whiteSpace: 'nowrap' }}>

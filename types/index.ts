@@ -3,6 +3,7 @@ export type {
   Client, NewClient,
   Site, NewSite,
   CompanySettings, NewCompanySettings,
+  CustomerAccountType, NewCustomerAccountType,
   Technician, NewTechnician,
   Inspector, NewInspector,
   SiteController, NewSiteController,
@@ -11,6 +12,8 @@ export type {
   SiteVisit, NewSiteVisit,
   QuoteItemData, ZoneIssueData, ZonePhotoData,
 } from '@/lib/schema'
+
+export type { AutocompleteOption } from '@/components/ui/autocomplete'
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
