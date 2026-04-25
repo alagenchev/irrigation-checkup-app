@@ -1,5 +1,4 @@
 .env*.local
-.claude
 .env.test.example
 .env.local.example
 .next/
