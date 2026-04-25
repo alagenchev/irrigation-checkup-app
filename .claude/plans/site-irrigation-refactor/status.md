@@ -12,8 +12,16 @@
 - **Branch**: (no discrete branch — coordination task)
 - **Notes**: Verify integration checklist, resolve blockers, ensure no regressions
 
+### Code Review Phase (Integration Review)
+- **Status**: pending (waiting for all 3 subtasks' coding complete)
+- **Owner**: (unassigned — Code Review Agent, fresh session)
+- **Started**: —
+- **Review Cycle**: — of 3
+- **CODE_REVIEW.md**: (created during phase)
+- **Notes**: Reviews integration points across all 3 subtasks
+
 ### Unit Tests Phase (Integration Tests)
-- **Status**: pending (waiting for all 3 subtasks' coding+unit-tests complete)
+- **Status**: pending (waiting for code review approved)
 - **Owner**: (unassigned)
 - **Started**: —
 - **Expected Completion**: —

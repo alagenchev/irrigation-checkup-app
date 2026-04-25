@@ -2,7 +2,7 @@
 
 **UUID**: `f47ac10b-58cc-4372-a567-0e02b2c3d479`  
 **Task**: Create site selector component for inspection form  
-**Orchestrator**: Claude (Haiku 4.5)
+**Orchestrator**: Claude (Sonnet 4.6)
 
 ---
 
@@ -11,9 +11,10 @@
 | Phase | Status | Owner | Coverage | Notes |
 |-------|--------|-------|----------|-------|
 | Coding | pending | — | — | Implementation of SiteSelector component |
+| Code Review | pending | — | — | Independent review, fresh session |
 | Unit Tests | pending | — | — | Must achieve ≥90% coverage |
 | UI Tests | pending | — | — | Playwright E2E tests |
-| QA | pending | — | — | Local verification & sign-off |
+| QA | pending | — | — | Automated verification & sign-off |
 
 ---
 
@@ -40,8 +41,28 @@
 
 ---
 
-### PHASE 2: Unit Tests
+### PHASE 1.5: Code Review
 - **Status**: `pending` ⏳ (waiting for Coding phase complete)
+- **Owner**: (unassigned — Code Review Agent, fresh session each cycle)
+- **Started**: —
+- **Completed**: —
+- **Review Cycle**: — of 3
+- **Model**: sonnet (always)
+- **CODE_REVIEW.md**: `.claude/plans/site-selector-ui/CODE_REVIEW.md`
+- **Success criteria**:
+  - [ ] All AGENTS.md conventions verified
+  - [ ] Multi-tenancy confirmed
+  - [ ] No TypeScript `any` types
+  - [ ] Security review clean
+  - [ ] No blockers or major issues
+
+**Progress notes**:
+(Code Review Agent writes findings here)
+
+---
+
+### PHASE 2: Unit Tests
+- **Status**: `pending` ⏳ (waiting for Code Review approved)
 - **Owner**: (unassigned — waiting for Testing Agent)
 - **Started**: —
 - **Completed**: —
@@ -87,8 +108,7 @@
   - [ ] All branches merged to main
   - [ ] `npm run build` passes
   - [ ] `npm test` passes
-  - [ ] `npm run test:e2e` passes
-  - [ ] Dev server ready: `npm run dev`
+  - [ ] `npx playwright test` passes
 - **QA report location**: `QA_REPORT.md` (created during phase)
 
 **Progress notes**:
@@ -116,7 +136,7 @@
 
 **2026-04-25 14:00**: Task created by orchestrator. Waiting for user to start workflow.
 
-(Agent status updates logged here periodically, every 15-30 minutes)
+(Agent status updates logged here periodically, every 15 minutes)
 
 ---
 
@@ -157,11 +177,12 @@ site-selector-ui (f47ac10b-...): Complete implementation
 - Playwright E2E tests
 - QA verification passed
 
-Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+(Use whichever model is running the orchestrator at commit time)
 ```
 
 ---
 
 **Last Updated**: 2026-04-25 (task created)  
-**Status Check Frequency**: Every 15-30 minutes during active work  
+**Status Check Frequency**: Every 15 minutes during active work  
 **Session Protection**: All status saved to prevent token/battery loss

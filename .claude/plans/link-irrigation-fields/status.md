@@ -12,8 +12,16 @@
 - **Branch**: `feature/link-irrigation-fields-coding`
 - **Notes**: Create getSiteEquipment server action, update IrrigationForm for conditional rendering
 
-### Unit Tests Phase
+### Code Review Phase
 - **Status**: pending (waiting for coding complete)
+- **Owner**: (unassigned — Code Review Agent, fresh session)
+- **Started**: —
+- **Review Cycle**: — of 3
+- **CODE_REVIEW.md**: (created during phase)
+- **Notes**: Independent review against AGENTS.md and task spec
+
+### Unit Tests Phase
+- **Status**: pending (waiting for code review approved)
 - **Owner**: (unassigned)
 - **Started**: —
 - **Expected Completion**: —
