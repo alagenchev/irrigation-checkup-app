@@ -11,8 +11,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClerkProvider>
           <header className="top-nav">
             <div className="nav-left">
-              <Link href="/" className="nav-brand">💧 Irrigation Inspection</Link>
               <nav>
+                <Link href="/">New Inspection</Link>
                 <Link href="/clients">Clients</Link>
                 <Link href="/sites">Sites</Link>
                 <Link href="/inspections">Inspections</Link>
