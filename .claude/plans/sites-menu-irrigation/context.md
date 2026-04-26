@@ -62,10 +62,16 @@
 - `site-equipment-editor-overview-system-notes` — System Notes textarea
 
 ## Test Setup Notes
-(Testing Agent writes here)
+
+All 15 test scenarios in `e2e/tests/09-sites-menu-irrigation.spec.ts` use the auth fixture from `e2e/fixtures/auth.ts`. Each test navigates to `/sites` after auth is automatically set up.
 
 ## Playwright Auth Method
-(UI Test Agent writes here — QA Agent reads this)
+
+Using `@clerk/testing` setupClerkTestingToken from `e2e/fixtures/auth.ts` — confirmed working via existing test suite.
+
+Test import: `import { test, expect } from '../fixtures/auth'`
+
+The fixture automatically calls `setupClerkTestingToken({ page })` before each test, bypassing Clerk hosted auth. Requires env vars: `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 
 ## Known Caveats / Coverage Exclusions
 

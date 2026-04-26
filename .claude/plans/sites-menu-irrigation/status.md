@@ -96,6 +96,11 @@ Progress [security]: Security ✓ — Zod validation at boundary, no user-contro
 Progress [code-quality]: Code Quality ✓ — no console.log, no dead code, clean early returns. Writing CODE_REVIEW.md now.
 Progress [complete]: CODE_REVIEW.md written (Cycle 2 overwrite complete). Decision: APPROVED. 0 blockers, 0 major, 1 minor. Ready for Testing Agent.
 
+## UI Tests Phase Progress
+
+Progress [bootstrap]: Bootstrap checklist complete: Playwright configured and verified, context.md data-testids documented, e2e/fixtures/auth.ts confirmed using @clerk/testing setupClerkTestingToken, baseline tests verified with `npm run test:e2e --list` (8 existing test specs). Build passes: `npm run build` ✓.
+Progress [file-creation]: Created e2e/tests/09-sites-menu-irrigation.spec.ts with 15 test scenarios covering: (1) sites table renders with Edit Equipment button, (2) clicking Edit Equipment opens editor panel, (3) toggle close on same site, (4) switching between sites updates panel, (5) adding controller and saving, (6) cancel without saving, (7) editor panel hidden on initial load, (8) System Overview fields accessible, (9) adding backflow device, (10) removing controller, (11) page layout side-by-side, (12) editor header displays site info, (13) adding zone, (14) removing zone, (15) removing backflow. All tests use data-testid selectors from context.md.
+
 ## Unit Tests Phase Progress
 
 Progress [baseline]: Baseline coverage established: Statements 30.21%, Branches 40.18%, Functions 22.65%, Lines 32.93%. 179 tests pass.
