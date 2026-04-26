@@ -96,6 +96,23 @@ Examples:
 
 Document every `data-testid` you add in `context.md` under a "Test IDs" section. The UI Test Agent reads this.
 
+## Periodic Save Protocol
+
+**After each significant step, write your current progress to `.claude/plans/{task}/status.md`.**
+
+Significant steps = after each file you finish writing, after each `npm run build` check, after any architecture decision. The goal: if this session is interrupted (token limit, crash, disconnect), the next session can resume exactly where you left off without re-doing work.
+
+Minimum saves:
+1. After Step 6 (baseline confirmed): write "Baseline confirmed. Starting implementation."
+2. After each file created/modified: write the filename and what you did.
+3. After `npm run build` passes: write "Build passing. Files done: [list]."
+4. Before reporting complete: write full summary.
+
+Format (append to the Coding Phase section):
+```
+Progress [HH:MM]: {what was just completed}
+```
+
 ## Failure Rule
 
 If the same build/test error occurs 3 times after your changes, stop and report to orchestrator with:

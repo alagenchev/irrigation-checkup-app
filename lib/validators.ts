@@ -137,6 +137,22 @@ const quoteItemRow = z.object({
   description: z.string(), price: z.string(), qty: z.string(),
 })
 
+// ── Update site equipment (bulk replace from equipment editor) ───────────
+
+export const updateSiteEquipmentSchema = z.object({
+  siteId:      z.string().uuid('Invalid site ID'),
+  controllers: z.array(controllerRow),
+  zones:       z.array(zoneRow),
+  backflows:   z.array(backflowRow),
+  overview: z.object({
+    staticPressure:      z.string(),
+    backflowInstalled:   z.boolean(),
+    backflowServiceable: z.boolean(),
+    isolationValve:      z.boolean(),
+    systemNotes:         z.string(),
+  }).optional(),
+})
+
 export const saveInspectionSchema = z.object({
   siteName:      z.string().min(1, 'Site name is required'),
   siteAddress:   z.string().optional(),
@@ -168,6 +184,7 @@ export const saveInspectionSchema = z.object({
   quoteItems:  z.array(quoteItemRow),
 })
 
+export type UpdateSiteEquipmentInput  = z.infer<typeof updateSiteEquipmentSchema>
 export type CreateClientInput         = z.infer<typeof createClientSchema>
 export type CreateSiteInput           = z.infer<typeof createSiteSchema>
 export type CompanySettingsInput      = z.infer<typeof companySettingsSchema>

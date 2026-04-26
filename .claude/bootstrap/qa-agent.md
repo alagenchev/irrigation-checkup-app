@@ -158,6 +158,22 @@ If any check command fails to run (not "tests failed" but the command itself err
 - Stop and report to orchestrator with exact error
 - Something is wrong with the environment, not just the code
 
+## Periodic Save Protocol
+
+**After each verification step, write progress to `.claude/plans/{task}/status.md`** so the session can be resumed if interrupted.
+
+Minimum saves:
+1. After Step 2 (prior phases confirmed): write "Prior phases confirmed. Starting verification."
+2. After `npm run build`: write "Build: PASS / FAIL."
+3. After `npm test --coverage`: write "Unit tests: PASS/FAIL, coverage: X%."
+4. After `npx playwright test`: write "Playwright: PASS/FAIL, N tests."
+5. After writing QA_REPORT.md: write "QA_REPORT.md written. Decision: APPROVED / REJECTED."
+
+Format (append to the QA Phase section):
+```
+Progress [HH:MM]: {what was just completed}
+```
+
 ## Iteration Limit
 
 If after 3 full QA cycles (Coding Agent fixes → QA re-runs) the same failure persists:

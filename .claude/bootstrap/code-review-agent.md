@@ -74,3 +74,18 @@ If `npm run build` or `npm test` crashes (not fails, but crashes the tool) 3 tim
 - Stop
 - Report environment issue to orchestrator
 - Do not continue the review — you cannot verify against a broken baseline
+
+## Periodic Save Protocol
+
+**Write progress to `.claude/plans/{task}/status.md` after each major review step** so the session can be resumed if interrupted.
+
+Minimum saves:
+1. After Step 5 (baseline checked): write "Baseline confirmed. Starting review."
+2. After completing each checklist category: write which categories are done.
+3. Before writing CODE_REVIEW.md: write "Writing CODE_REVIEW.md now."
+4. After writing CODE_REVIEW.md: write "CODE_REVIEW.md written. Decision: APPROVED / NEEDS_REFACTOR."
+
+Format (append to the Code Review Phase section):
+```
+Progress [HH:MM]: {what was just completed}
+```

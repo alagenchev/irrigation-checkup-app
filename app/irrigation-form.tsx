@@ -3,8 +3,10 @@
 import React, { useState, useRef } from 'react'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
+import { SiteSelector } from '@/app/components/site-selector'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
+import { getSiteEquipment } from '@/actions/sites'
 import { uploadZonePhoto } from '@/actions/upload'
 import type { Client, CompanySettings, Inspector, IrrigationFormInitialData, ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
@@ -80,7 +82,11 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
     ]
   )
-  const [loading,        setLoading]        = useState(false)
+  const [siteMode,         setSiteMode]         = useState<'existing' | 'new'>('existing')
+  const [siteSelected,     setSiteSelected]     = useState(() => initialData !== undefined)
+  const [equipmentLoading, setEquipmentLoading] = useState(false)
+  const [equipmentError,   setEquipmentError]   = useState<string | null>(null)
+  const [loading,          setLoading]          = useState(false)
   const [saving,         setSaving]         = useState(false)
   const [saveMsg,        setSaveMsg]        = useState<{ ok: boolean; text: string } | null>(null)
   const [fieldErrors,    setFieldErrors]    = useState<Record<string, string>>({})
@@ -102,13 +108,6 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
 
   const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined, email: c.email ?? undefined }))
-  const siteOptions = sites.map(s => ({
-    label:         s.name,
-    address:       s.address       ?? undefined,
-    clientName:    s.clientName    ?? undefined,
-    clientAddress: s.clientAddress ?? undefined,
-  }))
-
   const selectedInspector = inspectors.find(i => i.id === form.inspectorId) ?? null
 
   // ── FIELD HANDLERS ──────────────────────────────────────────────────────
@@ -116,6 +115,69 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   function setField(key: string, value: string | boolean) {
     setForm(f => ({ ...f, [key]: value }))
     setFieldErrors(e => { const { [key]: _, ...rest } = e; return rest })
+  }
+
+  // ── SITE SELECTOR HANDLERS ───────────────────────────────────────────────
+
+  async function handleSiteSelect(site: SiteWithClient) {
+    setField('siteName', site.name)
+    if (site.address)       setField('siteAddress', site.address)
+    if (site.clientName)    setField('clientName', site.clientName)
+    if (site.clientAddress) setField('clientAddress', site.clientAddress)
+
+    setSiteSelected(true)
+    setEquipmentLoading(true)
+    setEquipmentError(null)
+
+    try {
+      const equipment = await getSiteEquipment(site.id)
+
+      // Reset the ID counter above the highest ID that will be assigned
+      const maxId = Math.max(
+        0,
+        ...equipment.controllers.map(c => c.id),
+        ...equipment.zones.map(z => z.id),
+        ...equipment.backflows.map(b => b.id),
+      )
+      nextIdRef.current = maxId + 1
+
+      setControllers(equipment.controllers)
+      setZones(equipment.zones)
+      setBackflows(equipment.backflows)
+
+      if (equipment.overview) {
+        setField('staticPressure',      equipment.overview.staticPressure)
+        setField('backflowInstalled',   equipment.overview.backflowInstalled)
+        setField('backflowServiceable', equipment.overview.backflowServiceable)
+        setField('isolationValve',      equipment.overview.isolationValve)
+        setField('systemNotes',         equipment.overview.systemNotes)
+      }
+    } catch (err: unknown) {
+      setEquipmentError(err instanceof Error ? err.message : 'Failed to load equipment')
+    } finally {
+      setEquipmentLoading(false)
+    }
+  }
+
+  function handleSiteModeChange(newMode: 'existing' | 'new') {
+    setSiteMode(newMode)
+    if (newMode === 'new') {
+      setField('siteName', '')
+      setField('siteAddress', '')
+      // New site: mark as selected with empty equipment for fresh entry
+      setSiteSelected(true)
+      setEquipmentError(null)
+      setControllers([{ id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, masterValveNotes: '', notes: '' }])
+      setZones([
+        { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+        { id: uid(), zoneNum: '2', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+      ])
+      setBackflows([])
+    } else {
+      // Switched back to "Select Existing" — clear selection until a site is chosen
+      setSiteSelected(false)
+      setEquipmentError(null)
+    }
   }
 
   // ── CONTROLLERS ──────────────────────────────────────────────────────────
@@ -513,43 +575,36 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               <label>Client Email</label>
               <input type="email" value={form.clientEmail} onChange={e => setField('clientEmail', e.target.value)} placeholder="email@example.com" disabled={mode === 'readonly'} />
             </div>
-            <div className="field">
-              <label>
-                Site Name <span style={{ color: '#ffffff' }}>*</span>
-                {fieldErrors.siteName && <span style={{ color: '#ef4444', marginLeft: 6, fontSize: 12 }}>{fieldErrors.siteName}</span>}
-              </label>
-              <Autocomplete
-                name="siteName"
-                value={form.siteName}
-                onChange={v => setField('siteName', v)}
-                onSelect={opt => {
-                  setField('siteName', opt.label)
-                  if (opt.address) setField('siteAddress', opt.address)
-                  if (opt.clientName) {
-                    setField('clientName', opt.clientName)
-                    if (opt.clientAddress) setField('clientAddress', opt.clientAddress)
-                  }
-                }}
-                options={siteOptions}
-                placeholder="Type or select a site"
+            <div className="field full-width" data-testid="site-selector-wrapper">
+              {fieldErrors.siteName && (
+                <span style={{ color: '#ef4444', fontSize: 12, display: 'block', marginBottom: 4 }}>{fieldErrors.siteName}</span>
+              )}
+              <SiteSelector
+                sites={sites}
+                selectedSiteName={form.siteName}
+                selectedAddress={form.siteAddress}
+                mode={siteMode}
+                onSiteSelect={handleSiteSelect}
+                onModeChange={handleSiteModeChange}
+                onNewSiteNameChange={v => setField('siteName', v)}
+                onNewAddressChange={v => setField('siteAddress', v)}
                 disabled={mode === 'readonly'}
               />
-            </div>
-            <div className="field">
-              <label>Site Address</label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <div style={{ flex: 1 }}>
-                  {mode === 'readonly'
-                    ? <input type="text" value={form.siteAddress} readOnly disabled style={{ width: '100%' }} />
-                    : <AddressAutocomplete name="siteAddress" value={form.siteAddress} onChange={v => setField('siteAddress', v)} placeholder="123 Main St, City, TX" />
-                  }
+              {mode !== 'readonly' && (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={handleGetLocation}
+                    disabled={geoLoading}
+                    title="Use current location"
+                    data-testid="site-selector-geo-button"
+                  >
+                    {geoLoading ? '…' : '📍'}
+                  </button>
+                  {geoLoading && <span style={{ fontSize: 12, color: '#a1a1aa' }}>Getting location…</span>}
                 </div>
-                {mode !== 'readonly' && (
-                <button type="button" className="btn btn-sm" onClick={handleGetLocation} disabled={geoLoading} title="Use current location" style={{ flexShrink: 0 }}>
-                  {geoLoading ? '…' : '📍'}
-                </button>
-                )}
-              </div>
+              )}
               {geoResults.length > 0 && (
                 <div style={{ marginTop: 4, border: '1px solid #3a3a3c', borderRadius: 6, background: '#1c1c1e', overflow: 'hidden' }}>
                   {geoResults.map((addr, i) => (
@@ -624,6 +679,21 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <textarea rows={2} value={form.internalNotes} onChange={e => setField('internalNotes', e.target.value)} disabled={mode === 'readonly'} />
           </div>
         </section>
+
+        {/* IRRIGATION EQUIPMENT — only shown after a site is selected */}
+        {equipmentLoading ? (
+          <section className="card" data-testid="equipment-loading">
+            <p style={{ color: '#a1a1aa', fontSize: 14, margin: 0 }}>Loading equipment…</p>
+          </section>
+        ) : equipmentError ? (
+          <section className="card" data-testid="equipment-error">
+            <p style={{ color: '#ef4444', fontSize: 14, margin: 0 }}>Error loading equipment: {equipmentError}</p>
+          </section>
+        ) : !siteSelected ? (
+          <section className="card" data-testid="equipment-placeholder">
+            <p style={{ color: '#a1a1aa', fontSize: 14, margin: 0 }}>Select or create a site to manage irrigation details</p>
+          </section>
+        ) : (<>
 
         {/* SYSTEM OVERVIEW */}
         <section className="card">
@@ -931,6 +1001,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           </table>
           </div>
         </section>
+
+        </>)}
 
         {/* ZONE ISSUES */}
         <section className="card">

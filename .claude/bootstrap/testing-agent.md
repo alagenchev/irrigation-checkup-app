@@ -111,6 +111,22 @@ Options:
 Escalating to user for decision.
 ```
 
+## Periodic Save Protocol
+
+**After each significant step, write progress to `.claude/plans/{task}/status.md`** so the session can be resumed if interrupted (token limit, crash, disconnect).
+
+Minimum saves:
+1. After Step 6 (baseline confirmed): write "Baseline confirmed. Coverage before: X%."
+2. After each test file written: write the filename and what it covers.
+3. After each `npm test --coverage` run: write the coverage percentages.
+4. If sending refactoring tasks to Coding Agent: write the tasks list.
+5. Before reporting complete: write full summary.
+
+Format (append to the Unit Tests Phase section):
+```
+Progress [HH:MM]: {what was just completed}
+```
+
 ## Failure Rule
 
 If `npm test` itself fails (not coverage, but test errors) 3 times in a row after your changes:

@@ -167,6 +167,21 @@ If the same test fails 3 times after your fixes:
 
 Never push a test that is currently failing.
 
+## Periodic Save Protocol
+
+**After each significant step, write progress to `.claude/plans/{task}/status.md`** so the session can be resumed if interrupted.
+
+Minimum saves:
+1. After Step 7 (baseline verified): write "Baseline confirmed. Starting Playwright tests."
+2. After each test scenario written: write the scenario name and pass/fail status.
+3. After each `npx playwright test` run: write the pass/fail count.
+4. Before reporting complete: write full summary.
+
+Format (append to the UI Tests Phase section):
+```
+Progress [HH:MM]: {what was just completed}
+```
+
 ## Iteration Limit
 
 You get **3 attempts** to get a test scenario working. If after 3 attempts a test scenario still can't be implemented (e.g., Clerk auth is blocking everything), escalate to user via orchestrator for a decision.
