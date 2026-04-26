@@ -27,10 +27,10 @@
 - `equipment-placeholder` — section shown when no site is selected yet ("Select or create a site to manage irrigation details")
 
 ## Test Setup Notes
-(Testing Agent writes here)
+Playwright test file: e2e/tests/08-link-irrigation-fields.spec.ts. Uses auth fixture (fixtures/auth.ts) for Clerk authentication. Extends @playwright/test with setupClerkTestingToken. Test organization: 15 describe blocks, 18 individual test cases covering placeholder states, mode switching, loading/error states, form field visibility, accessibility, and conditional rendering of equipment sections.
 
 ## Playwright Auth Method
-(UI Test Agent writes here — QA Agent reads this)
+Using @clerk/testing setupClerkTestingToken in e2e/fixtures/auth.ts — confirmed working with existing tests (01-auth.spec.ts, 02-inspection-create.spec.ts, etc.). Custom auth fixture exports `test` and `expect` from '@playwright/test' with auto-setup.
 
 ## Known Caveats / Coverage Exclusions
 (Testing Agent writes if any lines excluded from coverage)
