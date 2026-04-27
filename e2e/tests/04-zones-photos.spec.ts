@@ -6,7 +6,8 @@ test.describe('Zone Photos', () => {
     await page.goto('/')
     await fillMinimalInspection(page, 'Photo Test Site')
 
-    const photoLabel = page.locator('text=Photos')
+    // Multiple zones each have a Photos label; first() avoids strict-mode violation
+    const photoLabel = page.locator('text=Photos').first()
     await expect(photoLabel).toBeVisible()
 
     const uploadBtn = page.getByRole('button', { name: /upload/i }).first()
@@ -14,18 +15,19 @@ test.describe('Zone Photos', () => {
   })
 
   test('upload button is disabled when photo limit is reached', async ({ page }) => {
-    // This is a UI state check - verify the button has disabled attribute
-    // when photoData.length >= 30
     await page.goto('/')
+    // Equipment sections only appear after a site is selected
+    await fillMinimalInspection(page, 'Upload Test Site')
 
     const uploadBtn = page.getByRole('button', { name: /upload/i }).first()
-    // Should be enabled initially
     await expect(uploadBtn).toBeEnabled()
   })
 
   test('photo section shows counter (0/30)', async ({ page }) => {
     await page.goto('/')
-    const counter = page.locator('text=/Photos \\(\\d+\\/30\\)/')
+    await fillMinimalInspection(page, 'Counter Test Site')
+
+    const counter = page.locator('text=/Photos \\(\\d+\\/30\\)/').first()
     await expect(counter).toBeVisible()
   })
 })
