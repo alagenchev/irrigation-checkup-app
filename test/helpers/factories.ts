@@ -9,7 +9,6 @@ export function buildCompanySettings(companyId: string, overrides: Partial<NewCo
     companyAddress:      faker.location.streetAddress(),
     companyCityStateZip: `${faker.location.city()}, TX ${faker.location.zipCode()}`,
     companyPhone:        faker.phone.number(),
-    performedBy:         faker.person.fullName(),
     r2CompanyBucketId:   null,
     ...overrides,
   }

@@ -22,7 +22,6 @@ export const companySettingsSchema = z.object({
   companyAddress:      z.string().max(500).optional().default(''),
   companyCityStateZip: z.string().max(255).optional().default(''),
   companyPhone:        z.string().max(50).optional().default(''),
-  performedBy:         z.string().max(255).optional().default(''),
 })
 
 export const createTechnicianSchema = z.object({

@@ -70,7 +70,7 @@ describe('companySettingsSchema', () => {
   test('accepts valid company settings with all fields', () => {
     const result = companySettingsSchema.safeParse({
       companyName: 'Acme LLC', licenseNum: 'TX123', companyAddress: '1 Main St',
-      companyCityStateZip: 'Dallas, TX 75001', companyPhone: '5550000', performedBy: 'Jane',
+      companyCityStateZip: 'Dallas, TX 75001', companyPhone: '5550000',
     })
     expect(result.success).toBe(true)
   })
