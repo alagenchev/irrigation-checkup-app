@@ -124,7 +124,7 @@ export const siteDrawings = pgTable('site_drawings', {
   drawing:   jsonb('drawing').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().$onUpdateFn(() => new Date()),
 }, (table) => [
-  unique('site_drawings_site_uniq').on(table.siteId),
+  unique('site_drawings_site_uniq').on(table.companyId, table.siteId),
 ])
 
 // ── JSONB sub-types for visit-specific snapshot data ──────────────────────
