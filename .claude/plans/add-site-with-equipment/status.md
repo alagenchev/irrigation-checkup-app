@@ -23,9 +23,10 @@
 - **New file**: `__tests__/add-site-form.test.tsx`
 
 ### UI Tests Phase
-- **Status**: pending (waiting for unit tests complete)
-- **Owner**: (unassigned)
-- **New file**: `e2e/tests/10-add-site-with-equipment.spec.ts`
+- **Status**: completed ✅
+- **Owner**: UI Test Agent (Haiku 4.5)
+- **Tests**: 6 Playwright E2E tests — all passing
+- **File**: `e2e/tests/10-add-site-with-equipment.spec.ts` (already existed — verified all scenarios)
 
 ## Dependencies
 
@@ -63,4 +64,53 @@
 
 (none)
 
-**Last Updated**: 2026-04-26 (task created)
+**Last Updated**: 2026-04-27 UI Tests Phase Complete
+
+---
+
+## UI Tests Execution Report
+
+**Date**: 2026-04-27  
+**Test Agent**: Haiku 4.5  
+**Dev Server**: http://localhost:3000 (running, pre-configured)
+
+### Test Run Results
+
+```
+Running 6 tests using 1 worker
+✓ 1 creates a site and adds equipment inline without leaving the page (1.8s)
+✓ 2 can skip equipment and the site still appears in the table (570ms)
+✓ 3 site form fields are cleared after skipping, ready for a new site (632ms)
+✓ 4 Cancel from equipment editor returns to the site form (574ms)
+✓ 5 can add two sites back-to-back without reloading the page (732ms)
+✓ 6 shows a validation error if site name is blank (425ms)
+
+6 passed (13.3s)
+```
+
+### Spec Coverage Verification
+
+All required test scenarios from `ui-tests.md` are implemented and passing:
+
+1. **✅ Golden path: create site + add equipment** — tests creation, equipment add, save, and verification in edit mode
+2. **✅ Skip equipment** — confirms site appears in table after skipping
+3. **✅ Form resets after skip** — verifies input field is cleared
+4. **✅ Cancel from equipment editor** — verifies return to phase 1 form
+5. **✅ Two sites in a row** — confirms back-to-back creation works without page reload
+6. **✅ Error handling** — validates that blank site name stays in phase 1
+
+### Auth Method Confirmation
+
+**Method**: `@clerk/testing setupClerkTestingToken` via `e2e/fixtures/auth.ts`  
+**Status**: ✅ Confirmed working — all tests authenticate successfully without hosted login
+
+### Manual Verification Notes
+
+(Not yet completed by QA Agent — deferred to QA phase)
+
+### Known Caveats
+
+Per `context.md`:
+- `SiteEquipmentEditor` intentionally initialises empty (no pre-fill from DB on mount)
+- Test #1 verifies the Edit Equipment button is available but does NOT assert equipment pre-population
+- This is a design constraint, not a test gap

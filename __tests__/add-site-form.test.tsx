@@ -43,6 +43,7 @@ const mockCreateSite = createSite as jest.MockedFunction<typeof createSite>
 
 const MOCK_CLIENTS: Client[] = [
   { id: 'c-1', companyId: 'co-1', name: 'Acme Corp', address: '1 Corp Way', phone: null, email: null, accountType: null, accountNumber: null, createdAt: new Date() },
+  { id: 'c-2', companyId: 'co-1', name: 'Beta Inc', address: null, phone: null, email: null, accountType: null, accountNumber: null, createdAt: new Date() },
 ]
 
 const CREATED_SITE = {
@@ -77,6 +78,13 @@ describe('AddSiteForm', () => {
       expect(screen.queryByTestId('site-equipment-editor')).not.toBeInTheDocument()
     })
 
+    it('renders address, client, and notes fields', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      expect(screen.getByPlaceholderText(/123 main st/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/type or select a client/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/optional notes/i)).toBeInTheDocument()
+    })
+
     it('shows a validation error when createSite returns an error', async () => {
       mockCreateSite.mockResolvedValue({ ok: false, error: 'Name is required' })
       render(<AddSiteForm clients={MOCK_CLIENTS} />)
@@ -98,6 +106,23 @@ describe('AddSiteForm', () => {
       expect(screen.getByRole('button', { name: /saving/i })).toBeDisabled()
       // clean up — resolve the promise
       await act(async () => { resolve({ ok: false, error: 'err' }) })
+    })
+
+    it('submits form with all fields populated (address, client, notes)', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'My Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/123 main st/i), { target: { value: '456 Oak Ave' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Acme Corp' } })
+      fireEvent.change(screen.getByPlaceholderText(/optional notes/i), { target: { value: 'Test notes' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      expect(mockCreateSite).toHaveBeenCalledWith(
+        null,
+        expect.any(FormData)
+      )
     })
   })
 
