@@ -73,8 +73,37 @@
 
 ## Blockers/Notes
 
-(Add any integration issues, regressions, or notes here as work progresses)
+### BLOCKER: Playwright E2E tests — Clerk auth error
+
+**Status**: Needs investigation  
+**Encountered**: 2026-04-25 (user ran `npx playwright test` manually)
+
+**Error**:
+```
+[WebServer] Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware().
+```
+
+**What we know**:
+- `middleware.ts` EXISTS at the project root and correctly uses `clerkMiddleware()` + `createRouteMatcher`
+- `.env.local` EXISTS (contains Clerk keys for normal dev)
+- No `.env.test` file exists (only `.env.test.example` which only covers `DATABASE_URL_TEST`)
+- `npm run build` ✅ passes
+- `npm test` (271 unit tests) ✅ passes
+- The Playwright dev server is started by `npx playwright test` using `reuseExistingServer: true` in config
+
+**Hypotheses to investigate**:
+1. `CLERK_SECRET_KEY` may not be loaded when Playwright starts its own dev server — check if `.env.local` is picked up by the Playwright webServer process
+2. Version mismatch between `@clerk/nextjs` and `@clerk/testing` — check `package.json`
+3. `setupClerkTestingToken` in `e2e/fixtures/auth.ts` may not be working — review the fixture
+4. The `CLERK_SECRET_KEY` env var may need to be explicitly passed to the Playwright webServer command
+
+**Investigation steps for next session**:
+1. Check `package.json` for `@clerk/nextjs` and `@clerk/testing` versions
+2. Check if `CLERK_SECRET_KEY` is in `.env.local`
+3. Review `e2e/fixtures/auth.ts` — confirm `setupClerkTestingToken` is called
+4. Try: `CLERK_SECRET_KEY=xxx npx playwright test` to confirm env is the issue
+5. Check Clerk docs for E2E testing setup requirements
 
 ---
 
-**Last Updated**: 2026-04-25 (task created)
+**Last Updated**: 2026-04-25 (Playwright blocker documented)
