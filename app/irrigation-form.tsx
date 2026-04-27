@@ -58,7 +58,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [form, setForm] = useState(() => initialData?.form ?? {
     clientName: '', clientAddress: '', clientEmail: '', siteName: '', siteAddress: '',
     datePerformed: today(), inspectionType: 'Repair Inspection', accountType: 'Commercial',
-    accountNumber: '', status: 'New', dueDate: today(), inspectorId: '',
+    accountNumber: '', status: 'New', dueDate: today(), inspectorId: inspectors.length === 1 ? inspectors[0].id : '',
     repairEstimate: '', inspectionNotes: '', internalNotes: '',
     staticPressure: '', backflowInstalled: false, backflowServiceable: false,
     isolationValve: false, systemNotes: '',
@@ -517,18 +517,27 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           <div className="grid-2">
             <div className="field">
               <label>Inspector</label>
-              <select
-                value={form.inspectorId}
-                onChange={e => setField('inspectorId', e.target.value)}
-                disabled={mode === 'readonly'}
-              >
-                <option value="">— Select Inspector —</option>
-                {inspectors.map(i => (
-                  <option key={i.id} value={String(i.id)}>
-                    {i.firstName} {i.lastName}
-                  </option>
-                ))}
-              </select>
+              {inspectors.length === 1 ? (
+                <p style={{
+                  padding: '7px 10px', border: '1px solid #3a3a3c', borderRadius: 6,
+                  fontSize: 13, color: '#ffffff', background: '#2c2c2e', margin: 0,
+                }}>
+                  {inspectors[0].firstName} {inspectors[0].lastName}
+                </p>
+              ) : (
+                <select
+                  value={form.inspectorId}
+                  onChange={e => setField('inspectorId', e.target.value)}
+                  disabled={mode === 'readonly'}
+                >
+                  <option value="">— Select Inspector —</option>
+                  {inspectors.map(i => (
+                    <option key={i.id} value={String(i.id)}>
+                      {i.firstName} {i.lastName}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             {selectedInspector && (
               <div className="field">
