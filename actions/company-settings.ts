@@ -80,7 +80,6 @@ export async function upsertCompanySettings(
     companyAddress:      formData.get('companyAddress')      || '',
     companyCityStateZip: formData.get('companyCityStateZip') || '',
     companyPhone:        formData.get('companyPhone')        || '',
-    performedBy:         formData.get('performedBy')         || '',
   }
 
   const parsed = companySettingsSchema.safeParse(raw)
