@@ -562,6 +562,24 @@ describe('SiteSelector component', () => {
     })
   })
 
+  describe('Existing Site group label', () => {
+    it('renders an "Existing Site" group label in existing mode', () => {
+      render(<SiteSelector {...defaultProps()} />)
+      expect(screen.getByText(/existing site/i)).toBeInTheDocument()
+    })
+
+    it('does NOT render "Existing Site" label in new mode', () => {
+      render(<SiteSelector {...defaultProps({ mode: 'new' })} />)
+      expect(screen.queryByText(/existing site/i)).not.toBeInTheDocument()
+    })
+
+    it('+ New Site toggle button is inside the existing-mode group', () => {
+      render(<SiteSelector {...defaultProps()} />)
+      const existingMode = screen.getByTestId('site-selector-existing-mode')
+      expect(existingMode).toContainElement(screen.getByTestId('site-selector-mode-toggle'))
+    })
+  })
+
   describe('Edge cases', () => {
     it('renders correctly with sites with long names', () => {
       const longNameSite: SiteWithClient = {

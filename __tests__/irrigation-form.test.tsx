@@ -435,7 +435,7 @@ describe('IrrigationForm structure', () => {
 
   it('renders client and site selection section when no initialData', () => {
     renderForm()
-    expect(screen.getByText('Client & Site')).toBeInTheDocument()
+    expect(screen.getByText('Site & Client')).toBeInTheDocument()
   })
 
   it('renders inspection details section', () => {

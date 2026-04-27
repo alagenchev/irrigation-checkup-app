@@ -86,6 +86,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [siteSelected,     setSiteSelected]     = useState(() => initialData !== undefined)
   const [equipmentLoading, setEquipmentLoading] = useState(false)
   const [equipmentError,   setEquipmentError]   = useState<string | null>(null)
+  const [clientLocked,    setClientLocked]    = useState(false)
+  const [equipmentLocked, setEquipmentLocked] = useState(false)
   const [loading,          setLoading]          = useState(false)
   const [saving,         setSaving]         = useState(false)
   const [saveMsg,        setSaveMsg]        = useState<{ ok: boolean; text: string } | null>(null)
@@ -126,6 +128,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
     if (site.clientAddress) setField('clientAddress', site.clientAddress)
 
     setSiteSelected(true)
+    setClientLocked(true)
     setEquipmentLoading(true)
     setEquipmentError(null)
 
@@ -156,6 +159,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       setEquipmentError(err instanceof Error ? err.message : 'Failed to load equipment')
     } finally {
       setEquipmentLoading(false)
+      setEquipmentLocked(true)
     }
   }
 
@@ -167,6 +171,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       // New site: mark as selected with empty equipment for fresh entry
       setSiteSelected(true)
       setEquipmentError(null)
+      setClientLocked(false)
+      setEquipmentLocked(false)
       setControllers([{ id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, masterValveNotes: '', notes: '' }])
       setZones([
         { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
@@ -177,6 +183,8 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       // Switched back to "Select Existing" — clear selection until a site is chosen
       setSiteSelected(false)
       setEquipmentError(null)
+      setClientLocked(false)
+      setEquipmentLocked(false)
     }
   }
 
@@ -553,37 +561,10 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           </div>
         </section>
 
-        {/* CLIENT & SITE */}
+        {/* SITE & CLIENT */}
         <section className="card">
-          <h2>Client &amp; Site</h2>
+          <h2>Site &amp; Client</h2>
           <div className="grid-2">
-            <div className="field">
-              <label>Client Name</label>
-              <Autocomplete
-                name="clientName"
-                value={form.clientName}
-                onChange={v => setField('clientName', v)}
-                onSelect={opt => {
-                  setField('clientName', opt.label)
-                  if (opt.address) setField('clientAddress', opt.address)
-                  if (opt.email) setField('clientEmail', opt.email)
-                }}
-                options={clientOptions}
-                placeholder="Type or select a client"
-                disabled={mode === 'readonly'}
-              />
-            </div>
-            <div className="field">
-              <label>Client Address</label>
-              {mode === 'readonly'
-                ? <input type="text" value={form.clientAddress} readOnly disabled />
-                : <AddressAutocomplete name="clientAddress" value={form.clientAddress} onChange={v => setField('clientAddress', v)} placeholder="123 Main St, City, TX" />
-              }
-            </div>
-            <div className="field">
-              <label>Client Email</label>
-              <input type="email" value={form.clientEmail} onChange={e => setField('clientEmail', e.target.value)} placeholder="email@example.com" disabled={mode === 'readonly'} />
-            </div>
             <div className="field full-width" data-testid="site-selector-wrapper">
               {fieldErrors.siteName && (
                 <span style={{ color: '#ef4444', fontSize: 12, display: 'block', marginBottom: 4 }}>{fieldErrors.siteName}</span>
@@ -633,6 +614,71 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               {geoError && (
                 <span style={{ fontSize: 12, color: '#ef4444', marginTop: 4, display: 'block' }}>{geoError}</span>
               )}
+            </div>
+            <div className="field">
+              <label>Client Name</label>
+              {clientLocked ? (
+                <input
+                  type="text"
+                  value={form.clientName}
+                  readOnly
+                  onClick={() => setClientLocked(false)}
+                  style={{ opacity: 0.6, cursor: 'pointer' }}
+                  title="Click to edit"
+                  data-testid="client-name-locked"
+                />
+              ) : (
+                <Autocomplete
+                  name="clientName"
+                  value={form.clientName}
+                  onChange={v => setField('clientName', v)}
+                  onSelect={opt => {
+                    setField('clientName', opt.label)
+                    if (opt.address) setField('clientAddress', opt.address)
+                    if (opt.email)   setField('clientEmail', opt.email)
+                  }}
+                  options={clientOptions}
+                  placeholder="Type or select a client"
+                  disabled={mode === 'readonly'}
+                />
+              )}
+            </div>
+            <div className="field">
+              <label>Client Address</label>
+              {clientLocked || mode === 'readonly' ? (
+                <input
+                  type="text"
+                  value={form.clientAddress}
+                  readOnly
+                  onClick={clientLocked ? () => setClientLocked(false) : undefined}
+                  style={clientLocked ? { opacity: 0.6, cursor: 'pointer' } : {}}
+                  title={clientLocked ? 'Click to edit' : undefined}
+                  data-testid={clientLocked ? 'client-address-locked' : undefined}
+                  disabled={mode === 'readonly'}
+                />
+              ) : (
+                <AddressAutocomplete
+                  name="clientAddress"
+                  value={form.clientAddress}
+                  onChange={v => setField('clientAddress', v)}
+                  placeholder="123 Main St, City, TX"
+                />
+              )}
+            </div>
+            <div className="field">
+              <label>Client Email</label>
+              <input
+                type="email"
+                value={form.clientEmail}
+                onChange={e => setField('clientEmail', e.target.value)}
+                placeholder="email@example.com"
+                readOnly={clientLocked}
+                onClick={clientLocked ? () => setClientLocked(false) : undefined}
+                style={clientLocked ? { opacity: 0.6, cursor: 'pointer' } : {}}
+                title={clientLocked ? 'Click to edit' : undefined}
+                data-testid={clientLocked ? 'client-email-locked' : undefined}
+                disabled={mode === 'readonly'}
+              />
             </div>
           </div>
         </section>
@@ -702,7 +748,17 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           <section className="card" data-testid="equipment-placeholder">
             <p style={{ color: '#a1a1aa', fontSize: 14, margin: 0 }}>Select or create a site to manage irrigation details</p>
           </section>
-        ) : (<>
+        ) : (
+          <div style={{ position: 'relative' }} data-testid="equipment-sections">
+            {equipmentLocked && mode !== 'readonly' && (
+              <div
+                data-testid="equipment-lock-overlay"
+                onClick={() => setEquipmentLocked(false)}
+                title="Click to edit equipment"
+                style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer', background: 'transparent' }}
+              />
+            )}
+            <div style={{ opacity: equipmentLocked ? 0.55 : 1, transition: 'opacity 0.15s' }}>
 
         {/* SYSTEM OVERVIEW */}
         <section className="card">
@@ -1011,7 +1067,9 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           </div>
         </section>
 
-        </>)}
+            </div>
+          </div>
+        )}
 
         {/* ZONE ISSUES */}
         <section className="card">
