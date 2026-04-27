@@ -168,8 +168,8 @@ test.describe('Link Irrigation Fields', () => {
       const backflowSection = page.locator('section.card:has(h2:has-text("Backflow Devices"))')
       await expect(backflowSection).toBeVisible()
 
-      // Verify there's an "Add Backflow Device" button
-      const addButton = page.locator('button:has-text("Add Backflow Device")')
+      // Verify there's an "+ Backflow" button
+      const addButton = page.locator('button:has-text("+ Backflow")')
       await expect(addButton).toBeVisible()
     })
   })
@@ -183,8 +183,8 @@ test.describe('Link Irrigation Fields', () => {
       const controllerSection = page.locator('section.card:has(h2:has-text("Controllers"))')
       await expect(controllerSection).toBeVisible()
 
-      // Verify there's an "Add Controller" button
-      const addButton = page.locator('button:has-text("Add Controller")')
+      // Verify there's an "+ Controller" button
+      const addButton = page.locator('button:has-text("+ Controller")')
       await expect(addButton).toBeVisible()
     })
   })
@@ -198,8 +198,8 @@ test.describe('Link Irrigation Fields', () => {
       const zoneSection = page.locator('section.card:has(h2:has-text("Zone Descriptions"))')
       await expect(zoneSection).toBeVisible()
 
-      // Verify there's an "Add Zone" button
-      const addButton = page.locator('button:has-text("Add Zone")')
+      // Verify there's an "+ Zone" button
+      const addButton = page.locator('button:has-text("+ Zone")')
       await expect(addButton).toBeVisible()
     })
   })
@@ -239,7 +239,7 @@ test.describe('Link Irrigation Fields', () => {
 
     test('should not interfere with quote items section visibility', async ({ page }) => {
       // Quote Items section should always be visible, even without site selection
-      const quoteHeading = page.locator('h2:has-text("Quote Items")')
+      const quoteHeading = page.locator('h2:has-text("Quote / Repair Items")')
       await expect(quoteHeading).toBeVisible()
 
       // Switch to new site mode
@@ -266,8 +266,8 @@ test.describe('Link Irrigation Fields', () => {
       await backflowCheckbox.check()
       await expect(backflowCheckbox).toBeChecked()
 
-      // Fill notes
-      const notesTextarea = page.locator('textarea')
+      // Fill notes (use system notes textarea in the overview section)
+      const notesTextarea = page.locator('section').filter({ hasText: 'Irrigation System' }).locator('textarea')
       await notesTextarea.fill('Test notes')
       const textareaValue = await notesTextarea.inputValue()
       expect(textareaValue).toBe('Test notes')

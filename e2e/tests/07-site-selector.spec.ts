@@ -281,11 +281,11 @@ test.describe('Site Selector', () => {
 
   test.describe('Form Integration', () => {
     test('should be part of the main inspection form', async ({ page }) => {
-      // Verify the form exists and site selector is within it
-      const form = page.locator('form').first()
-      await expect(form).toBeVisible()
+      // Irrigation form uses divs, not a <form> element — check site-selector wrapper
+      const wrapper = page.locator('[data-testid="site-selector-wrapper"]')
+      await expect(wrapper).toBeVisible()
 
-      const siteSelector = form.locator('[data-testid="site-selector"]')
+      const siteSelector = wrapper.locator('[data-testid="site-selector"]')
       await expect(siteSelector).toBeVisible()
     })
 
@@ -434,8 +434,8 @@ test.describe('Site Selector', () => {
       expect(value).toBe('123 Main St')
 
       // Form should still be submittable
-      const form = page.locator('form').first()
-      await expect(form).toBeVisible()
+      const saveButton = page.getByRole('button', { name: /save/i }).first()
+      await expect(saveButton).toBeVisible()
     })
   })
 

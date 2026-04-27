@@ -1,0 +1,95 @@
+{
+  "cookies": [
+    {
+      "name": "__cf_bm",
+      "value": "EGiSuRKd2jSHal5Ud6aa_loz8TDf0KhrmqK1PIv59yI-1777253753-1.0.1.1-Y43iBRSn.w8WlC7tNRGPENVuRpjBXd0lA1daxFQ7BvcDVABP8t_85GJU9jct01pIb9q1mTLB7bYOqBya5Wf3GMMMxmlM1Q9opDM_NAvxF8k",
+      "domain": ".fond-mako-66.clerk.accounts.dev",
+      "path": "/",
+      "expires": 1777255553.307525,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "_cfuvid",
+      "value": "L5TUUBKogcdd_lFUu0R4yg9Y3HyYr0lmNRpgBwwAF54-1777253753338-0.0.1.1-604800000",
+      "domain": ".fond-mako-66.clerk.accounts.dev",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "__clerk_db_jwt_iXSwtR4K",
+      "value": "dvb_3Cv6ZmyQRAibzrosOIjnBL7cWcZ",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1808789756,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__clerk_db_jwt",
+      "value": "dvb_3Cv6ZmyQRAibzrosOIjnBL7cWcZ",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1808789756,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__session",
+      "value": "eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18zQmVHVkJESWprdXdKbmJkWFd0ZWtXTlJqNzUiLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwOi8vbG9jYWxob3N0OjMwMDAiLCJleHAiOjE3NzcyNTM4MTYsImZ2YSI6WzAsLTFdLCJpYXQiOjE3NzcyNTM3NTYsImlzcyI6Imh0dHBzOi8vZm9uZC1tYWtvLTY2LmNsZXJrLmFjY291bnRzLmRldiIsIm5iZiI6MTc3NzI1Mzc0NiwibyI6eyJpZCI6Im9yZ18zQnAyV0RudnA3TFpjRUV5OGpUblBZTldWOWEiLCJyb2wiOiJtZW1iZXIiLCJzbGciOiJ0bS1mLTE3NzUxNzE3MjAxODc3NTY0ODQifSwic2lkIjoic2Vzc18zQ3Y2YTBrRFo2ZGFuekFpb2szRHZVdDNKcFYiLCJzdHMiOiJhY3RpdmUiLCJzdWIiOiJ1c2VyXzNDdHpUUDVpM0pNQ091VHg3ODYybG9PcHp4dCIsInYiOjJ9.vBycQNXvgqin06ImljYjW9ljPRqg6ifcf-qIFn9IeFsRrChobrQxSVXJt01ZKIXSPdG1Zo2hpcl_hZLx3CZGeDV29t_Nrps0JU7a-pGjeCDNQoC_k5d90orRKfgXZ94HtKBkthFqtjVNYNlyWrDJlA5kDrY22sYjRIOZ2okB81b7GGAJR2l5qz2s6EODnisipaj6fjNOBNT_hbB2n4CKkRxMzSqpyiAxDt2YuX8bxRnqGJc8B8rgGfgfV6bOWm260AYhX47yjS9gS5Vpx-keGoCh2XRkBzuFcRUb-i3cBwMwviiDidVF8v4JM3GKDpyAP1aQjMnUOWnfQFf1dto1Eg",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1808789756,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__session_iXSwtR4K",
+      "value": "eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18zQmVHVkJESWprdXdKbmJkWFd0ZWtXTlJqNzUiLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwOi8vbG9jYWxob3N0OjMwMDAiLCJleHAiOjE3NzcyNTM4MTYsImZ2YSI6WzAsLTFdLCJpYXQiOjE3NzcyNTM3NTYsImlzcyI6Imh0dHBzOi8vZm9uZC1tYWtvLTY2LmNsZXJrLmFjY291bnRzLmRldiIsIm5iZiI6MTc3NzI1Mzc0NiwibyI6eyJpZCI6Im9yZ18zQnAyV0RudnA3TFpjRUV5OGpUblBZTldWOWEiLCJyb2wiOiJtZW1iZXIiLCJzbGciOiJ0bS1mLTE3NzUxNzE3MjAxODc3NTY0ODQifSwic2lkIjoic2Vzc18zQ3Y2YTBrRFo2ZGFuekFpb2szRHZVdDNKcFYiLCJzdHMiOiJhY3RpdmUiLCJzdWIiOiJ1c2VyXzNDdHpUUDVpM0pNQ091VHg3ODYybG9PcHp4dCIsInYiOjJ9.vBycQNXvgqin06ImljYjW9ljPRqg6ifcf-qIFn9IeFsRrChobrQxSVXJt01ZKIXSPdG1Zo2hpcl_hZLx3CZGeDV29t_Nrps0JU7a-pGjeCDNQoC_k5d90orRKfgXZ94HtKBkthFqtjVNYNlyWrDJlA5kDrY22sYjRIOZ2okB81b7GGAJR2l5qz2s6EODnisipaj6fjNOBNT_hbB2n4CKkRxMzSqpyiAxDt2YuX8bxRnqGJc8B8rgGfgfV6bOWm260AYhX47yjS9gS5Vpx-keGoCh2XRkBzuFcRUb-i3cBwMwviiDidVF8v4JM3GKDpyAP1aQjMnUOWnfQFf1dto1Eg",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1808789756,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__client_uat_iXSwtR4K",
+      "value": "1777253755",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1808789756,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "__client_uat",
+      "value": "1777253755",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1808789756,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Strict"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "__clerk_environment",
+          "value": "{\"value\":{\"object\":\"environment\",\"auth_config\":{\"claimed_at\":null,\"id\":\"\",\"object\":\"auth_config\",\"reverification\":true,\"single_session_mode\":true,\"session_minter\":false},\"display_config\":{\"object\":\"display_config\",\"after_create_organization_url\":\"http://localhost:3000\",\"after_join_waitlist_url\":\"http://localhost:3000\",\"after_leave_organization_url\":\"http://localhost:3000\",\"after_sign_in_url\":\"http://localhost:3000\",\"after_sign_out_all_url\":\"https://fond-mako-66.accounts.dev/sign-in\",\"after_sign_out_one_url\":\"https://fond-mako-66.accounts.dev/sign-in/choose\",\"after_sign_up_url\":\"http://localhost:3000\",\"after_switch_session_url\":\"http://localhost:3000\",\"application_name\":\"IrrigationTechPro\",\"branded\":true,\"captcha_heartbeat\":false,\"captcha_oauth_bypass\":[],\"captcha_provider\":\"turnstile\",\"captcha_public_key_invisible\":\"0x4AAAAAAAFV93qQdS0ycilX\",\"captcha_public_key\":\"0x4AAAAAAAWXJGBD7bONzLBd\",\"captcha_widget_type\":\"smart\",\"clerk_js_version\":\"5\",\"create_organization_url\":\"https://fond-mako-66.accounts.dev/create-organization\",\"favicon_image_url\":\"\",\"home_url\":\"http://localhost:3000\",\"id\":\"display_config_3BeGVFrS4RczMesDyLINyDy7Jwv\",\"instance_environment_type\":\"development\",\"logo_image_url\":\"\",\"organization_profile_url\":\"https://fond-mako-66.accounts.dev/organization\",\"preferred_sign_in_strategy\":\"password\",\"privacy_policy_url\":\"\",\"show_devmode_warning\":true,\"sign_in_url\":\"https://fond-mako-66.accounts.dev/sign-in\",\"sign_up_url\":\"https://fond-mako-66.accounts.dev/sign-up\",\"support_email\":\"\",\"terms_url\":\"\",\"theme\":{\"buttons\":{\"font_color\":\"#ffffff\",\"font_family\":\"\\\"Source Sans Pro\\\", sans-serif\",\"font_weight\":\"600\"},\"general\":{\"color\":\"#6c47ff\",\"padding\":\"1em\",\"box_shadow\":\"0 2px 8px rgba(0, 0, 0, 0.2)\",\"font_color\":\"#151515\",\"font_family\":\"\\\"Source Sans Pro\\\", sans-serif\",\"border_radius\":\"0.5em\",\"background_color\":\"#ffffff\",\"label_font_weight\":\"600\"},\"accounts\":{\"background_color\":\"#ffffff\"}},\"user_profile_url\":\"https://fond-mako-66.accounts.dev/user\",\"waitlist_url\":\"https://fond-mako-66.accounts.dev/waitlist\"},\"id\":\"\",\"maintenance_mode\":false,\"client_debug_mode\":false,\"partitioned_cookies\":false,\"organization_settings\":{\"actions\":{\"admin_delete\":true},\"domains\":{\"enabled\":false,\"enrollment_modes\":[],\"default_role\":\"org:member\"},\"enabled\":true,\"max_allowed_memberships\":147},\"user_settings\":{\"actions\":{\"delete_self\":true,\"create_organization\":true,\"create_organizations_limit\":10},\"attributes\":{\"email_address\":{\"enabled\":true,\"required\":true,\"used_for_first_factor\":true,\"first_factors\":[\"email_code\"],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[\"email_code\"],\"verify_at_sign_up\":true,\"immutable\":false,\"name\":\"email_address\"},\"phone_number\":{\"enabled\":false,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"phone_number\"},\"username\":{\"enabled\":false,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"username\"},\"web3_wallet\":{\"enabled\":false,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"web3_wallet\"},\"first_name\":{\"enabled\":true,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"first_name\"},\"last_name\":{\"enabled\":true,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"last_name\"},\"password\":{\"enabled\":true,\"required\":true,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"password\"},\"authenticator_app\":{\"enabled\":false,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"authenticator_app\"},\"ticket\":{\"enabled\":true,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"ticket\"},\"backup_code\":{\"enabled\":false,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"backup_code\"},\"passkey\":{\"enabled\":false,\"required\":false,\"used_for_first_factor\":false,\"first_factors\":[],\"used_for_second_factor\":false,\"second_factors\":[],\"verifications\":[],\"verify_at_sign_up\":false,\"immutable\":false,\"name\":\"passkey\"}},\"passkey_settings\":{\"allow_autofill\":true,\"show_sign_in_button\":true},\"password_settings\":{\"disable_hibp\":false,\"min_length\":8,\"max_length\":72,\"require_special_char\":false,\"require_numbers\":false,\"require_uppercase\":false,\"require_lowercase\":false,\"show_zxcvbn\":false,\"min_zxcvbn_strength\":0,\"enforce_hibp_on_sign_in\":true,\"allowed_special_characters\":\"!\\\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\"},\"sign_in\":{\"second_factor\":{\"required\":false}},\"sign_up\":{\"captcha_enabled\":true,\"captcha_widget_type\":\"smart\",\"custom_action_required\":false,\"progressive\":true,\"mode\":\"public\",\"legal_consent_enabled\":false,\"mfa\":{\"required\":false}},\"social\":{\"oauth_apple\":{\"enabled\":true,\"required\":false,\"authenticatable\":true,\"block_email_subaddresses\":false,\"strategy\":\"oauth_apple\",\"not_selectable\":false,\"deprecated\":false,\"name\":\"Apple\",\"logo_url\":\"https://img.clerk.com/static/apple.png\"},\"oauth_google\":{\"enabled\":true,\"required\":false,\"authenticatable\":true,\"block_email_subaddresses\":true,\"strategy\":\"oauth_google\",\"not_selectable\":false,\"deprecated\":false,\"name\":\"Google\",\"logo_url\":\"https://img.clerk.com/static/google.png\"}}},\"commerce_settings\":{\"billing\":{\"stripe_publishable_key\":null,\"organization\":{\"enabled\":false,\"has_paid_plans\":false},\"user\":{\"enabled\":false,\"has_paid_plans\":false}}},\"api_keys_settings\":{\"user_api_keys_enabled\":false,\"orgs_api_keys_enabled\":false},\"protect_config\":{\"object\":\"protect_config\",\"id\":\"\"}},\"exp\":1777340154528}"
+        }
+      ]
+    }
+  ]
+}

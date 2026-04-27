@@ -4,8 +4,9 @@ import { Page } from '@playwright/test'
  * Fill in the minimum required fields for a valid inspection save.
  */
 export async function fillMinimalInspection(page: Page, siteName: string) {
-  await page.getByLabel('Site Name').fill(siteName)
-  // Date is pre-filled with today; no action needed
+  // Switch to new-site mode, then fill the new site name field
+  await page.getByRole('button', { name: /new site/i }).click()
+  await page.locator('[data-testid="site-selector-new-name"]').fill(siteName)
 }
 
 /**

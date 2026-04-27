@@ -2,10 +2,16 @@ import { test, expect } from '../fixtures/auth'
 
 test.describe('Sites Menu: Irrigation Equipment Editor', () => {
   test.beforeEach(async ({ page }) => {
-    // Auth is automatically set up via the auth fixture
     await page.goto('/sites')
-    // Wait for sites page to load
     await expect(page.locator('[data-testid="sites-page"]')).toBeVisible()
+
+    // Seed a site if the account has none yet (first run with fresh test account)
+    const hasTable = await page.locator('[data-testid="sites-table"]').isVisible({ timeout: 2000 }).catch(() => false)
+    if (!hasTable) {
+      await page.locator('input[name="name"]').fill('E2E Test Site')
+      await page.getByRole('button', { name: /add site/i }).click()
+      await expect(page.locator('[data-testid="sites-table"]')).toBeVisible()
+    }
   })
 
   test('01: Sites table renders with "Edit Equipment" button per row', async ({ page }) => {
