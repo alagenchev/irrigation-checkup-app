@@ -5,9 +5,10 @@ import type { SiteWithClient } from '@/actions/sites'
 interface SitesTableProps {
   sites: SiteWithClient[]
   onEditEquipment: (siteId: string) => void
+  onViewMap: (siteId: string) => void
 }
 
-export function SitesTable({ sites, onEditEquipment }: SitesTableProps) {
+export function SitesTable({ sites, onEditEquipment, onViewMap }: SitesTableProps) {
   if (sites.length === 0) {
     return <p style={{ color: '#a1a1aa', fontSize: 13 }}>No sites yet. Add one above.</p>
   }
@@ -31,13 +32,22 @@ export function SitesTable({ sites, onEditEquipment }: SitesTableProps) {
             <td>{s.clientName || '—'}</td>
             <td>{s.notes || '—'}</td>
             <td>
-              <button
-                className="btn btn-sm"
-                data-testid="sites-table-edit-equipment"
-                onClick={() => onEditEquipment(s.id)}
-              >
-                Edit Equipment
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn btn-sm"
+                  data-testid="sites-table-edit-equipment"
+                  onClick={() => onEditEquipment(s.id)}
+                >
+                  Edit Equipment
+                </button>
+                <button
+                  className="btn btn-sm"
+                  data-testid="sites-table-view-map"
+                  onClick={() => onViewMap(s.id)}
+                >
+                  Map
+                </button>
+              </div>
             </td>
           </tr>
         ))}

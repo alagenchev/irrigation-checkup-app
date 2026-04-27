@@ -117,6 +117,16 @@ export const siteBackflows = pgTable('site_backflows', {
   createdAt:    timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+export const siteDrawings = pgTable('site_drawings', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  siteId:    uuid('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
+  drawing:   jsonb('drawing').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().$onUpdateFn(() => new Date()),
+}, (table) => [
+  unique('site_drawings_site_uniq').on(table.siteId),
+])
+
 // ── JSONB sub-types for visit-specific snapshot data ──────────────────────
 
 export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string }
@@ -196,6 +206,9 @@ export type NewSiteZone = typeof siteZones.$inferInsert
 
 export type SiteBackflow    = typeof siteBackflows.$inferSelect
 export type NewSiteBackflow = typeof siteBackflows.$inferInsert
+
+export type SiteDrawing    = typeof siteDrawings.$inferSelect
+export type NewSiteDrawing = typeof siteDrawings.$inferInsert
 
 export type SiteVisit    = typeof siteVisits.$inferSelect
 export type NewSiteVisit = typeof siteVisits.$inferInsert

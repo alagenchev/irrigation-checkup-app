@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AddSiteForm } from './add-site-form'
 import { SitesTable } from './sites-table'
 import { SiteEquipmentEditor } from './site-equipment-editor'
+import { SiteMapEditor } from '@/app/components/site-map-editor'
 import type { SiteWithClient } from '@/actions/sites'
 import type { Client } from '@/types'
 
@@ -12,17 +13,31 @@ interface SitesPageClientProps {
   clients: Client[]
 }
 
-export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
-  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
+type PanelState =
+  | { type: 'equipment'; siteId: string }
+  | { type: 'map'; siteId: string }
+  | null
 
-  const selectedSite = selectedSiteId ? sites.find(s => s.id === selectedSiteId) ?? null : null
+export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
+  const [panelState, setPanelState] = useState<PanelState>(null)
+
+  const activeSiteId = panelState?.siteId ?? null
+  const selectedSite = activeSiteId ? sites.find(s => s.id === activeSiteId) ?? null : null
 
   function handleEditEquipment(siteId: string) {
-    setSelectedSiteId(prev => prev === siteId ? null : siteId)
+    setPanelState(prev =>
+      prev?.type === 'equipment' && prev.siteId === siteId ? null : { type: 'equipment', siteId }
+    )
+  }
+
+  function handleViewMap(siteId: string) {
+    setPanelState(prev =>
+      prev?.type === 'map' && prev.siteId === siteId ? null : { type: 'map', siteId }
+    )
   }
 
   function handleClose() {
-    setSelectedSiteId(null)
+    setPanelState(null)
   }
 
   return (
@@ -47,26 +62,45 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
         {/* Left: sites list */}
         <section
           className="card"
-          style={{ flex: selectedSite ? '0 0 auto' : '1 1 auto', minWidth: 0, width: selectedSite ? '55%' : '100%', transition: 'width 0.2s' }}
+          style={{
+            flex: panelState !== null ? '0 0 auto' : '1 1 auto',
+            minWidth: 0,
+            width: panelState !== null ? '55%' : '100%',
+            transition: 'width 0.2s',
+          }}
           data-testid="sites-page-table-panel"
         >
           <h2>All Sites ({sites.length})</h2>
-          <SitesTable sites={sites} onEditEquipment={handleEditEquipment} />
+          <SitesTable
+            sites={sites}
+            onEditEquipment={handleEditEquipment}
+            onViewMap={handleViewMap}
+          />
         </section>
 
-        {/* Right: equipment editor panel */}
-        {selectedSite && (
+        {/* Right: equipment editor or map panel */}
+        {panelState !== null && selectedSite && (
           <section
             className="card"
             style={{ flex: '1 1 auto', minWidth: 0 }}
             data-testid="sites-page-editor-panel"
           >
-            <SiteEquipmentEditor
-              key={selectedSite.id}
-              site={selectedSite}
-              onClose={handleClose}
-              onSave={handleClose}
-            />
+            {panelState.type === 'equipment' && (
+              <SiteEquipmentEditor
+                key={selectedSite.id}
+                site={selectedSite}
+                onClose={handleClose}
+                onSave={handleClose}
+              />
+            )}
+            {panelState.type === 'map' && (
+              <SiteMapEditor
+                key={selectedSite.id}
+                siteId={selectedSite.id}
+                siteName={selectedSite.name}
+                onClose={handleClose}
+              />
+            )}
           </section>
         )}
       </div>
