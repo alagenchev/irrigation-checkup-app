@@ -75,52 +75,57 @@ export function SiteSelector({
     <div data-testid="site-selector">
       {mode === 'existing' ? (
         <div data-testid="site-selector-existing-mode">
-          <div className="field">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <label htmlFor="site-selector-search-input">
-                Site Name <span style={{ color: '#ffffff' }}>*</span>
-              </label>
-              {!disabled && (
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  data-testid="site-selector-mode-toggle"
-                  onClick={() => onModeChange('new')}
-                  style={{ fontSize: 11, padding: '2px 8px' }}
-                >
-                  + New Site
-                </button>
+          <div style={{ border: '1px solid #3a3a3c', borderRadius: 8, padding: '12px 14px' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px 0' }}>
+              Existing Site
+            </p>
+            <div className="field">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label htmlFor="site-selector-search-input">
+                  Site Name <span style={{ color: '#ffffff' }}>*</span>
+                </label>
+                {!disabled && (
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    data-testid="site-selector-mode-toggle"
+                    onClick={() => onModeChange('new')}
+                    style={{ fontSize: 11, padding: '2px 8px' }}
+                  >
+                    + New Site
+                  </button>
+                )}
+              </div>
+              <Autocomplete
+                name="siteName"
+                value={selectedSiteName}
+                onChange={onNewSiteNameChange}
+                onSelect={handleSiteAutocompleteSelect}
+                options={siteOptions}
+                placeholder="Type or select a site"
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>Site Address</label>
+              {disabled ? (
+                <input
+                  type="text"
+                  value={selectedAddress}
+                  readOnly
+                  disabled
+                  data-testid="site-selector-address-readonly"
+                />
+              ) : (
+                <AddressAutocomplete
+                  name="siteAddress"
+                  value={selectedAddress}
+                  onChange={onNewAddressChange}
+                  placeholder="123 Main St, City, TX"
+                />
               )}
             </div>
-            <Autocomplete
-              name="siteName"
-              value={selectedSiteName}
-              onChange={onNewSiteNameChange}
-              onSelect={handleSiteAutocompleteSelect}
-              options={siteOptions}
-              placeholder="Type or select a site"
-              disabled={disabled}
-            />
-          </div>
-
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>Site Address</label>
-            {disabled ? (
-              <input
-                type="text"
-                value={selectedAddress}
-                readOnly
-                disabled
-                data-testid="site-selector-address-readonly"
-              />
-            ) : (
-              <AddressAutocomplete
-                name="siteAddress"
-                value={selectedAddress}
-                onChange={onNewAddressChange}
-                placeholder="123 Main St, City, TX"
-              />
-            )}
           </div>
         </div>
       ) : (
