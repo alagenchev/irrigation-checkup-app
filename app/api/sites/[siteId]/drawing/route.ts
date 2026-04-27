@@ -57,7 +57,7 @@ export async function POST(
     .insert(siteDrawings)
     .values({ companyId, siteId, drawing })
     .onConflictDoUpdate({
-      target: siteDrawings.siteId,
+      target: [siteDrawings.companyId, siteDrawings.siteId],
       set: { drawing, updatedAt: new Date() },
     })
 
