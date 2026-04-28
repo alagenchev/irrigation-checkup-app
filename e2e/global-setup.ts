@@ -15,7 +15,19 @@ export default async function globalSetup() {
     throw new Error('E2E_TEST_EMAIL must be set in .env.local')
   }
 
+  // Always call clerkSetup - it's required for setupClerkTestingToken
   await clerkSetup()
+
+  // Skip auth file refresh if it exists and is less than 24 hours old
+  if (fs.existsSync(AUTH_FILE)) {
+    const stats = fs.statSync(AUTH_FILE)
+    const ageInMs = Date.now() - stats.mtimeMs
+    const ageInHours = ageInMs / (1000 * 60 * 60)
+    if (ageInHours < 24) {
+      // Auth file is fresh, skip refreshing it
+      return
+    }
+  }
 
   const browser = await chromium.launch()
   const context = await browser.newContext()

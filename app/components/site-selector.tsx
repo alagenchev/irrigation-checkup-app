@@ -29,6 +29,7 @@ export interface SiteSelectorProps {
 export function siteToOption(site: SiteWithClient): AutocompleteOption {
   return {
     label:         site.name,
+    value:         site.id,
     address:       site.address       ?? undefined,
     clientName:    site.clientName    ?? undefined,
     clientAddress: site.clientAddress ?? undefined,

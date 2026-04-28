@@ -10,10 +10,15 @@ export const createClientSchema = z.object({
 })
 
 export const createSiteSchema = z.object({
-  name:       z.string().min(1, 'Site name is required').max(255),
-  address:    z.string().max(500).optional(),
-  clientName: z.string().max(255).optional(), // resolved to clientId in the action
-  notes:      z.string().max(2000).optional(),
+  name:                z.string().min(1, 'Site name is required').max(255),
+  address:             z.string().max(500).optional(),
+  clientName:          z.string().max(255).optional(),
+  clientAddress:       z.string().max(500).optional(),
+  clientPhone:         z.string().max(50).optional(),
+  clientEmail:         z.union([z.string().email('Invalid email'), z.literal('')]).optional(),
+  clientAccountType:   z.string().max(100).optional(),
+  clientAccountNumber: z.string().max(100).optional(),
+  notes:               z.string().max(2000).optional(),
 })
 
 export const companySettingsSchema = z.object({
