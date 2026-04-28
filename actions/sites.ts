@@ -9,7 +9,14 @@ import { getRequiredCompanyId } from '@/lib/tenant'
 import type { ActionResult, Site, ControllerFormData, ZoneFormData, BackflowFormData } from '@/types'
 import type { UpdateSiteEquipmentInput } from '@/lib/validators'
 
-export type SiteWithClient = Site & { clientName: string | null; clientAddress: string | null }
+export type SiteWithClient = Site & {
+  clientName:          string | null
+  clientAddress:       string | null
+  clientPhone:         string | null
+  clientEmail:         string | null
+  clientAccountType:   string | null
+  clientAccountNumber: string | null
+}
 
 export async function getSites(): Promise<SiteWithClient[]> {
   const companyId = await getRequiredCompanyId()
@@ -22,8 +29,12 @@ export async function getSites(): Promise<SiteWithClient[]> {
       clientId:      sites.clientId,
       notes:         sites.notes,
       createdAt:     sites.createdAt,
-      clientName:    clients.name,
-      clientAddress: clients.address,
+      clientName:          clients.name,
+      clientAddress:       clients.address,
+      clientPhone:         clients.phone,
+      clientEmail:         clients.email,
+      clientAccountType:   clients.accountType,
+      clientAccountNumber: clients.accountNumber,
     })
     .from(sites)
     .leftJoin(clients, eq(sites.clientId, clients.id))
@@ -41,10 +52,15 @@ export async function createSite(_prev: ActionResult<Site> | null, formData: For
   const companyId = await getRequiredCompanyId()
 
   const raw = {
-    name:       formData.get('name'),
-    address:    formData.get('address') || undefined,
-    clientName: formData.get('client_name') || undefined,
-    notes:      formData.get('notes') || undefined,
+    name:                formData.get('name'),
+    address:             formData.get('address')               || undefined,
+    clientName:          formData.get('client_name')           || undefined,
+    clientAddress:       formData.get('client_address')        || undefined,
+    clientPhone:         formData.get('client_phone')          || undefined,
+    clientEmail:         formData.get('client_email')          || undefined,
+    clientAccountType:   formData.get('client_account_type')   || undefined,
+    clientAccountNumber: formData.get('client_account_number') || undefined,
+    notes:               formData.get('notes')                 || undefined,
   }
 
   const parsed = createSiteSchema.safeParse(raw)
@@ -52,7 +68,7 @@ export async function createSite(_prev: ActionResult<Site> | null, formData: For
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation failed' }
   }
 
-  const { name, address, clientName, notes } = parsed.data
+  const { name, address, clientName, clientAddress, clientPhone, clientEmail, clientAccountType, clientAccountNumber, notes } = parsed.data
 
   let clientId: string | null = null
   if (clientName) {
@@ -67,7 +83,15 @@ export async function createSite(_prev: ActionResult<Site> | null, formData: For
     } else {
       const [newClient] = await db
         .insert(clients)
-        .values({ companyId, name: clientName })
+        .values({
+          companyId,
+          name:          clientName,
+          address:       clientAddress,
+          phone:         clientPhone,
+          email:         clientEmail || undefined,
+          accountType:   clientAccountType,
+          accountNumber: clientAccountNumber,
+        })
         .returning({ id: clients.id })
       clientId = newClient.id
     }

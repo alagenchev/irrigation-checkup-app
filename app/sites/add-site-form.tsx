@@ -8,25 +8,41 @@ import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import type { SiteWithClient } from '@/actions/sites'
 import type { Client } from '@/types'
 
+const ACCOUNT_TYPES = ['Commercial', 'Residential', 'HOA', 'Municipal']
+
 interface AddSiteFormProps {
   clients: Client[]
 }
 
 export function AddSiteForm({ clients }: AddSiteFormProps) {
-  const [siteName,    setSiteName]    = useState('')
-  const [address,     setAddress]     = useState('')
-  const [clientName,  setClientName]  = useState('')
-  const [notes,       setNotes]       = useState('')
-  const [saving,      setSaving]      = useState(false)
-  const [error,       setError]       = useState<string | null>(null)
-  const [createdSite, setCreatedSite] = useState<SiteWithClient | null>(null)
+  const [siteName,                setSiteName]                = useState('')
+  const [address,                 setAddress]                 = useState('')
+  const [clientName,              setClientName]              = useState('')
+  const [clientPhone,             setClientPhone]             = useState('')
+  const [clientEmail,             setClientEmail]             = useState('')
+  const [clientAccountType,       setClientAccountType]       = useState('Residential')
+  const [clientAccountNumber,     setClientAccountNumber]     = useState('')
+  const [clientAddressSameAsSite, setClientAddressSameAsSite] = useState(true)
+  const [clientAddress,           setClientAddress]           = useState('')
+  const [notes,                   setNotes]                   = useState('')
+  const [saving,                  setSaving]                  = useState(false)
+  const [error,                   setError]                   = useState<string | null>(null)
+  const [createdSite,             setCreatedSite]             = useState<SiteWithClient | null>(null)
 
-  const clientOptions = clients.map(c => ({ label: c.name, address: c.address ?? undefined }))
+  const clientOptions = clients.map(c => ({ label: c.name, value: c.id, address: c.address ?? undefined }))
+  const isNewClient = clientName.trim() !== '' && !clients.some(c => c.name === clientName)
+  const effectiveClientAddress = clientAddressSameAsSite ? address : clientAddress
 
   function handleDone() {
     setSiteName('')
     setAddress('')
     setClientName('')
+    setClientPhone('')
+    setClientEmail('')
+    setClientAccountType('Residential')
+    setClientAccountNumber('')
+    setClientAddressSameAsSite(true)
+    setClientAddress('')
     setNotes('')
     setError(null)
     setCreatedSite(null)
@@ -43,6 +59,14 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     if (clientName) fd.set('client_name', clientName)
     if (notes)      fd.set('notes', notes)
 
+    if (isNewClient) {
+      if (effectiveClientAddress) fd.set('client_address', effectiveClientAddress)
+      if (clientPhone)            fd.set('client_phone', clientPhone)
+      if (clientEmail)            fd.set('client_email', clientEmail)
+      if (clientAccountType)      fd.set('client_account_type', clientAccountType)
+      if (clientAccountNumber)    fd.set('client_account_number', clientAccountNumber)
+    }
+
     const result = await createSite(null, fd)
     setSaving(false)
 
@@ -53,8 +77,12 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
 
     setCreatedSite({
       ...result.data,
-      clientName:    clientName || null,
-      clientAddress: address    || null,
+      clientName:          clientName             || null,
+      clientAddress:       effectiveClientAddress || null,
+      clientPhone:         clientPhone            || null,
+      clientEmail:         clientEmail            || null,
+      clientAccountType:   clientAccountType      || null,
+      clientAccountNumber: clientAccountNumber    || null,
     })
   }
 
@@ -126,6 +154,89 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
           />
         </div>
       </div>
+
+      {isNewClient && (
+        <div data-testid="new-client-details" style={{ marginTop: 16, padding: '14px 16px', border: '1px solid #3a3a3c', borderRadius: 8 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px 0' }}>
+            New Client Details
+          </p>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+              <label style={{ margin: 0 }}>Client Address</label>
+              <label data-testid="new-client-address-same-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#a1a1aa', fontWeight: 400, cursor: 'pointer', margin: 0 }}>
+                <input
+                  data-testid="new-client-address-same-checkbox"
+                  type="checkbox"
+                  checked={clientAddressSameAsSite}
+                  onChange={e => {
+                    setClientAddressSameAsSite(e.target.checked)
+                    if (e.target.checked) setClientAddress('')
+                  }}
+                />
+                Same as site address
+              </label>
+            </div>
+            {clientAddressSameAsSite ? (
+              <input
+                data-testid="new-client-address-display"
+                type="text"
+                value={address}
+                readOnly
+                disabled
+                placeholder="Enter site address above first"
+                style={{ opacity: 0.5 }}
+              />
+            ) : (
+              <div data-testid="new-client-address-input">
+                <AddressAutocomplete
+                  name="client_address"
+                  value={clientAddress}
+                  onChange={setClientAddress}
+                  placeholder="123 Main St, City, TX"
+                />
+              </div>
+            )}
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label>Phone</label>
+              <input
+                data-testid="new-client-phone"
+                type="text"
+                placeholder="(555) 000-0000"
+                value={clientPhone}
+                onChange={e => setClientPhone(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Email</label>
+              <input
+                data-testid="new-client-email"
+                type="email"
+                placeholder="client@email.com"
+                value={clientEmail}
+                onChange={e => setClientEmail(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Account Type</label>
+              <select data-testid="new-client-account-type" value={clientAccountType} onChange={e => setClientAccountType(e.target.value)}>
+                {ACCOUNT_TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Account #</label>
+              <input
+                data-testid="new-client-account-number"
+                type="text"
+                placeholder="Account number"
+                value={clientAccountNumber}
+                onChange={e => setClientAccountNumber(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{error}</p>

@@ -124,8 +124,11 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   async function handleSiteSelect(site: SiteWithClient) {
     setField('siteName', site.name)
     if (site.address)       setField('siteAddress', site.address)
-    if (site.clientName)    setField('clientName', site.clientName)
-    if (site.clientAddress) setField('clientAddress', site.clientAddress)
+    if (site.clientName)          setField('clientName',    site.clientName)
+    if (site.clientAddress)       setField('clientAddress', site.clientAddress)
+    if (site.clientEmail)         setField('clientEmail',   site.clientEmail)
+    if (site.clientAccountType)   setField('accountType',   site.clientAccountType)
+    if (site.clientAccountNumber) setField('accountNumber', site.clientAccountNumber)
 
     setSiteSelected(true)
     setClientLocked(true)
@@ -623,7 +626,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                   value={form.clientName}
                   readOnly
                   onClick={() => setClientLocked(false)}
-                  style={{ opacity: 0.6, cursor: 'pointer' }}
+                  style={{ background: '#2c2c2e', color: '#ffffff', cursor: 'pointer' }}
                   title="Click to edit"
                   data-testid="client-name-locked"
                 />
@@ -651,7 +654,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                   value={form.clientAddress}
                   readOnly
                   onClick={clientLocked ? () => setClientLocked(false) : undefined}
-                  style={clientLocked ? { opacity: 0.6, cursor: 'pointer' } : {}}
+                  style={clientLocked ? { background: '#2c2c2e', color: '#ffffff', cursor: 'pointer' } : {}}
                   title={clientLocked ? 'Click to edit' : undefined}
                   data-testid={clientLocked ? 'client-address-locked' : undefined}
                   disabled={mode === 'readonly'}
@@ -668,13 +671,14 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <div className="field">
               <label>Client Email</label>
               <input
+                name="clientEmail"
                 type="email"
                 value={form.clientEmail}
                 onChange={e => setField('clientEmail', e.target.value)}
                 placeholder="email@example.com"
                 readOnly={clientLocked}
                 onClick={clientLocked ? () => setClientLocked(false) : undefined}
-                style={clientLocked ? { opacity: 0.6, cursor: 'pointer' } : {}}
+                style={clientLocked ? { background: '#2c2c2e', color: '#ffffff', cursor: 'pointer' } : {}}
                 title={clientLocked ? 'Click to edit' : undefined}
                 data-testid={clientLocked ? 'client-email-locked' : undefined}
                 disabled={mode === 'readonly'}
@@ -702,13 +706,13 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             </div>
             <div className="field">
               <label>Account Type</label>
-              <select value={form.accountType} onChange={e => setField('accountType', e.target.value)} disabled={mode === 'readonly'}>
+              <select name="accountType" value={form.accountType} onChange={e => setField('accountType', e.target.value)} disabled={mode === 'readonly'}>
                 {['Commercial','Residential','HOA','Municipal'].map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="field">
               <label>Account Number</label>
-              <input type="text" value={form.accountNumber} onChange={e => setField('accountNumber', e.target.value)} disabled={mode === 'readonly'} />
+              <input name="accountNumber" type="text" value={form.accountNumber} onChange={e => setField('accountNumber', e.target.value)} disabled={mode === 'readonly'} />
             </div>
             <div className="field">
               <label>Status</label>
