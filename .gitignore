@@ -1,7 +1,9 @@
 .env*.local
+coverage/
 .env.test.example
 .env.local.example
 .next/
 node_modules/
 playwright-report/
+playwright/.auth/
 test-results/
