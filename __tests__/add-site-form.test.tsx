@@ -409,4 +409,111 @@ describe('AddSiteForm', () => {
     })
   })
 
+  // client-address-and-lock-style (b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e)
+  describe('new client — address field', () => {
+    function showNewClientSection() {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+    }
+
+    it('shows the client address checkbox when a new client name is typed', () => {
+      showNewClientSection()
+      expect(screen.getByTestId('new-client-address-same-checkbox')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-address-same-checkbox-label')).toBeInTheDocument()
+    })
+
+    it('checkbox is checked by default', () => {
+      showNewClientSection()
+      expect(screen.getByTestId('new-client-address-same-checkbox')).toBeChecked()
+    })
+
+    it('shows the site address in a disabled input when checkbox is checked', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/123 main/i), { target: { value: '99 Site Ave' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+      expect(screen.getByTestId('new-client-address-display')).toHaveValue('99 Site Ave')
+      expect(screen.getByTestId('new-client-address-display')).toBeDisabled()
+    })
+
+    it('shows AddressAutocomplete when checkbox is unchecked', () => {
+      showNewClientSection()
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      expect(screen.getByTestId('new-client-address-input')).toBeInTheDocument()
+      expect(screen.queryByTestId('new-client-address-display')).not.toBeInTheDocument()
+    })
+
+    it('clears custom address and restores display when checkbox is re-checked', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      const clientAddrInput = document.querySelector('[name="client_address"]') as HTMLInputElement
+      fireEvent.change(clientAddrInput, { target: { value: '42 Custom Ave' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      expect(screen.getByTestId('new-client-address-display')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-address-display')).toHaveValue('')
+      expect(screen.queryByTestId('new-client-address-input')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('new client address — FormData submission', () => {
+    it('sends site address as client_address when checkbox is checked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/123 main/i), { target: { value: '99 Site Ave' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_address')).toBe('99 Site Ave')
+    })
+
+    it('sends custom address as client_address when checkbox is unchecked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      const clientAddrInput = document.querySelector('[name="client_address"]') as HTMLInputElement
+      fireEvent.change(clientAddrInput, { target: { value: '42 Custom Ave' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_address')).toBe('42 Custom Ave')
+    })
+
+    it('does not send client_address when site address is empty and checkbox is checked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_address')).toBeNull()
+    })
+  })
+
+  describe('client address checkbox reset', () => {
+    it('resets checkbox to checked after form reset', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      await screen.findByRole('button', { name: /add site/i })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another Client' } })
+      expect(screen.getByTestId('new-client-address-same-checkbox')).toBeChecked()
+    })
+  })
+
 })
