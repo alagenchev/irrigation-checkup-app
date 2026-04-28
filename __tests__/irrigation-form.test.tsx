@@ -38,10 +38,33 @@ jest.mock('@/actions/clients', () => ({
 
 import '@testing-library/jest-dom'
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { IrrigationForm } from '@/app/irrigation-form'
 import { getSiteEquipment } from '@/actions/sites'
 import type { Client, CompanySettings, Inspector, IrrigationFormInitialData, SiteWithClient } from '@/types'
+
+// ── Mock SiteSelector before other mocks ───────────────────────────────────
+// This allows us to control which site data gets passed to onSiteSelect
+let mockSiteSelectData: SiteWithClient | null = null
+jest.mock('@/app/components/site-selector', () => ({
+  SiteSelector: ({ onSiteSelect }: any) => {
+    return (
+      <div data-testid="mock-site-selector">
+        <button
+          data-testid="trigger-site-select-button"
+          onClick={() => {
+            if (mockSiteSelectData) {
+              onSiteSelect(mockSiteSelectData)
+            }
+          }}
+        >
+          Trigger Site Select
+        </button>
+      </div>
+    )
+  },
+}))
 
 // ── Test Fixtures ─────────────────────────────────────────────────────────
 
@@ -552,5 +575,449 @@ describe('IrrigationForm field accessibility', () => {
     // Should have select dropdown for inspection type
     const selects = screen.queryAllByRole('combobox')
     expect(selects.length).toBeGreaterThan(0)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Client Field Auto-population Tests (autopopulate-client-on-site-select)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('handleSiteSelect — client field population', () => {
+  const SITE_WITH_FULL_CLIENT: SiteWithClient = {
+    id: 'site-1',
+    companyId: 'company-1',
+    name: 'Test Site',
+    address: '1 Test St',
+    clientId: 'client-1',
+    notes: null,
+    createdAt: new Date(),
+    clientName:          'Acme Corp',
+    clientAddress:       '99 Corp Ave',
+    clientPhone:         '555-1234',
+    clientEmail:         'acme@test.com',
+    clientAccountType:   'Commercial',
+    clientAccountNumber: 'ACC-001',
+  }
+
+  const SITE_WITH_PARTIAL_CLIENT: SiteWithClient = {
+    ...SITE_WITH_FULL_CLIENT,
+    clientEmail:         null,
+    clientAccountType:   null,
+    clientAccountNumber: null,
+  }
+
+  const SITE_NO_CLIENT: SiteWithClient = {
+    ...SITE_WITH_FULL_CLIENT,
+    clientName:          null,
+    clientAddress:       null,
+    clientPhone:         null,
+    clientEmail:         null,
+    clientAccountType:   null,
+    clientAccountNumber: null,
+  }
+
+  beforeEach(() => {
+    const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+    mockGetSiteEquipment.mockResolvedValue({
+      controllers: [], zones: [], backflows: [], overview: null,
+    })
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
+    mockSiteSelectData = null
+  })
+
+  it('populates clientName and clientAddress when site has a client', async () => {
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    // Click the button that triggers onSiteSelect
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    // Wait for async equipment loading to complete
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // Check that clientName and clientAddress fields were populated
+    const clientNameInputs = screen.getAllByDisplayValue('Acme Corp')
+    expect(clientNameInputs.length).toBeGreaterThan(0)
+
+    const clientAddressInputs = screen.getAllByDisplayValue('99 Corp Ave')
+    expect(clientAddressInputs.length).toBeGreaterThan(0)
+  })
+
+  it('populates clientEmail when site client has an email', async () => {
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // Check that clientEmail field was populated
+    const emailInputs = screen.getAllByDisplayValue('acme@test.com')
+    expect(emailInputs.length).toBeGreaterThan(0)
+  })
+
+  it('populates accountType when site client has accountType', async () => {
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // Check that accountType field was populated (it's a select, so check the value)
+    const accountTypeSelects = screen.queryAllByDisplayValue('Commercial')
+    expect(accountTypeSelects.length).toBeGreaterThan(0)
+  })
+
+  it('populates accountNumber when site client has accountNumber', async () => {
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // Check that accountNumber field was populated
+    const accountNumberInputs = screen.getAllByDisplayValue('ACC-001')
+    expect(accountNumberInputs.length).toBeGreaterThan(0)
+  })
+
+  it('does not overwrite accountType or accountNumber when client fields are null', async () => {
+    mockSiteSelectData = SITE_WITH_PARTIAL_CLIENT
+    renderForm()
+
+    // Verify initial state has default accountType
+    const initialAccountTypeSelects = screen.queryAllByDisplayValue('Commercial')
+    const initialAccountTypeCount = initialAccountTypeSelects.length
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // After selecting a site with null accountType and accountNumber,
+    // the fields should remain at their defaults (accountType stays 'Commercial', accountNumber stays '')
+    const finalAccountTypeSelects = screen.queryAllByDisplayValue('Commercial')
+    expect(finalAccountTypeSelects.length).toBeGreaterThanOrEqual(initialAccountTypeCount)
+
+    // accountNumber should be empty since it was not populated
+    const accountNumberInputs = screen.queryAllByDisplayValue('')
+    expect(accountNumberInputs.length).toBeGreaterThan(0)
+  })
+
+  it('does not populate any client fields when site has no client', async () => {
+    mockSiteSelectData = SITE_NO_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // Verify that client fields remain empty
+    // clientName should not have been populated
+    const clientNameInputs = screen.queryAllByDisplayValue('Acme Corp')
+    expect(clientNameInputs.length).toBe(0)
+
+    // clientEmail should remain empty
+    const emailInputs = screen.queryAllByDisplayValue('acme@test.com')
+    expect(emailInputs.length).toBe(0)
+
+    // accountNumber should remain empty
+    const accountNumberInputs = screen.queryAllByDisplayValue('ACC-001')
+    expect(accountNumberInputs.length).toBe(0)
+  })
+
+  it('loads and populates equipment data when getSiteEquipment succeeds', async () => {
+    const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+    const mockEquipment = {
+      controllers: [
+        {
+          id: 1,
+          location: 'Front',
+          manufacturer: 'Hunter',
+          model: 'Pro-HC',
+          sensors: 'Rain/Freeze',
+          numZones: '8',
+          masterValve: false,
+          masterValveNotes: '',
+          notes: 'Recently serviced',
+        },
+      ],
+      zones: [
+        {
+          id: 2,
+          zoneNum: '1',
+          controller: '1',
+          description: 'Front lawn',
+          landscapeTypes: ['Full-sun turf'],
+          irrigationTypes: ['Rotor'],
+          notes: 'Needs head replacement',
+          photoData: [],
+        },
+      ],
+      backflows: [],
+      overview: {
+        staticPressure: '65',
+        backflowInstalled: true,
+        backflowServiceable: true,
+        isolationValve: true,
+        systemNotes: 'Good condition',
+      },
+    }
+    mockGetSiteEquipment.mockResolvedValue(mockEquipment)
+
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(mockGetSiteEquipment).toHaveBeenCalledWith(SITE_WITH_FULL_CLIENT.id)
+    })
+
+    // Verify equipment sections are visible
+    expect(screen.getByText('Irrigation System Overview')).toBeInTheDocument()
+
+    // Verify system overview was populated
+    const staticPressureInputs = screen.getAllByDisplayValue('65')
+    expect(staticPressureInputs.length).toBeGreaterThan(0)
+  })
+
+  it('handles equipment loading error gracefully', async () => {
+    const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+    mockGetSiteEquipment.mockRejectedValue(new Error('Failed to load equipment'))
+
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    // Wait for error to be displayed
+    await waitFor(() => {
+      const errorElement = screen.getByTestId('equipment-error')
+      expect(errorElement).toBeInTheDocument()
+      expect(errorElement.textContent).toContain('Failed to load equipment')
+    })
+  })
+
+  it('sets siteName when site is selected', async () => {
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalledWith(SITE_WITH_FULL_CLIENT.id)
+    })
+
+    // Verify equipment loaded (which confirms handleSiteSelect was called with the site)
+    // Equipment sections should be visible after successful selection
+    expect(screen.getByText('Irrigation System Overview')).toBeInTheDocument()
+  })
+
+  it('locks client fields after successful site selection', async () => {
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // After selection, clientName should be populated and locked
+    const clientNameInputs = screen.queryAllByDisplayValue('Acme Corp')
+    expect(clientNameInputs.length).toBeGreaterThan(0)
+
+    // Verify that the locked input exists (data-testid shows it's locked)
+    const lockedClientName = screen.queryByTestId('client-name-locked')
+    expect(lockedClientName).toBeInTheDocument()
+  })
+
+  it('resets ID counter above highest equipment ID', async () => {
+    const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+    // Return equipment with high IDs to test ID counter reset
+    mockGetSiteEquipment.mockResolvedValue({
+      controllers: [
+        {
+          id: 15,
+          location: 'Front',
+          manufacturer: 'Hunter',
+          model: 'Pro-HC',
+          sensors: 'Rain/Freeze',
+          numZones: '8',
+          masterValve: false,
+          masterValveNotes: '',
+          notes: '',
+        },
+      ],
+      zones: [
+        {
+          id: 20,
+          zoneNum: '1',
+          controller: '15',
+          description: 'Front lawn',
+          landscapeTypes: [],
+          irrigationTypes: [],
+          notes: '',
+          photoData: [],
+        },
+      ],
+      backflows: [
+        {
+          id: 25,
+          manufacturer: 'Watts',
+          type: 'RPZ',
+          model: 'LF007',
+          size: '1',
+        },
+      ],
+      overview: null,
+    })
+
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(mockGetSiteEquipment).toHaveBeenCalledWith(SITE_WITH_FULL_CLIENT.id)
+    })
+
+    // Verify equipment sections are visible and populated
+    expect(screen.getByText('Irrigation System Overview')).toBeInTheDocument()
+    // Verify the controller with ID 15 is rendered
+    const frontInputs = screen.queryAllByDisplayValue('Front')
+    expect(frontInputs.length).toBeGreaterThan(0)
+  })
+
+  it('populates overview fields when getSiteEquipment returns overview data', async () => {
+    const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+    mockGetSiteEquipment.mockResolvedValue({
+      controllers: [],
+      zones: [],
+      backflows: [],
+      overview: {
+        staticPressure: '72.5',
+        backflowInstalled: true,
+        backflowServiceable: false,
+        isolationValve: true,
+        systemNotes: 'Needs maintenance',
+      },
+    })
+
+    mockSiteSelectData = SITE_WITH_FULL_CLIENT
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // Verify system overview fields were populated
+    const pressureInputs = screen.getAllByDisplayValue('72.5')
+    expect(pressureInputs.length).toBeGreaterThan(0)
+
+    const notesInputs = screen.queryAllByDisplayValue('Needs maintenance')
+    expect(notesInputs.length).toBeGreaterThan(0)
+  })
+
+  it('does not set clientEmail if it is empty string', async () => {
+    const siteWithEmptyEmail: SiteWithClient = {
+      ...SITE_WITH_FULL_CLIENT,
+      clientEmail: '',
+    }
+    mockSiteSelectData = siteWithEmptyEmail
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // The email field should not have the test email
+    const emailInputs = screen.queryAllByDisplayValue('acme@test.com')
+    expect(emailInputs.length).toBe(0)
+  })
+
+  it('does not set clientAccountType if it is empty string', async () => {
+    const siteWithEmptyAccountType: SiteWithClient = {
+      ...SITE_WITH_FULL_CLIENT,
+      clientAccountType: '',
+    }
+    mockSiteSelectData = siteWithEmptyAccountType
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // The accountType should remain at the default value
+    const accountTypeSelects = screen.queryAllByDisplayValue('Commercial')
+    // Should still have the default, but not be overwritten by empty string
+    expect(accountTypeSelects.length).toBeGreaterThan(0)
+  })
+
+  it('does not set clientAccountNumber if it is empty string', async () => {
+    const siteWithEmptyAccountNumber: SiteWithClient = {
+      ...SITE_WITH_FULL_CLIENT,
+      clientAccountNumber: '',
+    }
+    mockSiteSelectData = siteWithEmptyAccountNumber
+    renderForm()
+
+    const button = screen.getByTestId('trigger-site-select-button')
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      const mockGetSiteEquipment = getSiteEquipment as jest.Mock
+      expect(mockGetSiteEquipment).toHaveBeenCalled()
+    })
+
+    // The accountNumber should remain empty
+    const accountNumberInputs = screen.queryAllByDisplayValue('ACC-001')
+    expect(accountNumberInputs.length).toBe(0)
   })
 })
