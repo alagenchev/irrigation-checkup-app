@@ -26,6 +26,15 @@ jest.mock('@/app/sites/site-equipment-editor', () => ({
   ),
 }))
 
+jest.mock('@/app/components/site-map-editor', () => ({
+  SiteMapEditor: ({ siteId, siteName, onClose }: { siteId: string; siteName: string; onClose: () => void }) => (
+    <div data-testid="mock-site-map-editor" data-site-id={siteId}>
+      <span>{siteName}</span>
+      <button onClick={onClose}>Close Map</button>
+    </div>
+  ),
+}))
+
 jest.mock('@/components/ui/autocomplete', () => ({
   Autocomplete: ({ name, value, onChange, placeholder }: any) => (
     <input name={name} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
@@ -169,28 +178,47 @@ describe('AddSiteForm', () => {
       await screen.findByTestId('add-site-equipment-phase')
     }
 
-    it('clicking Skip returns to phase 1', async () => {
+    async function reachMapPhase() {
       await reachPhase2()
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
-      expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
-      expect(screen.queryByTestId('site-equipment-editor')).not.toBeInTheDocument()
+      await screen.findByTestId('add-site-map-phase')
+    }
+
+    it('clicking Skip equipment transitions to map phase', async () => {
+      await reachPhase2()
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      expect(await screen.findByTestId('add-site-map-phase')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-equipment-phase')).not.toBeInTheDocument()
     })
 
-    it('equipment editor Save returns to phase 1', async () => {
+    it('equipment editor Save transitions to map phase', async () => {
       await reachPhase2()
       fireEvent.click(screen.getByTestId('equipment-editor-save'))
-      expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
+      expect(await screen.findByTestId('add-site-map-phase')).toBeInTheDocument()
     })
 
-    it('equipment editor Cancel returns to phase 1', async () => {
+    it('equipment editor Cancel transitions to map phase', async () => {
       await reachPhase2()
       fireEvent.click(screen.getByTestId('equipment-editor-cancel'))
+      expect(await screen.findByTestId('add-site-map-phase')).toBeInTheDocument()
+    })
+
+    it('clicking skip-map returns to phase 1', async () => {
+      await reachMapPhase()
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
+      expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-map-phase')).not.toBeInTheDocument()
+    })
+
+    it('SiteMapEditor Close returns to phase 1', async () => {
+      await reachMapPhase()
+      fireEvent.click(screen.getByRole('button', { name: /close map/i }))
       expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
     })
 
     it('form fields are cleared after returning to phase 1', async () => {
-      await reachPhase2()
-      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await reachMapPhase()
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
       const nameInput = await screen.findByPlaceholderText(/acme hq/i)
       expect(nameInput).toHaveValue('')
     })
@@ -210,8 +238,141 @@ describe('AddSiteForm', () => {
       })
       await screen.findByTestId('add-site-equipment-phase')
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await screen.findByTestId('add-site-map-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
 
       expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('phase 3 — map editor after equipment phase', () => {
+    async function reachMapPhase() {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await screen.findByTestId('add-site-map-phase')
+    }
+
+    it('shows equipment editor after site creation (regression)', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      expect(await screen.findByTestId('add-site-equipment-phase')).toBeInTheDocument()
+      expect(screen.getByTestId('site-equipment-editor')).toBeInTheDocument()
+    })
+
+    it('shows skip-equipment button in equipment phase (regression)', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      expect(screen.getByTestId('add-site-skip-equipment')).toBeInTheDocument()
+    })
+
+    it('transitions to map phase when skip-equipment is clicked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      expect(await screen.findByTestId('add-site-map-phase')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-equipment-phase')).not.toBeInTheDocument()
+    })
+
+    it('transitions to map phase when SiteEquipmentEditor onSave fires', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('equipment-editor-save'))
+      expect(await screen.findByTestId('add-site-map-phase')).toBeInTheDocument()
+    })
+
+    it('transitions to map phase when SiteEquipmentEditor onClose fires', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('equipment-editor-cancel'))
+      expect(await screen.findByTestId('add-site-map-phase')).toBeInTheDocument()
+    })
+
+    it('shows skip-map button in map phase', async () => {
+      await reachMapPhase()
+      expect(screen.getByTestId('add-site-skip-map')).toBeInTheDocument()
+    })
+
+    it('shows site name in map phase description', async () => {
+      await reachMapPhase()
+      expect(screen.getAllByText('New Site').length).toBeGreaterThanOrEqual(1)
+      // Verify it appears in the description paragraph (as a <strong> element)
+      const mapPhase = screen.getByTestId('add-site-map-phase')
+      expect(mapPhase).toHaveTextContent('New Site')
+    })
+
+    it('renders SiteMapEditor with the created site id', async () => {
+      await reachMapPhase()
+      const mapEditor = screen.getByTestId('mock-site-map-editor')
+      expect(mapEditor).toBeInTheDocument()
+      expect(mapEditor).toHaveAttribute('data-site-id', CREATED_SITE.id)
+    })
+
+    it('returns to blank form when skip-map is clicked', async () => {
+      await reachMapPhase()
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
+      expect(await screen.findByTestId('add-site-form')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-map-phase')).not.toBeInTheDocument()
+    })
+
+    it('returns to blank form when SiteMapEditor onClose fires', async () => {
+      await reachMapPhase()
+      fireEvent.click(screen.getByRole('button', { name: /close map/i }))
+      expect(await screen.findByTestId('add-site-form')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-map-phase')).not.toBeInTheDocument()
+    })
+
+    it('completes full add-site flow: create → skip equipment → skip map → blank form', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      // Phase 1: fill and submit
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      // Phase 2: equipment — skip
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      // Phase 3: map — skip
+      await screen.findByTestId('add-site-map-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
+
+      // Back to blank form
+      expect(await screen.findByTestId('add-site-form')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-equipment-phase')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-map-phase')).not.toBeInTheDocument()
     })
   })
 
@@ -366,6 +527,8 @@ describe('AddSiteForm', () => {
 
       await screen.findByTestId('add-site-equipment-phase')
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await screen.findByTestId('add-site-map-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
 
       // Back in phase 1 — new-client-details should not be showing
       await screen.findByRole('button', { name: /add site/i })
@@ -385,6 +548,8 @@ describe('AddSiteForm', () => {
 
       await screen.findByTestId('add-site-equipment-phase')
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await screen.findByTestId('add-site-map-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
 
       fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another New' } })
       expect(screen.getByTestId('new-client-phone')).toHaveValue('')
@@ -403,6 +568,8 @@ describe('AddSiteForm', () => {
 
       await screen.findByTestId('add-site-equipment-phase')
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await screen.findByTestId('add-site-map-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
 
       fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another' } })
       expect(screen.getByTestId('new-client-account-type')).toHaveValue('Residential')
@@ -509,6 +676,8 @@ describe('AddSiteForm', () => {
       })
       await screen.findByTestId('add-site-equipment-phase')
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      await screen.findByTestId('add-site-map-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-map'))
 
       await screen.findByRole('button', { name: /add site/i })
       fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another Client' } })

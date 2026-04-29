@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createSite } from '@/actions/sites'
 import { SiteEquipmentEditor } from './site-equipment-editor'
+import { SiteMapEditor } from '@/app/components/site-map-editor'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import type { SiteWithClient } from '@/actions/sites'
@@ -28,6 +29,7 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
   const [saving,                  setSaving]                  = useState(false)
   const [error,                   setError]                   = useState<string | null>(null)
   const [createdSite,             setCreatedSite]             = useState<SiteWithClient | null>(null)
+  const [phase,                   setPhase]                   = useState<'equipment' | 'map'>('equipment')
 
   const clientOptions = clients.map(c => ({ label: c.name, value: c.id, address: c.address ?? undefined }))
   const isNewClient = clientName.trim() !== '' && !clients.some(c => c.name === clientName)
@@ -46,6 +48,7 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     setNotes('')
     setError(null)
     setCreatedSite(null)
+    setPhase('equipment')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -86,7 +89,7 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     })
   }
 
-  if (createdSite) {
+  if (createdSite && phase === 'equipment') {
     return (
       <div data-testid="add-site-equipment-phase">
         <p style={{ color: '#a1a1aa', fontSize: 13, marginBottom: 16 }}>
@@ -97,14 +100,37 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
           data-testid="add-site-skip-equipment"
           className="btn btn-sm"
           style={{ marginBottom: 16 }}
-          onClick={handleDone}
+          onClick={() => setPhase('map')}
         >
           Skip — add equipment later
         </button>
         <SiteEquipmentEditor
           site={createdSite}
+          onClose={() => setPhase('map')}
+          onSave={() => setPhase('map')}
+        />
+      </div>
+    )
+  }
+
+  if (createdSite && phase === 'map') {
+    return (
+      <div data-testid="add-site-map-phase">
+        <p style={{ color: '#a1a1aa', fontSize: 13, marginBottom: 16 }}>
+          Draw the site boundary for <strong style={{ color: '#ffffff' }}>{createdSite.name}</strong>, or skip and do it later.
+        </p>
+        <button
+          data-testid="add-site-skip-map"
+          className="btn btn-sm"
+          style={{ marginBottom: 16 }}
+          onClick={handleDone}
+        >
+          Skip — draw map later
+        </button>
+        <SiteMapEditor
+          siteId={createdSite.id}
+          siteName={createdSite.name}
           onClose={handleDone}
-          onSave={handleDone}
         />
       </div>
     )
