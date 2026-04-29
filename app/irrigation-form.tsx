@@ -171,6 +171,11 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
     if (newMode === 'new') {
       setField('siteName', '')
       setField('siteAddress', '')
+      setField('clientName', '')
+      setField('clientAddress', '')
+      setField('clientEmail', '')
+      setField('accountType', '')
+      setField('accountNumber', '')
       // New site: mark as selected with empty equipment for fresh entry
       setSiteSelected(true)
       setEquipmentError(null)
