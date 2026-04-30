@@ -21,6 +21,10 @@ test.describe('Add Site With Equipment', () => {
 
     await page.getByTestId('site-equipment-editor-save').click()
 
+    // Equipment save → map phase; skip map to return to form
+    await expect(page.getByTestId('add-site-map-phase')).toBeVisible()
+    await page.getByTestId('add-site-skip-map').click()
+
     await expect(page.getByRole('button', { name: /add site/i })).toBeVisible()
     await expect(page.getByTestId('sites-table')).toContainText(siteName)
 
@@ -39,6 +43,10 @@ test.describe('Add Site With Equipment', () => {
 
     await page.getByTestId('add-site-skip-equipment').click()
 
+    // Skip equipment → map phase; skip map to return to form
+    await expect(page.getByTestId('add-site-map-phase')).toBeVisible()
+    await page.getByTestId('add-site-skip-map').click()
+
     await expect(page.getByRole('button', { name: /add site/i })).toBeVisible()
     await expect(page.getByTestId('sites-table')).toContainText(siteName)
   })
@@ -50,6 +58,10 @@ test.describe('Add Site With Equipment', () => {
 
     await page.getByTestId('add-site-skip-equipment').click()
 
+    // Skip equipment → map phase; skip map to return to form
+    await expect(page.getByTestId('add-site-map-phase')).toBeVisible()
+    await page.getByTestId('add-site-skip-map').click()
+
     await expect(page.getByRole('button', { name: /add site/i })).toBeVisible()
     await expect(page.getByPlaceholder(/acme hq/i)).toHaveValue('')
   })
@@ -60,6 +72,10 @@ test.describe('Add Site With Equipment', () => {
     await expect(page.getByTestId('add-site-equipment-phase')).toBeVisible()
 
     await page.getByTestId('site-equipment-editor-cancel').click()
+
+    // Cancel equipment → map phase; skip map to return to form
+    await expect(page.getByTestId('add-site-map-phase')).toBeVisible()
+    await page.getByTestId('add-site-skip-map').click()
 
     await expect(page.getByRole('button', { name: /add site/i })).toBeVisible()
   })
@@ -73,6 +89,8 @@ test.describe('Add Site With Equipment', () => {
       await page.getByRole('button', { name: /add site/i }).click()
       await expect(page.getByTestId('add-site-equipment-phase')).toBeVisible()
       await page.getByTestId('add-site-skip-equipment').click()
+      await expect(page.getByTestId('add-site-map-phase')).toBeVisible()
+      await page.getByTestId('add-site-skip-map').click()
       await expect(page.getByRole('button', { name: /add site/i })).toBeVisible()
     }
 
