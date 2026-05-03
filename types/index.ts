@@ -9,6 +9,7 @@ export type {
   SiteController, NewSiteController,
   SiteZone, NewSiteZone,
   SiteBackflow, NewSiteBackflow,
+  SiteMap, NewSiteMap,
   SiteVisit, NewSiteVisit,
   QuoteItemData, ZoneIssueData, ZonePhotoData,
 } from '@/lib/schema'
