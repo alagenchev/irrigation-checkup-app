@@ -127,6 +127,18 @@ export const siteDrawings = pgTable('site_drawings', {
   unique('site_drawings_site_uniq').on(table.companyId, table.siteId),
 ])
 
+export const siteMaps = pgTable('site_maps', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  siteId:    uuid('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
+  name:      text('name').notNull().default('Main'),
+  drawing:   jsonb('drawing'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull().$onUpdateFn(() => new Date()),
+})
+export type SiteMap = typeof siteMaps.$inferSelect
+export type NewSiteMap = typeof siteMaps.$inferInsert
+
 // ── JSONB sub-types for visit-specific snapshot data ──────────────────────
 
 export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string }
