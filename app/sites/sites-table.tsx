@@ -45,7 +45,7 @@ export function SitesTable({ sites, onEditEquipment, onViewMap }: SitesTableProp
                   data-testid="sites-table-view-map"
                   onClick={() => onViewMap(s.id)}
                 >
-                  Map
+                  Maps
                 </button>
               </div>
             </td>

@@ -59,3 +59,32 @@ export type IrrigationFormInitialData = {
   zoneIssues:   Record<string, string[]>
   quoteItems:   QuoteItemFormData[]
 }
+
+// ── GeoJSON feature property types for site map drawing ──────────────────────
+
+export interface ZoneFeatureProperties {
+  featureType: 'zone'
+  name: string
+  color: string
+  opacity: number
+  role: 'zone' | 'hydrozone' | 'irrigated' | 'exclusion'
+  areaType: 'turf' | 'bed' | 'other'
+  sunExposure: 'sunny' | 'mixed' | 'shade'
+  grassType: string
+  photoUrls: string[]
+  areaSqFt: number
+  perimeterFt: number
+}
+
+export interface PointFeatureProperties {
+  featureType: 'head' | 'controller' | 'backflow' | 'repair' | 'other'
+  name: string
+  color: string
+}
+
+export interface WireFeatureProperties {
+  featureType: 'wire'
+  name: string
+  color: string
+}
+

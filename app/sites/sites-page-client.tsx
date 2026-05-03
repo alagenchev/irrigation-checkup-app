@@ -1,12 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { AddSiteForm } from './add-site-form'
 import { SitesTable } from './sites-table'
 import { SiteEquipmentEditor } from './site-equipment-editor'
-import { SiteMapEditor } from '@/app/components/site-map-editor'
+import { MapsListPanel } from '@/app/components/map/maps-list-panel'
 import type { SiteWithClient } from '@/actions/sites'
 import type { Client } from '@/types'
+
+const MapCanvas = dynamic(
+  () => import('@/app/components/map/map-canvas').then(m => ({ default: m.MapCanvas })),
+  { ssr: false, loading: () => <div style={{ color: '#a1a1aa', padding: 16 }}>Loading map…</div> },
+)
 
 interface SitesPageClientProps {
   sites: SiteWithClient[]
@@ -15,7 +21,8 @@ interface SitesPageClientProps {
 
 type PanelState =
   | { type: 'equipment'; siteId: string }
-  | { type: 'map'; siteId: string }
+  | { type: 'maps-list'; siteId: string }
+  | { type: 'map-editor'; siteId: string; mapId: string }
   | null
 
 export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
@@ -32,12 +39,20 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
 
   function handleViewMap(siteId: string) {
     setPanelState(prev =>
-      prev?.type === 'map' && prev.siteId === siteId ? null : { type: 'map', siteId }
+      prev?.type === 'maps-list' && prev.siteId === siteId ? null : { type: 'maps-list', siteId }
     )
+  }
+
+  function handleEditMap(siteId: string, mapId: string) {
+    setPanelState({ type: 'map-editor', siteId, mapId })
   }
 
   function handleClose() {
     setPanelState(null)
+  }
+
+  function handleBackToList(siteId: string) {
+    setPanelState({ type: 'maps-list', siteId })
   }
 
   return (
@@ -78,7 +93,7 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
           />
         </section>
 
-        {/* Right: equipment editor or map panel */}
+        {/* Right: equipment editor, maps list, or map editor panel */}
         {panelState !== null && selectedSite && (
           <section
             className="card"
@@ -93,12 +108,21 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
                 onSave={handleClose}
               />
             )}
-            {panelState.type === 'map' && (
-              <SiteMapEditor
+            {panelState.type === 'maps-list' && (
+              <MapsListPanel
                 key={selectedSite.id}
                 siteId={selectedSite.id}
                 siteName={selectedSite.name}
+                onEditMap={(mapId) => handleEditMap(selectedSite.id, mapId)}
                 onClose={handleClose}
+              />
+            )}
+            {panelState.type === 'map-editor' && (
+              <MapCanvas
+                key={panelState.mapId}
+                mapId={panelState.mapId}
+                siteName={selectedSite.name}
+                onClose={() => handleBackToList(selectedSite.id)}
               />
             )}
           </section>
