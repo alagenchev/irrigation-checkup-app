@@ -8,9 +8,13 @@ const SiteMapEditorInner = dynamic(
 )
 
 interface SiteMapEditorProps {
-  siteId: string
-  siteName: string
-  onClose: () => void
+  siteId?: string
+  siteName?: string
+  onClose?: () => void
+  initialCenter?: [number, number]
+  initialDrawing?: GeoJSON.FeatureCollection | null
+  onDrawingChange?: (drawing: GeoJSON.FeatureCollection) => void
+  height?: number
 }
 
 export function SiteMapEditor(props: SiteMapEditorProps) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createSite } from '@/actions/sites'
 import { SiteEquipmentEditor } from './site-equipment-editor'
 import { SiteMapEditor } from '@/app/components/site-map-editor'
@@ -29,11 +29,26 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
   const [saving,                  setSaving]                  = useState(false)
   const [error,                   setError]                   = useState<string | null>(null)
   const [createdSite,             setCreatedSite]             = useState<SiteWithClient | null>(null)
-  const [phase,                   setPhase]                   = useState<'equipment' | 'map'>('equipment')
+  const [mapCenter,               setMapCenter]               = useState<[number, number] | null>(null)
+  const [drawing,                 setDrawing]                 = useState<GeoJSON.FeatureCollection | null>(null)
 
   const clientOptions = clients.map(c => ({ label: c.name, value: c.id, address: c.address ?? undefined }))
   const isNewClient = clientName.trim() !== '' && !clients.some(c => c.name === clientName)
   const effectiveClientAddress = clientAddressSameAsSite ? address : clientAddress
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lng } = pos.coords
+      setMapCenter([lng, lat])
+      const res = await fetch(`/api/geocode?lat=${lat}&lon=${lng}`)
+      if (!res.ok) return
+      const results: string[] = await res.json()
+      if (results[0]) {
+        setAddress(prev => prev || results[0])
+      }
+    })
+  }, [])
 
   function handleDone() {
     setSiteName('')
@@ -48,7 +63,8 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     setNotes('')
     setError(null)
     setCreatedSite(null)
-    setPhase('equipment')
+    setDrawing(null)
+    setMapCenter(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -78,8 +94,17 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
       return
     }
 
+    const newSite = result.data
+    if (drawing && newSite?.id) {
+      await fetch(`/api/sites/${newSite.id}/drawing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(drawing),
+      })
+    }
+
     setCreatedSite({
-      ...result.data,
+      ...newSite,
       clientName:          clientName             || null,
       clientAddress:       effectiveClientAddress || null,
       clientPhone:         clientPhone            || null,
@@ -89,7 +114,7 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     })
   }
 
-  if (createdSite && phase === 'equipment') {
+  if (createdSite) {
     return (
       <div data-testid="add-site-equipment-phase">
         <p style={{ color: '#a1a1aa', fontSize: 13, marginBottom: 16 }}>
@@ -100,37 +125,14 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
           data-testid="add-site-skip-equipment"
           className="btn btn-sm"
           style={{ marginBottom: 16 }}
-          onClick={() => setPhase('map')}
+          onClick={handleDone}
         >
           Skip — add equipment later
         </button>
         <SiteEquipmentEditor
           site={createdSite}
-          onClose={() => setPhase('map')}
-          onSave={() => setPhase('map')}
-        />
-      </div>
-    )
-  }
-
-  if (createdSite && phase === 'map') {
-    return (
-      <div data-testid="add-site-map-phase">
-        <p style={{ color: '#a1a1aa', fontSize: 13, marginBottom: 16 }}>
-          Draw the site boundary for <strong style={{ color: '#ffffff' }}>{createdSite.name}</strong>, or skip and do it later.
-        </p>
-        <button
-          data-testid="add-site-skip-map"
-          className="btn btn-sm"
-          style={{ marginBottom: 16 }}
-          onClick={handleDone}
-        >
-          Skip — draw map later
-        </button>
-        <SiteMapEditor
-          siteId={createdSite.id}
-          siteName={createdSite.name}
           onClose={handleDone}
+          onSave={handleDone}
         />
       </div>
     )
@@ -138,140 +140,152 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
 
   return (
     <form data-testid="add-site-form" onSubmit={handleSubmit}>
-      <div className="grid-2">
-        <div className="field">
-          <label>Site Name <span style={{ color: '#ef4444' }}>*</span></label>
-          <input
-            type="text"
-            name="name"
-            placeholder="e.g. Acme HQ – Building A"
-            required
-            value={siteName}
-            onChange={e => setSiteName(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <AddressAutocomplete
-            name="address"
-            value={address}
-            onChange={setAddress}
-            label="Address"
-            placeholder="123 Main St, City, TX"
-          />
-        </div>
-        <div className="field">
-          <Autocomplete
-            name="client_name"
-            label="Client"
-            value={clientName}
-            onChange={setClientName}
-            options={clientOptions}
-            placeholder="Type or select a client"
-          />
-        </div>
-        <div className="field">
-          <label>Notes</label>
-          <input
-            type="text"
-            name="notes"
-            placeholder="Optional notes"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {isNewClient && (
-        <div data-testid="new-client-details" style={{ marginTop: 16, padding: '14px 16px', border: '1px solid #3a3a3c', borderRadius: 8 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px 0' }}>
-            New Client Details
-          </p>
-          <div className="field" style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-              <label style={{ margin: 0 }}>Client Address</label>
-              <label data-testid="new-client-address-same-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#a1a1aa', fontWeight: 400, cursor: 'pointer', margin: 0 }}>
-                <input
-                  data-testid="new-client-address-same-checkbox"
-                  type="checkbox"
-                  checked={clientAddressSameAsSite}
-                  onChange={e => {
-                    setClientAddressSameAsSite(e.target.checked)
-                    if (e.target.checked) setClientAddress('')
-                  }}
-                />
-                Same as site address
-              </label>
-            </div>
-            {clientAddressSameAsSite ? (
-              <input
-                data-testid="new-client-address-display"
-                type="text"
-                value={address}
-                readOnly
-                disabled
-                placeholder="Enter site address above first"
-                style={{ opacity: 0.5 }}
-              />
-            ) : (
-              <div data-testid="new-client-address-input">
-                <AddressAutocomplete
-                  name="client_address"
-                  value={clientAddress}
-                  onChange={setClientAddress}
-                  placeholder="123 Main St, City, TX"
-                />
-              </div>
-            )}
-          </div>
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+        <div style={{ flex: '0 0 420px', minWidth: 0 }}>
           <div className="grid-2">
             <div className="field">
-              <label>Phone</label>
+              <label>Site Name <span style={{ color: '#ef4444' }}>*</span></label>
               <input
-                data-testid="new-client-phone"
                 type="text"
-                placeholder="(555) 000-0000"
-                value={clientPhone}
-                onChange={e => setClientPhone(e.target.value)}
+                name="name"
+                placeholder="e.g. Acme HQ – Building A"
+                required
+                value={siteName}
+                onChange={e => setSiteName(e.target.value)}
               />
             </div>
             <div className="field">
-              <label>Email</label>
-              <input
-                data-testid="new-client-email"
-                type="email"
-                placeholder="client@email.com"
-                value={clientEmail}
-                onChange={e => setClientEmail(e.target.value)}
+              <AddressAutocomplete
+                name="address"
+                value={address}
+                onChange={setAddress}
+                label="Address"
+                placeholder="123 Main St, City, TX"
               />
             </div>
             <div className="field">
-              <label>Account Type</label>
-              <select data-testid="new-client-account-type" value={clientAccountType} onChange={e => setClientAccountType(e.target.value)}>
-                {ACCOUNT_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              <Autocomplete
+                name="client_name"
+                label="Client"
+                value={clientName}
+                onChange={setClientName}
+                options={clientOptions}
+                placeholder="Type or select a client"
+              />
             </div>
             <div className="field">
-              <label>Account #</label>
+              <label>Notes</label>
               <input
-                data-testid="new-client-account-number"
                 type="text"
-                placeholder="Account number"
-                value={clientAccountNumber}
-                onChange={e => setClientAccountNumber(e.target.value)}
+                name="notes"
+                placeholder="Optional notes"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
               />
             </div>
           </div>
+
+          {isNewClient && (
+            <div data-testid="new-client-details" style={{ marginTop: 16, padding: '14px 16px', border: '1px solid #3a3a3c', borderRadius: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px 0' }}>
+                New Client Details
+              </p>
+              <div className="field" style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                  <label style={{ margin: 0 }}>Client Address</label>
+                  <label data-testid="new-client-address-same-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#a1a1aa', fontWeight: 400, cursor: 'pointer', margin: 0 }}>
+                    <input
+                      data-testid="new-client-address-same-checkbox"
+                      type="checkbox"
+                      checked={clientAddressSameAsSite}
+                      onChange={e => {
+                        setClientAddressSameAsSite(e.target.checked)
+                        if (e.target.checked) setClientAddress('')
+                      }}
+                    />
+                    Same as site address
+                  </label>
+                </div>
+                {clientAddressSameAsSite ? (
+                  <input
+                    data-testid="new-client-address-display"
+                    type="text"
+                    value={address}
+                    readOnly
+                    disabled
+                    placeholder="Enter site address above first"
+                    style={{ opacity: 0.5 }}
+                  />
+                ) : (
+                  <div data-testid="new-client-address-input">
+                    <AddressAutocomplete
+                      name="client_address"
+                      value={clientAddress}
+                      onChange={setClientAddress}
+                      placeholder="123 Main St, City, TX"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="grid-2">
+                <div className="field">
+                  <label>Phone</label>
+                  <input
+                    data-testid="new-client-phone"
+                    type="text"
+                    placeholder="(555) 000-0000"
+                    value={clientPhone}
+                    onChange={e => setClientPhone(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>Email</label>
+                  <input
+                    data-testid="new-client-email"
+                    type="email"
+                    placeholder="client@email.com"
+                    value={clientEmail}
+                    onChange={e => setClientEmail(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>Account Type</label>
+                  <select data-testid="new-client-account-type" value={clientAccountType} onChange={e => setClientAccountType(e.target.value)}>
+                    {ACCOUNT_TYPES.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Account #</label>
+                  <input
+                    data-testid="new-client-account-number"
+                    type="text"
+                    placeholder="Account number"
+                    value={clientAccountNumber}
+                    onChange={e => setClientAccountNumber(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{error}</p>
+          )}
+
+          <div style={{ marginTop: 16 }}>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving…' : 'Add Site'}
+            </button>
+          </div>
         </div>
-      )}
-
-      {error && (
-        <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{error}</p>
-      )}
-
-      <div style={{ marginTop: 16 }}>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? 'Saving…' : 'Add Site'}
-        </button>
+        <div style={{ flex: '1 1 auto', minWidth: 280 }}>
+          <SiteMapEditor
+            initialCenter={mapCenter ?? undefined}
+            initialDrawing={drawing}
+            onDrawingChange={setDrawing}
+            height={360}
+          />
+        </div>
       </div>
     </form>
   )
