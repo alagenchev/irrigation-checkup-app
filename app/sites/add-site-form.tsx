@@ -1,9 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { createSite } from '@/actions/sites'
+import { createSiteMap, saveSiteMapDrawing } from '@/actions/site-maps'
 import { SiteEquipmentEditor } from './site-equipment-editor'
-import { SiteMapEditor } from '@/app/components/site-map-editor'
+
+const MapCanvas = dynamic(
+  () => import('@/app/components/map/map-canvas').then(m => ({ default: m.MapCanvas })),
+  { ssr: false, loading: () => <div style={{ color: '#a1a1aa', padding: 16 }}>Loading map…</div> },
+)
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import type { SiteWithClient } from '@/actions/sites'
@@ -29,26 +35,18 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
   const [saving,                  setSaving]                  = useState(false)
   const [error,                   setError]                   = useState<string | null>(null)
   const [createdSite,             setCreatedSite]             = useState<SiteWithClient | null>(null)
-  const [mapCenter,               setMapCenter]               = useState<[number, number] | null>(null)
   const [drawing,                 setDrawing]                 = useState<GeoJSON.FeatureCollection | null>(null)
 
   const clientOptions = clients.map(c => ({ label: c.name, value: c.id, address: c.address ?? undefined }))
   const isNewClient = clientName.trim() !== '' && !clients.some(c => c.name === clientName)
   const effectiveClientAddress = clientAddressSameAsSite ? address : clientAddress
 
-  useEffect(() => {
-    if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const { latitude: lat, longitude: lng } = pos.coords
-      setMapCenter([lng, lat])
-      const res = await fetch(`/api/geocode?lat=${lat}&lon=${lng}`)
-      if (!res.ok) return
-      const results: string[] = await res.json()
-      if (results[0]) {
-        setAddress(prev => prev || results[0])
-      }
-    })
-  }, [])
+  async function handleGeolocate([lng, lat]: [number, number]) {
+    const res = await fetch(`/api/geocode?lat=${lat}&lon=${lng}`)
+    if (!res.ok) return
+    const results: string[] = await res.json()
+    if (results[0]) setAddress(prev => prev || results[0])
+  }
 
   function handleDone() {
     setSiteName('')
@@ -64,7 +62,6 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     setError(null)
     setCreatedSite(null)
     setDrawing(null)
-    setMapCenter(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -95,12 +92,9 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
     }
 
     const newSite = result.data
-    if (drawing && newSite?.id) {
-      await fetch(`/api/sites/${newSite.id}/drawing`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(drawing),
-      })
+    if (drawing && drawing.features.length > 0 && newSite?.id) {
+      const map = await createSiteMap(newSite.id, 'Map 1')
+      await saveSiteMapDrawing(map.id, drawing)
     }
 
     setCreatedSite({
@@ -279,8 +273,8 @@ export function AddSiteForm({ clients }: AddSiteFormProps) {
           </div>
         </div>
         <div style={{ flex: '1 1 auto', minWidth: 280 }}>
-          <SiteMapEditor
-            initialCenter={mapCenter ?? undefined}
+          <MapCanvas
+            onGeolocate={handleGeolocate}
             initialDrawing={drawing}
             onDrawingChange={setDrawing}
             height={360}

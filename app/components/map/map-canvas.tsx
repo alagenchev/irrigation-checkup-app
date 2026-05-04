@@ -3,23 +3,40 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { getSiteMaps, saveSiteMapDrawing } from '@/actions/site-maps'
+import { getSiteMap, saveSiteMapDrawing } from '@/actions/site-maps'
 import { computeZoneStats, buildZoneFeature, buildWireFeature } from '@/lib/map-utils'
 import { DrawingToolbar } from './drawing-toolbar'
 import { ZoneInfoPanel } from './zone-info-panel'
+import { LineInfoPanel } from './line-info-panel'
+import { PointInfoPanel } from './point-info-panel'
 import { AddPointPanel } from './add-point-panel'
 import { ConfigurePointPanel } from './configure-point-panel'
 import { ReviewPanel } from './review-panel'
 
 export type DrawMode = 'idle' | 'zone' | 'wire' | 'point'
 
+function fitMapToFeatures(map: mapboxgl.Map, features: GeoJSON.Feature[]) {
+  const bounds = new mapboxgl.LngLatBounds()
+  for (const f of features) {
+    const g = f.geometry
+    if (g.type === 'Point') {
+      bounds.extend(g.coordinates as [number, number])
+    } else if (g.type === 'LineString') {
+      for (const c of g.coordinates) bounds.extend(c as [number, number])
+    } else if (g.type === 'Polygon') {
+      for (const ring of g.coordinates) for (const c of ring) bounds.extend(c as [number, number])
+    }
+  }
+  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 80, maxZoom: 19 })
+}
+
 interface MapCanvasProps {
   mapId?: string
   siteName?: string
   onClose?: () => void
-  initialCenter?: [number, number]
   initialDrawing?: GeoJSON.FeatureCollection | null
   onDrawingChange?: (drawing: GeoJSON.FeatureCollection) => void
+  onGeolocate?: (coords: [number, number]) => void
   height?: number
 }
 
@@ -27,9 +44,9 @@ export function MapCanvas({
   mapId,
   siteName,
   onClose,
-  initialCenter,
   initialDrawing,
   onDrawingChange,
+  onGeolocate,
   height = 560,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -42,6 +59,9 @@ export function MapCanvas({
   const [redoStack, setRedoStack] = useState<GeoJSON.Feature[][]>([])
   const [isSynced, setIsSynced] = useState(true)
   const [selectedFeature, setSelectedFeature] = useState<GeoJSON.Feature<GeoJSON.Polygon> | null>(null)
+  const [pendingLineDraft, setPendingLineDraft] = useState<[number, number][] | null>(null)
+  const [selectedLine, setSelectedLine] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<GeoJSON.Feature<GeoJSON.Point> | null>(null)
   const [showAddPoint, setShowAddPoint] = useState(false)
   const [pendingPointCoord, setPendingPointCoord] = useState<[number, number] | null>(null)
   const [pendingPointType, setPendingPointType] = useState<string | null>(null)
@@ -49,6 +69,12 @@ export function MapCanvas({
 
   const modeRef = useRef<DrawMode>('idle')
   modeRef.current = mode
+
+  const draftPointsRef = useRef<[number, number][]>([])
+  draftPointsRef.current = draftPoints
+
+  const fittedRef = useRef(false)
+  const geolocRef = useRef<[number, number] | null>(null)
 
   const liveStats = useMemo(() => computeZoneStats(draftPoints), [draftPoints])
 
@@ -58,11 +84,16 @@ export function MapCanvas({
 
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 
+    let removed = false
+
+    fittedRef.current = false
+    geolocRef.current = null
+
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/satellite-streets-v12',
-      center: initialCenter ?? [-98.5795, 39.8283],
-      zoom: initialCenter ? 15 : 3,
+      center: [-98.5795, 39.8283],
+      zoom: 4,
     })
 
     mapRef.current = map
@@ -155,54 +186,124 @@ export function MapCanvas({
       // Load initial features
       let loadedFeatures: GeoJSON.Feature[] = []
       if (mapId) {
-        // Will be loaded via action; get siteId from map record
-        // We pass the mapId, so we need to query via getSiteMaps
-        // Since we don't have siteId here, we rely on the parent passing initialDrawing
-      }
-      if (initialDrawing?.features) {
+        const record = await getSiteMap(mapId)
+        if (!removed) {
+          const fc = record?.drawing as GeoJSON.FeatureCollection | null
+          loadedFeatures = fc?.features ?? []
+        }
+      } else if (initialDrawing?.features) {
         loadedFeatures = initialDrawing.features
       }
-      setFeatures(loadedFeatures)
+      if (!removed) {
+        setFeatures(loadedFeatures)
+        if (loadedFeatures.length > 0) {
+          fitMapToFeatures(map, loadedFeatures)
+          fittedRef.current = true
+        } else if (geolocRef.current) {
+          map.flyTo({ center: geolocRef.current, zoom: 18 })
+          fittedRef.current = true
+        }
+      }
+    })
+
+    map.on('click', 'features-fill', (e) => {
+      if (modeRef.current !== 'idle') return
+      e.preventDefault()
+      const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.Polygon> | undefined
+      if (feature) setSelectedFeature(feature)
+    })
+
+    map.on('click', 'features-points', (e) => {
+      if (modeRef.current !== 'idle') return
+      e.preventDefault()
+      const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.Point> | undefined
+      if (feature) setSelectedPoint(feature)
+    })
+
+    map.on('click', 'features-lines', (e) => {
+      if (modeRef.current !== 'idle') return
+      e.preventDefault()
+      const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.LineString> | undefined
+      if (feature) setSelectedLine(feature)
     })
 
     map.on('click', (e) => {
+      if ((e as unknown as { defaultPrevented?: boolean }).defaultPrevented) return
       const currentMode = modeRef.current
       const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat]
       if (currentMode === 'zone' || currentMode === 'wire') {
         setDraftPoints(prev => [...prev, coord])
       } else if (currentMode === 'point') {
+        setSelectedFeature(null)
+        setSelectedLine(null)
+        setSelectedPoint(null)
         setPendingPointCoord(coord)
         setShowAddPoint(true)
+        setMode('idle')
       }
     })
 
+    function updateDraftPreview(cursor?: [number, number]) {
+      const pts = draftPointsRef.current
+      const src = map.getSource('features-draft-src') as mapboxgl.GeoJSONSource | undefined
+      if (!src) return
+      const preview = cursor && pts.length >= 1 ? [...pts, cursor] : pts
+      if (preview.length >= 2) {
+        src.setData({
+          type: 'FeatureCollection',
+          features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: preview }, properties: {} }],
+        })
+      } else {
+        src.setData({ type: 'FeatureCollection', features: [] })
+      }
+    }
+
+    map.on('mousemove', (e) => {
+      const m = modeRef.current
+      if (m !== 'zone' && m !== 'wire') return
+      updateDraftPreview([e.lngLat.lng, e.lngLat.lat])
+    })
+
+    map.on('mouseout', () => {
+      updateDraftPreview()
+    })
+
+    const ro = new ResizeObserver(() => map.resize())
+    if (containerRef.current) ro.observe(containerRef.current)
+
     return () => {
+      removed = true
+      ro.disconnect()
       map.remove()
       mapRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapId])
 
-  // Load mapId data after init (when mapId is set, fetch from server)
   useEffect(() => {
-    if (!mapId) return
-    let cancelled = false
-    async function load() {
-      if (!mapId) return
-      // We need to get the siteId to query, but the parent didn't pass it.
-      // Instead we pass initialDrawing from the parent. If mapId is set and
-      // initialDrawing is provided, use that; otherwise fetch indirectly.
-      // Since the parent (sites-page-client) doesn't pass initialDrawing yet,
-      // we fetch all maps for any site by checking which one matches mapId.
-      // This is handled by passing initialDrawing from parent in Phase 3+.
-      // For now rely on initialDrawing prop.
-    }
-    load()
-    return () => { cancelled = true }
-  }, [mapId])
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(pos => {
+      const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude]
+      onGeolocate?.(coords)
+      geolocRef.current = coords
+      // If map already loaded (geolocation was slow), apply immediately
+      if (!fittedRef.current && mapRef.current?.loaded()) {
+        mapRef.current.flyTo({ center: coords, zoom: 18 })
+        fittedRef.current = true
+      }
+      // If map not yet loaded, the load handler will pick up geolocRef and apply it
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const canvas = mapRef.current?.getCanvas()
+    if (!canvas) return
+    canvas.style.cursor = mode !== 'idle' ? 'crosshair' : ''
+  }, [mode])
 
   // ---------- Render features on map ----------
-  const updateMapSources = useCallback((allFeatures: GeoJSON.Feature[], draft: [number, number][]) => {
+  const updateMapSources = useCallback((allFeatures: GeoJSON.Feature[]) => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
 
@@ -224,26 +325,11 @@ export function MapCanvas({
 
     const linesSrc = map.getSource('features-lines-src') as mapboxgl.GeoJSONSource | undefined
     if (linesSrc) linesSrc.setData({ type: 'FeatureCollection', features: lineFeatures })
-
-    // Draft line
-    const draftSrc = map.getSource('features-draft-src') as mapboxgl.GeoJSONSource | undefined
-    if (draftSrc && draft.length >= 2) {
-      draftSrc.setData({
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: draft },
-          properties: {},
-        }],
-      })
-    } else if (draftSrc) {
-      draftSrc.setData({ type: 'FeatureCollection', features: [] })
-    }
   }, [])
 
   useEffect(() => {
-    updateMapSources(features, draftPoints)
-  }, [features, draftPoints, updateMapSources])
+    updateMapSources(features)
+  }, [features, updateMapSources])
 
   // ---------- Auto-save ----------
   useEffect(() => {
@@ -275,11 +361,7 @@ export function MapCanvas({
       setSelectedFeature(newFeature)
     } else if (mode === 'wire') {
       if (draftPoints.length < 2) return
-      const wireName = window.prompt('Wire name (optional):', '') ?? ''
-      const newFeature = buildWireFeature(draftPoints, wireName)
-      setUndoStack(prev => [...prev, features])
-      setRedoStack([])
-      setFeatures(prev => [...prev, newFeature])
+      setPendingLineDraft([...draftPoints])
       setDraftPoints([])
       setMode('idle')
     }
@@ -291,6 +373,7 @@ export function MapCanvas({
 
   function cancelDrawing() {
     setDraftPoints([])
+    setPendingLineDraft(null)
     setMode('idle')
   }
 
@@ -314,8 +397,10 @@ export function MapCanvas({
     })
   }
 
+  const fid = (f: GeoJSON.Feature) => f.properties?._fid as string | undefined
+
   function handleUpdateFeature(updated: GeoJSON.Feature) {
-    setFeatures(prev => prev.map(f => f === selectedFeature ? updated : f))
+    setFeatures(prev => prev.map(f => fid(f) === fid(selectedFeature!) ? updated : f))
     setSelectedFeature(null)
   }
 
@@ -323,7 +408,12 @@ export function MapCanvas({
     if (!selectedFeature) return
     setUndoStack(prev => [...prev, features])
     setRedoStack([])
-    setFeatures(prev => [...prev, { ...selectedFeature, properties: { ...selectedFeature.properties, name: `${selectedFeature.properties?.name ?? ''} (copy)` } }])
+    const newFid = crypto.randomUUID()
+    setFeatures(prev => [...prev, {
+      ...selectedFeature,
+      id: newFid,
+      properties: { ...selectedFeature.properties, _fid: newFid, name: `${selectedFeature.properties?.name ?? ''} (copy)` },
+    }])
     setSelectedFeature(null)
   }
 
@@ -331,7 +421,7 @@ export function MapCanvas({
     if (!selectedFeature) return
     setUndoStack(prev => [...prev, features])
     setRedoStack([])
-    setFeatures(prev => prev.filter(f => f !== selectedFeature))
+    setFeatures(prev => prev.filter(f => fid(f) !== fid(selectedFeature!)))
     setSelectedFeature(null)
   }
 
@@ -354,6 +444,58 @@ export function MapCanvas({
     setPendingPointType(null)
     setPendingPointCoord(null)
     setMode('idle')
+  }
+
+  function handleLineConfirm({ name, notes, color }: { name: string; notes: string; color: string }) {
+    if (pendingLineDraft) {
+      const newFeature = buildWireFeature(pendingLineDraft, name, color, notes)
+      setUndoStack(prev => [...prev, features])
+      setRedoStack([])
+      setFeatures(prev => [...prev, newFeature])
+      setPendingLineDraft(null)
+    } else if (selectedLine) {
+      setUndoStack(prev => [...prev, features])
+      setRedoStack([])
+      setFeatures(prev => prev.map(f =>
+        fid(f) === fid(selectedLine)
+          ? { ...f, properties: { ...f.properties, name, notes, color } }
+          : f
+      ))
+      setSelectedLine(null)
+    }
+  }
+
+  function handleLineCancel() {
+    setPendingLineDraft(null)
+    setSelectedLine(null)
+  }
+
+  function handleLineDelete() {
+    if (!selectedLine) return
+    setUndoStack(prev => [...prev, features])
+    setRedoStack([])
+    setFeatures(prev => prev.filter(f => fid(f) !== fid(selectedLine!)))
+    setSelectedLine(null)
+  }
+
+  function handlePointConfirm({ name, color }: { name: string; color: string }) {
+    if (!selectedPoint) return
+    setUndoStack(prev => [...prev, features])
+    setRedoStack([])
+    setFeatures(prev => prev.map(f =>
+      fid(f) === fid(selectedPoint)
+        ? { ...f, properties: { ...f.properties, name, color } }
+        : f
+    ))
+    setSelectedPoint(null)
+  }
+
+  function handlePointDelete() {
+    if (!selectedPoint) return
+    setUndoStack(prev => [...prev, features])
+    setRedoStack([])
+    setFeatures(prev => prev.filter(f => fid(f) !== fid(selectedPoint!)))
+    setSelectedPoint(null)
   }
 
   return (
@@ -404,7 +546,7 @@ export function MapCanvas({
             }}
           >
             {mode === 'zone' && 'Drawing Zone'}
-            {mode === 'wire' && 'Drawing Wire'}
+            {mode === 'wire' && 'Drawing Irrigation Line'}
             {mode === 'point' && 'Adding Point'}
             <button
               onClick={cancelDrawing}
@@ -495,6 +637,41 @@ export function MapCanvas({
             onDuplicate={handleDuplicateZone}
             onDelete={handleDeleteZone}
             onClose={() => setSelectedFeature(null)}
+            onPreview={(opacity, color) => {
+              const src = mapRef.current?.getSource('features-fill-src') as mapboxgl.GeoJSONSource | undefined
+              if (!src) return
+              const updated = features.map(f =>
+                fid(f) === fid(selectedFeature)
+                  ? { ...f, properties: { ...f.properties, opacity, color } }
+                  : f
+              )
+              src.setData({ type: 'FeatureCollection', features: updated.filter(f => f.properties?.featureType === 'zone') })
+            }}
+          />
+        )}
+
+        {/* Irrigation line info panel (new or edit) */}
+        {(pendingLineDraft || selectedLine) && (
+          <LineInfoPanel
+            initialName={selectedLine?.properties?.name ?? ''}
+            initialNotes={selectedLine?.properties?.notes ?? ''}
+            initialColor={selectedLine?.properties?.color ?? '#6b7280'}
+            onConfirm={handleLineConfirm}
+            onCancel={handleLineCancel}
+            onDelete={selectedLine ? handleLineDelete : undefined}
+          />
+        )}
+
+        {/* Point edit panel */}
+        {selectedPoint && (
+          <PointInfoPanel
+            key={fid(selectedPoint) ?? String(selectedPoint.id)}
+            pointType={selectedPoint.properties?.featureType as string ?? 'point'}
+            initialName={selectedPoint.properties?.name as string ?? ''}
+            initialColor={selectedPoint.properties?.color as string ?? '#3b82f6'}
+            onConfirm={handlePointConfirm}
+            onCancel={() => setSelectedPoint(null)}
+            onDelete={handlePointDelete}
           />
         )}
 

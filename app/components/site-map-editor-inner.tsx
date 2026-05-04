@@ -38,8 +38,10 @@ export function SiteMapEditorInner({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/satellite-streets-v12',
       center: initialCenter ?? [-98.5795, 39.8283],
-      zoom: initialCenter ? 15 : 3,
+      zoom: initialCenter ? 18 : 3,
     })
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
 
     const draw = new MapboxDraw({
       displayControlsDefault: false,
@@ -89,6 +91,11 @@ export function SiteMapEditorInner({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId])
+
+  useEffect(() => {
+    if (!initialCenter || !mapRef.current) return
+    mapRef.current.flyTo({ center: initialCenter, zoom: 18 })
+  }, [initialCenter])
 
   const showHeader = siteName !== undefined || onClose !== undefined
 
