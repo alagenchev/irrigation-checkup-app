@@ -18,10 +18,13 @@ export function buildZoneFeature(
 ): GeoJSON.Feature<GeoJSON.Polygon> {
   const closed = [...points, points[0]]
   const stats = computeZoneStats(points)
+  const _fid = crypto.randomUUID()
   return {
     type: 'Feature',
+    id: _fid,
     geometry: { type: 'Polygon', coordinates: [closed] },
     properties: {
+      _fid,
       featureType: 'zone',
       name: '',
       color: '#22c55e',
@@ -40,26 +43,26 @@ export function buildZoneFeature(
 
 export function buildWireFeature(
   points: [number, number][],
-  name = ''
+  name = '',
+  color = '#6b7280',
+  notes = ''
 ): GeoJSON.Feature<GeoJSON.LineString> {
+  const _fid = crypto.randomUUID()
   return {
     type: 'Feature',
+    id: _fid,
     geometry: { type: 'LineString', coordinates: points },
-    properties: { featureType: 'wire', name, color: '#666' },
+    properties: { _fid, featureType: 'wire', name, color, notes },
   }
 }
 
 export function autoName(
   existingFeatures: GeoJSON.Feature[],
-  type: 'zone' | 'controller' | 'head'
+  type: string
 ): string {
-  const prefix = type === 'zone' ? 'Zone' : type === 'controller' ? 'Controller' : 'Head'
+  const prefix = type.charAt(0).toUpperCase() + type.slice(1)
   const existing = existingFeatures
-    .filter(f =>
-      type === 'zone'
-        ? f.properties?.featureType === 'zone'
-        : f.properties?.featureType === type
-    )
+    .filter(f => f.properties?.featureType === type)
     .map(f => f.properties?.name as string)
     .filter(Boolean)
   let n = 1

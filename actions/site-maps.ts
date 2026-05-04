@@ -4,6 +4,13 @@ import { db } from '@/lib/db'
 import { siteMaps } from '@/lib/schema'
 import { eq, and } from 'drizzle-orm'
 
+export async function getSiteMap(mapId: string) {
+  const companyId = await getRequiredCompanyId()
+  return db.query.siteMaps.findFirst({
+    where: and(eq(siteMaps.id, mapId), eq(siteMaps.companyId, companyId)),
+  })
+}
+
 export async function getSiteMaps(siteId: string) {
   const companyId = await getRequiredCompanyId()
   return db.query.siteMaps.findMany({

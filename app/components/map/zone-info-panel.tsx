@@ -13,6 +13,7 @@ interface ZoneInfoPanelProps {
   onDuplicate: () => void
   onDelete: () => void
   onClose: () => void
+  onPreview?: (opacity: number, color: string) => void
 }
 
 export function ZoneInfoPanel({
@@ -22,6 +23,7 @@ export function ZoneInfoPanel({
   onDuplicate,
   onDelete,
   onClose,
+  onPreview,
 }: ZoneInfoPanelProps) {
   const props = feature.properties as ZoneFeatureProperties
   const [name, setName] = useState(props.name ?? '')
@@ -31,12 +33,17 @@ export function ZoneInfoPanel({
   const [areaType, setAreaType] = useState<ZoneFeatureProperties['areaType']>(props.areaType ?? 'turf')
   const [sunExposure, setSunExposure] = useState<ZoneFeatureProperties['sunExposure']>(props.sunExposure ?? 'sunny')
   const [grassType, setGrassType] = useState(props.grassType ?? '')
-  const [photoUrls, setPhotoUrls] = useState<string[]>(props.photoUrls ?? [])
+  const [photoUrls, setPhotoUrls] = useState<string[]>(() => {
+    const raw = props.photoUrls
+    if (Array.isArray(raw)) return raw
+    if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return [] } }
+    return []
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const stats = computeZoneStats(
-    (feature.geometry.coordinates[0] as [number, number][]).slice(0, -1)
-  )
+  const stats = feature.geometry?.coordinates?.[0]
+    ? computeZoneStats((feature.geometry.coordinates[0] as [number, number][]).slice(0, -1))
+    : null
 
   function handleDone() {
     onUpdate({
@@ -165,7 +172,7 @@ export function ZoneInfoPanel({
           max={100}
           step={5}
           value={opacity}
-          onChange={e => setOpacity(Number(e.target.value))}
+          onChange={e => { const v = Number(e.target.value); setOpacity(v); onPreview?.(v, color) }}
           style={{ width: '100%' }}
         />
       </div>
@@ -187,7 +194,7 @@ export function ZoneInfoPanel({
           {PRESET_COLORS.map(c => (
             <button
               key={c}
-              onClick={() => setColor(c)}
+              onClick={() => { setColor(c); onPreview?.(opacity, c) }}
               style={{
                 width: 24,
                 height: 24,
@@ -204,7 +211,7 @@ export function ZoneInfoPanel({
             data-testid="zone-info-color-hex"
             type="text"
             value={color}
-            onChange={e => setColor(e.target.value)}
+            onChange={e => { setColor(e.target.value); onPreview?.(opacity, e.target.value) }}
             style={{
               width: 90,
               padding: '4px 8px',

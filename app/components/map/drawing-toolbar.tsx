@@ -91,9 +91,9 @@ export function DrawingToolbar({
         data-testid="map-tool-wire"
         onClick={() => onSetMode('wire')}
         style={toolStyle(mode === 'wire')}
-        title="Draw wire"
+        title="Draw irrigation line"
       >
-        〰 Wire
+        〰 Irrigation Line
       </button>
 
       <div style={{ width: 1, height: 24, background: '#e5e7eb', margin: '0 4px' }} />
