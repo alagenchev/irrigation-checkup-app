@@ -15,6 +15,19 @@ import { ReviewPanel } from './review-panel'
 
 export type DrawMode = 'idle' | 'zone' | 'wire' | 'point'
 
+async function geocodeAddress(address: string): Promise<[number, number] | null> {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${token}&limit=1`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json() as { features?: Array<{ center: [number, number] }> }
+    return data.features?.[0]?.center ?? null
+  } catch {
+    return null
+  }
+}
+
 function fitMapToFeatures(map: mapboxgl.Map, features: GeoJSON.Feature[]) {
   const bounds = new mapboxgl.LngLatBounds()
   for (const f of features) {
@@ -33,20 +46,24 @@ function fitMapToFeatures(map: mapboxgl.Map, features: GeoJSON.Feature[]) {
 interface MapCanvasProps {
   mapId?: string
   siteName?: string
+  siteAddress?: string | null
   onClose?: () => void
   initialDrawing?: GeoJSON.FeatureCollection | null
   onDrawingChange?: (drawing: GeoJSON.FeatureCollection) => void
   onGeolocate?: (coords: [number, number]) => void
+  readOnly?: boolean
   height?: number
 }
 
 export function MapCanvas({
   mapId,
   siteName,
+  siteAddress,
   onClose,
   initialDrawing,
   onDrawingChange,
   onGeolocate,
+  readOnly = false,
   height = 560,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -75,6 +92,10 @@ export function MapCanvas({
 
   const fittedRef = useRef(false)
   const geolocRef = useRef<[number, number] | null>(null)
+  const readOnlyRef = useRef(readOnly)
+  readOnlyRef.current = readOnly
+  // True once initial features have been loaded from DB (or immediately if no DB load needed)
+  const initLoadedRef = useRef(!mapId)
 
   const liveStats = useMemo(() => computeZoneStats(draftPoints), [draftPoints])
 
@@ -195,10 +216,17 @@ export function MapCanvas({
         loadedFeatures = initialDrawing.features
       }
       if (!removed) {
+        initLoadedRef.current = true
         setFeatures(loadedFeatures)
         if (loadedFeatures.length > 0) {
           fitMapToFeatures(map, loadedFeatures)
           fittedRef.current = true
+        } else if (mapId && siteAddress) {
+          const coords = await geocodeAddress(siteAddress)
+          if (!removed && coords) {
+            map.flyTo({ center: coords, zoom: 18 })
+            fittedRef.current = true
+          }
         } else if (geolocRef.current) {
           map.flyTo({ center: geolocRef.current, zoom: 18 })
           fittedRef.current = true
@@ -207,27 +235,28 @@ export function MapCanvas({
     })
 
     map.on('click', 'features-fill', (e) => {
-      if (modeRef.current !== 'idle') return
+      if (readOnlyRef.current || modeRef.current !== 'idle') return
       e.preventDefault()
       const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.Polygon> | undefined
       if (feature) setSelectedFeature(feature)
     })
 
     map.on('click', 'features-points', (e) => {
-      if (modeRef.current !== 'idle') return
+      if (readOnlyRef.current || modeRef.current !== 'idle') return
       e.preventDefault()
       const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.Point> | undefined
       if (feature) setSelectedPoint(feature)
     })
 
     map.on('click', 'features-lines', (e) => {
-      if (modeRef.current !== 'idle') return
+      if (readOnlyRef.current || modeRef.current !== 'idle') return
       e.preventDefault()
       const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.LineString> | undefined
       if (feature) setSelectedLine(feature)
     })
 
     map.on('click', (e) => {
+      if (readOnlyRef.current) return
       if ((e as unknown as { defaultPrevented?: boolean }).defaultPrevented) return
       const currentMode = modeRef.current
       const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat]
@@ -281,17 +310,16 @@ export function MapCanvas({
   }, [mapId])
 
   useEffect(() => {
+    if (mapId) return  // edit mode: use site address, not user location
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(pos => {
       const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude]
       onGeolocate?.(coords)
       geolocRef.current = coords
-      // If map already loaded (geolocation was slow), apply immediately
       if (!fittedRef.current && mapRef.current?.loaded()) {
         mapRef.current.flyTo({ center: coords, zoom: 18 })
         fittedRef.current = true
       }
-      // If map not yet loaded, the load handler will pick up geolocRef and apply it
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -333,6 +361,8 @@ export function MapCanvas({
 
   // ---------- Auto-save ----------
   useEffect(() => {
+    if (readOnly) return
+    if (!initLoadedRef.current) return
     if (features.length === 0 && !mapId) return
     setIsSynced(false)
     const timer = setTimeout(async () => {
@@ -500,22 +530,24 @@ export function MapCanvas({
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h3 style={{ margin: 0 }}>{siteName ? `Map — ${siteName}` : 'Map Editor'}</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            data-testid="map-review-btn"
-            className="btn btn-sm"
-            onClick={() => setShowReview(true)}
-          >
-            Review
-          </button>
-          {onClose && (
-            <button className="btn btn-sm" onClick={onClose}>Back</button>
-          )}
+      {/* Header — hidden in read-only mode */}
+      {!readOnly && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>{siteName ? `Map — ${siteName}` : 'Map Editor'}</h3>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              data-testid="map-review-btn"
+              className="btn btn-sm"
+              onClick={() => setShowReview(true)}
+            >
+              Review
+            </button>
+            {onClose && (
+              <button className="btn btn-sm" onClick={onClose}>Back</button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Map container */}
       <div style={{ position: 'relative' }}>
@@ -526,7 +558,7 @@ export function MapCanvas({
         />
 
         {/* Mode tag overlay */}
-        {mode !== 'idle' && (
+        {!readOnly && mode !== 'idle' && (
           <div
             data-testid="map-mode-tag"
             style={{
@@ -566,7 +598,7 @@ export function MapCanvas({
         )}
 
         {/* Live stats bar */}
-        {mode === 'zone' && draftPoints.length >= 2 && liveStats && (
+        {!readOnly && mode === 'zone' && draftPoints.length >= 2 && liveStats && (
           <div
             data-testid="map-stats-bar"
             style={{
@@ -588,7 +620,7 @@ export function MapCanvas({
         )}
 
         {/* Drawing controls (zone/wire mode) */}
-        {(mode === 'zone' || mode === 'wire') && (
+        {!readOnly && (mode === 'zone' || mode === 'wire') && (
           <div
             data-testid="map-drawing-controls"
             style={{
@@ -629,7 +661,7 @@ export function MapCanvas({
         )}
 
         {/* Zone info panel */}
-        {selectedFeature && (
+        {!readOnly && selectedFeature && (
           <ZoneInfoPanel
             feature={selectedFeature}
             allFeatures={features}
@@ -651,7 +683,7 @@ export function MapCanvas({
         )}
 
         {/* Irrigation line info panel (new or edit) */}
-        {(pendingLineDraft || selectedLine) && (
+        {!readOnly && (pendingLineDraft || selectedLine) && (
           <LineInfoPanel
             initialName={selectedLine?.properties?.name ?? ''}
             initialNotes={selectedLine?.properties?.notes ?? ''}
@@ -663,7 +695,7 @@ export function MapCanvas({
         )}
 
         {/* Point edit panel */}
-        {selectedPoint && (
+        {!readOnly && selectedPoint && (
           <PointInfoPanel
             key={fid(selectedPoint) ?? String(selectedPoint.id)}
             pointType={selectedPoint.properties?.featureType as string ?? 'point'}
@@ -676,7 +708,7 @@ export function MapCanvas({
         )}
 
         {/* Add point type selector */}
-        {showAddPoint && !pendingPointType && (
+        {!readOnly && showAddPoint && !pendingPointType && (
           <AddPointPanel
             onSelect={handlePointTypeSelect}
             onClose={handleCancelPoint}
@@ -684,7 +716,7 @@ export function MapCanvas({
         )}
 
         {/* Configure point */}
-        {pendingPointType && pendingPointCoord && (
+        {!readOnly && pendingPointType && pendingPointCoord && (
           <ConfigurePointPanel
             pointType={pendingPointType}
             coord={pendingPointCoord}
@@ -695,7 +727,7 @@ export function MapCanvas({
         )}
 
         {/* Review panel */}
-        {showReview && (
+        {!readOnly && showReview && (
           <ReviewPanel
             features={features}
             onClose={() => setShowReview(false)}
@@ -704,7 +736,7 @@ export function MapCanvas({
       </div>
 
       {/* Toolbar */}
-      {mode === 'idle' && (
+      {!readOnly && mode === 'idle' && (
         <DrawingToolbar
           mode={mode}
           onSetMode={(m) => {
