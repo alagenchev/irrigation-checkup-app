@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useId } from 'react'
 
 export interface AutocompleteOption {
   label:        string
+  value?:       string
   address?:     string
   email?:       string
   clientName?:  string
@@ -97,7 +98,7 @@ export function Autocomplete({
         >
           {filtered.map((opt, i) => (
             <li
-              key={opt.label}
+              key={opt.value ?? opt.label}
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === activeIdx}

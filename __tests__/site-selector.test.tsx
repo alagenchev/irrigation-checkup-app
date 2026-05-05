@@ -216,6 +216,7 @@ describe('siteToOption()', () => {
     const opt = siteToOption(SITE_C)
     expect(opt).toEqual({
       label: 'Sunrise Park',
+      value: '550e8400-e29b-41d4-a716-446655440002',
       address: '999 Elm Ave, Boulder, CO',
       clientName: 'City Parks Dept',
       clientAddress: '200 City Hall Dr',

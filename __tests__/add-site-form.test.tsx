@@ -26,6 +26,15 @@ jest.mock('@/app/sites/site-equipment-editor', () => ({
   ),
 }))
 
+jest.mock('@/app/components/site-map-editor', () => ({
+  SiteMapEditor: ({ initialCenter, onDrawingChange, height }: { initialCenter?: [number, number]; onDrawingChange?: (d: any) => void; height?: number }) => (
+    <div data-testid="mock-site-map-editor">
+      <span />
+      <button onClick={() => onDrawingChange?.({ type: 'FeatureCollection', features: [] })}>Close Map</button>
+    </div>
+  ),
+}))
+
 jest.mock('@/components/ui/autocomplete', () => ({
   Autocomplete: ({ name, value, onChange, placeholder }: any) => (
     <input name={name} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
@@ -43,6 +52,7 @@ const mockCreateSite = createSite as jest.MockedFunction<typeof createSite>
 
 const MOCK_CLIENTS: Client[] = [
   { id: 'c-1', companyId: 'co-1', name: 'Acme Corp', address: '1 Corp Way', phone: null, email: null, accountType: null, accountNumber: null, createdAt: new Date() },
+  { id: 'c-2', companyId: 'co-1', name: 'Beta Inc', address: null, phone: null, email: null, accountType: null, accountNumber: null, createdAt: new Date() },
 ]
 
 const CREATED_SITE = {
@@ -77,6 +87,13 @@ describe('AddSiteForm', () => {
       expect(screen.queryByTestId('site-equipment-editor')).not.toBeInTheDocument()
     })
 
+    it('renders address, client, and notes fields', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      expect(screen.getByPlaceholderText(/123 main st/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/type or select a client/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/optional notes/i)).toBeInTheDocument()
+    })
+
     it('shows a validation error when createSite returns an error', async () => {
       mockCreateSite.mockResolvedValue({ ok: false, error: 'Name is required' })
       render(<AddSiteForm clients={MOCK_CLIENTS} />)
@@ -98,6 +115,28 @@ describe('AddSiteForm', () => {
       expect(screen.getByRole('button', { name: /saving/i })).toBeDisabled()
       // clean up — resolve the promise
       await act(async () => { resolve({ ok: false, error: 'err' }) })
+    })
+
+    it('submits form with all fields populated (address, client, notes)', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'My Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/123 main st/i), { target: { value: '456 Oak Ave' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Acme Corp' } })
+      fireEvent.change(screen.getByPlaceholderText(/optional notes/i), { target: { value: 'Test notes' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      expect(mockCreateSite).toHaveBeenCalledWith(
+        null,
+        expect.any(FormData)
+      )
+    })
+
+    it('renders inline map in the form', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      expect(screen.getByTestId('mock-site-map-editor')).toBeInTheDocument()
     })
   })
 
@@ -144,11 +183,11 @@ describe('AddSiteForm', () => {
       await screen.findByTestId('add-site-equipment-phase')
     }
 
-    it('clicking Skip returns to phase 1', async () => {
+    it('clicking Skip equipment returns to phase 1 (form)', async () => {
       await reachPhase2()
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
       expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
-      expect(screen.queryByTestId('site-equipment-editor')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-equipment-phase')).not.toBeInTheDocument()
     })
 
     it('equipment editor Save returns to phase 1', async () => {
@@ -186,7 +225,401 @@ describe('AddSiteForm', () => {
       await screen.findByTestId('add-site-equipment-phase')
       fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
 
+      await screen.findByRole('button', { name: /add site/i })
       expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('equipment editor flow', () => {
+    async function reachEquipmentPhase() {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+    }
+
+    it('shows equipment editor after site creation (regression)', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      expect(await screen.findByTestId('add-site-equipment-phase')).toBeInTheDocument()
+      expect(screen.getByTestId('site-equipment-editor')).toBeInTheDocument()
+    })
+
+    it('shows skip-equipment button in equipment phase (regression)', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      expect(screen.getByTestId('add-site-skip-equipment')).toBeInTheDocument()
+    })
+
+    it('returns to form when skip-equipment is clicked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+      expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-equipment-phase')).not.toBeInTheDocument()
+    })
+
+    it('returns to form when SiteEquipmentEditor onSave fires', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('equipment-editor-save'))
+      expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
+    })
+
+    it('returns to form when SiteEquipmentEditor onClose fires', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('equipment-editor-cancel'))
+      expect(await screen.findByRole('button', { name: /add site/i })).toBeInTheDocument()
+    })
+
+    it('completes full add-site flow: create → skip equipment → blank form', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      // Phase 1: fill and submit
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'New Site' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      // Phase 2: equipment — skip
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      // Back to blank form (with inline map)
+      expect(await screen.findByTestId('add-site-form')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-site-equipment-phase')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('new client detection', () => {
+    it('does NOT show new-client-details when client field is empty', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      expect(screen.queryByTestId('new-client-details')).not.toBeInTheDocument()
+    })
+
+    it('does NOT show new-client-details when typed name matches an existing client', async () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Acme Corp' } })
+      expect(screen.queryByTestId('new-client-details')).not.toBeInTheDocument()
+    })
+
+    it('shows new-client-details when typed name does not match any existing client', async () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+      expect(screen.getByTestId('new-client-details')).toBeInTheDocument()
+    })
+
+    it('hides new-client-details again if user clears the client field', async () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+      expect(screen.getByTestId('new-client-details')).toBeInTheDocument()
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: '' } })
+      expect(screen.queryByTestId('new-client-details')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('new client field inputs', () => {
+    it('renders phone, email, account type, and account number inputs when new client section is visible', async () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      expect(screen.getByTestId('new-client-phone')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-email')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-account-type')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-account-number')).toBeInTheDocument()
+    })
+
+    it('account type select defaults to Residential', async () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      expect(screen.getByTestId('new-client-account-type')).toHaveValue('Residential')
+    })
+  })
+
+  describe('form submission with new client fields', () => {
+    it('includes client phone and email in FormData when submitting a new client', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.change(screen.getByTestId('new-client-phone'), { target: { value: '555-1234' } })
+      fireEvent.change(screen.getByTestId('new-client-email'), { target: { value: 'new@test.com' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_phone')).toBe('555-1234')
+      expect(fd.get('client_email')).toBe('new@test.com')
+    })
+
+    it('includes account type and account number in FormData when submitting a new client', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.change(screen.getByTestId('new-client-account-type'), { target: { value: 'Commercial' } })
+      fireEvent.change(screen.getByTestId('new-client-account-number'), { target: { value: 'ACC-001' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_account_type')).toBe('Commercial')
+      expect(fd.get('client_account_number')).toBe('ACC-001')
+    })
+
+    it('does NOT include client detail fields when linking an existing client', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Acme Corp' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_phone')).toBeNull()
+      expect(fd.get('client_email')).toBeNull()
+      expect(fd.get('client_account_type')).toBeNull()
+      expect(fd.get('client_account_number')).toBeNull()
+    })
+
+    it('does NOT include empty new client fields in FormData', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      // Don't fill in phone/email/account fields
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_phone')).toBeNull()
+      expect(fd.get('client_email')).toBeNull()
+      expect(fd.get('client_account_number')).toBeNull()
+      // accountType always gets included (defaults to Residential)
+      expect(fd.get('client_account_type')).toBe('Residential')
+    })
+
+    it('sends all new client fields when user fills them in', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Full Form Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Full Client' } })
+      fireEvent.change(screen.getByTestId('new-client-phone'), { target: { value: '555-7777' } })
+      fireEvent.change(screen.getByTestId('new-client-email'), { target: { value: 'full@test.com' } })
+      fireEvent.change(screen.getByTestId('new-client-account-type'), { target: { value: 'HOA' } })
+      fireEvent.change(screen.getByTestId('new-client-account-number'), { target: { value: 'HOA-999' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_phone')).toBe('555-7777')
+      expect(fd.get('client_email')).toBe('full@test.com')
+      expect(fd.get('client_account_type')).toBe('HOA')
+      expect(fd.get('client_account_number')).toBe('HOA-999')
+    })
+  })
+
+  describe('form reset clears new client fields', () => {
+    it('new client fields are cleared when the form resets after successful submission', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New' } })
+      fireEvent.change(screen.getByTestId('new-client-phone'), { target: { value: '555-9999' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      // Back in phase 1 — new-client-details should not be showing
+      await screen.findByRole('button', { name: /add site/i })
+      expect(screen.queryByTestId('new-client-details')).not.toBeInTheDocument()
+    })
+
+    it('new client phone input is cleared after returning to phase 1', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.change(screen.getByTestId('new-client-phone'), { target: { value: '555-1111' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      await screen.findByRole('button', { name: /add site/i })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another New' } })
+      expect(screen.getByTestId('new-client-phone')).toHaveValue('')
+    })
+
+    it('account type resets to Residential after form reset', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.change(screen.getByTestId('new-client-account-type'), { target: { value: 'Commercial' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      await screen.findByRole('button', { name: /add site/i })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another' } })
+      expect(screen.getByTestId('new-client-account-type')).toHaveValue('Residential')
+    })
+  })
+
+  // client-address-and-lock-style (b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e)
+  describe('new client — address field', () => {
+    function showNewClientSection() {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+    }
+
+    it('shows the client address checkbox when a new client name is typed', () => {
+      showNewClientSection()
+      expect(screen.getByTestId('new-client-address-same-checkbox')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-address-same-checkbox-label')).toBeInTheDocument()
+    })
+
+    it('checkbox is checked by default', () => {
+      showNewClientSection()
+      expect(screen.getByTestId('new-client-address-same-checkbox')).toBeChecked()
+    })
+
+    it('shows the site address in a disabled input when checkbox is checked', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/123 main/i), { target: { value: '99 Site Ave' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+      expect(screen.getByTestId('new-client-address-display')).toHaveValue('99 Site Ave')
+      expect(screen.getByTestId('new-client-address-display')).toBeDisabled()
+    })
+
+    it('shows AddressAutocomplete when checkbox is unchecked', () => {
+      showNewClientSection()
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      expect(screen.getByTestId('new-client-address-input')).toBeInTheDocument()
+      expect(screen.queryByTestId('new-client-address-display')).not.toBeInTheDocument()
+    })
+
+    it('clears custom address and restores display when checkbox is re-checked', () => {
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Brand New Client' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      const clientAddrInput = document.querySelector('[name="client_address"]') as HTMLInputElement
+      fireEvent.change(clientAddrInput, { target: { value: '42 Custom Ave' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      expect(screen.getByTestId('new-client-address-display')).toBeInTheDocument()
+      expect(screen.getByTestId('new-client-address-display')).toHaveValue('')
+      expect(screen.queryByTestId('new-client-address-input')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('new client address — FormData submission', () => {
+    it('sends site address as client_address when checkbox is checked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/123 main/i), { target: { value: '99 Site Ave' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_address')).toBe('99 Site Ave')
+    })
+
+    it('sends custom address as client_address when checkbox is unchecked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      const clientAddrInput = document.querySelector('[name="client_address"]') as HTMLInputElement
+      fireEvent.change(clientAddrInput, { target: { value: '42 Custom Ave' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_address')).toBe('42 Custom Ave')
+    })
+
+    it('does not send client_address when site address is empty and checkbox is checked', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      const fd = mockCreateSite.mock.calls[0][1] as FormData
+      expect(fd.get('client_address')).toBeNull()
+    })
+  })
+
+  describe('client address checkbox reset', () => {
+    it('resets checkbox to checked after form reset', async () => {
+      mockCreateSite.mockResolvedValue({ ok: true, data: CREATED_SITE })
+      render(<AddSiteForm clients={MOCK_CLIENTS} />)
+      fireEvent.change(screen.getByPlaceholderText(/acme hq/i), { target: { value: 'Test Site' } })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'New Client' } })
+      fireEvent.click(screen.getByTestId('new-client-address-same-checkbox'))
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('add-site-form'))
+      })
+      await screen.findByTestId('add-site-equipment-phase')
+      fireEvent.click(screen.getByTestId('add-site-skip-equipment'))
+
+      await screen.findByRole('button', { name: /add site/i })
+      fireEvent.change(screen.getByPlaceholderText(/type or select a client/i), { target: { value: 'Another Client' } })
+      expect(screen.getByTestId('new-client-address-same-checkbox')).toBeChecked()
     })
   })
 
