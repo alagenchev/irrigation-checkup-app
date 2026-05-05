@@ -113,6 +113,7 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
                 key={selectedSite.id}
                 siteId={selectedSite.id}
                 siteName={selectedSite.name}
+                siteAddress={selectedSite.address}
                 onEditMap={(mapId) => handleEditMap(selectedSite.id, mapId)}
                 onClose={handleClose}
               />
@@ -122,6 +123,7 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
                 key={panelState.mapId}
                 mapId={panelState.mapId}
                 siteName={selectedSite.name}
+                siteAddress={selectedSite.address}
                 onClose={() => handleBackToList(selectedSite.id)}
               />
             )}
