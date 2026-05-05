@@ -1,6 +1,6 @@
 {
-  "id": "38a5f1b3-c12d-4367-84f8-ab332d546a5f",
-  "prevId": "00886aa0-b911-498a-a5b3-fe4d4f9e8380",
+  "id": "f9867298-6835-426a-8e9a-aabee74d15e5",
+  "prevId": "38a5f1b3-c12d-4367-84f8-ab332d546a5f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1060,5 +1060,6 @@
     "columns": {},
     "schemas": {},
     "tables": {}
-  }
+  },
+  "when": 1775345892000
 }

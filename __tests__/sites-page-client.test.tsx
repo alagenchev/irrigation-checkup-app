@@ -37,6 +37,24 @@ jest.mock('@/app/sites/sites-table', () => ({
   ),
 }))
 
+jest.mock('@/app/components/map/maps-list-panel', () => ({
+  MapsListPanel: ({ siteName, onClose }: { siteName: string; onEditMap: (id: string) => void; onClose: () => void }) => (
+    <div data-testid="maps-list-panel">
+      <span>Maps for {siteName}</span>
+      <button data-testid="maps-list-close" onClick={onClose}>Close</button>
+    </div>
+  ),
+}))
+
+jest.mock('@/app/components/map/map-canvas', () => ({
+  MapCanvas: ({ siteName, onClose }: { siteName: string; onClose: () => void }) => (
+    <div data-testid="map-canvas">
+      <span>Map Canvas: {siteName}</span>
+      <button data-testid="map-canvas-back" onClick={onClose}>Back</button>
+    </div>
+  ),
+}))
+
 jest.mock('@/app/sites/site-equipment-editor', () => ({
   SiteEquipmentEditor: ({ site, onClose, onSave }: any) => (
     <div data-testid="site-equipment-editor">

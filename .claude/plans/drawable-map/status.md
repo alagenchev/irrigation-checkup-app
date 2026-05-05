@@ -5,70 +5,41 @@
 ## Phase Tracking
 
 ### Coding Phase
-- **Status**: pending
-- **Owner**: (unassigned)
-- **Started**: —
-- **Branch**: `feature/drawable-map`
-- **Notes**: Schema + API routes + Mapbox component + SitesPageClient integration
+- **Status**: ✅ COMPLETE
+- **Owner**: Coding Agent (Sonnet 4.6)
+- **Commits**: b88da43 (implementation), e280b71 (migration), bb968d3 (fix composite constraint), e18b592 (fix onConflictDoUpdate target)
+- **Notes**: Schema + API routes + Mapbox component + SitesPageClient integration. Fixed pre-existing Drizzle snapshot chain collision.
 
 ### Code Review Phase
-- **Status**: pending (waiting for coding complete)
-- **Owner**: (unassigned — Code Review Agent, fresh session)
-- **Started**: —
-- **Review Cycle**: — of 3
-- **CODE_REVIEW.md**: (created during phase)
+- **Status**: ✅ COMPLETE — APPROVED
+- **Owner**: Code Review Agent (Haiku 4.5)
+- **Review Cycles**: 3 (2 BLOCKERS found and fixed: composite unique constraint, onConflictDoUpdate target)
+- **CODE_REVIEW.md**: created
 
 ### Unit Tests Phase
-- **Status**: pending (waiting for code review approved)
-- **Owner**: (unassigned)
-- **Started**: —
-- **Branch**: `feature/drawable-map` (same branch)
+- **Status**: ✅ COMPLETE
+- **Owner**: Testing Agent (Haiku 4.5)
+- **Commit**: 249c0b9
+- **Tests**: 19 new tests (7 unit in site-drawing.test.ts, 12 integration in site-drawing.integration.test.ts)
+- **Results**: 307+19 = all passing
 
 ### UI Tests Phase
-- **Status**: pending (waiting for unit tests complete)
-- **Owner**: (unassigned)
-- **Started**: —
-- **Notes**: Requires `NEXT_PUBLIC_MAPBOX_TOKEN` in `.env.local`
+- **Status**: ✅ COMPLETE
+- **Owner**: UI Test Agent (Haiku 4.5)
+- **Commit**: 5e86188
+- **File**: `e2e/tests/11-drawable-map.spec.ts` (9 tests)
+- **Results**: 9/9 passing. Full suite: 110/111 (1 pre-existing failure in 02-inspection-create.spec.ts, unrelated)
+- **Mapbox**: Canvas renders, all drawing controls visible (polygon, line, point, trash)
 
 ## Dependencies
 
 - **Blocks**: (none)
 - **Depends on**: (none — standalone feature)
 
-## Communication
-
-**Coding Phase**:
-1. Read `coding.md` for full implementation steps
-2. Create branch `feature/drawable-map`
-3. Install deps, add schema, generate+apply migration, create API routes, create components, update SitesTable + SitesPageClient
-4. Run `npm run build && npm test && npm run test:db` — all must pass
-5. Commit with task name + UUID in message
-6. Update **Owner** and **Status** here
-7. Mark `completed` when done
-
-**Code Review Phase**:
-1. Fresh session — read `coding.md` for intent, diff for implementation
-2. Review: multi-tenancy (companyId on every query), SSR-disabled component, no GeoJSON transformation, no secrets in client code
-3. Create `CODE_REVIEW.md` with BLOCKER / MAJOR / MINOR / NITS
-4. Block only on BLOCKER or MAJOR issues
-5. Mark `completed` when approved
-
-**Unit Tests Phase**:
-1. Read `unit-tests.md` for all test cases
-2. Add `__tests__/site-drawing.integration.test.ts` and `__tests__/site-drawing.test.ts`
-3. Run `npm test && npm run test:db` — all must pass
-4. Mark `completed` when coverage targets met
-
-**UI Tests Phase**:
-1. Confirm `NEXT_PUBLIC_MAPBOX_TOKEN` is set in `.env.local`
-2. Read `ui-tests.md` for all test cases
-3. Add `e2e/drawable-map.spec.ts`
-4. Run `npx playwright test e2e/drawable-map.spec.ts`
-5. Complete manual persistence smoke test and document result
-6. Mark `completed` when all automated + manual checks pass
-
 ## Blockers / Notes
 
-(none yet)
+Two blockers found in code review, both fixed before approval:
+1. `site_drawings` unique constraint was on `siteId` only → fixed to composite `(companyId, siteId)`
+2. `onConflictDoUpdate` target was single column → fixed to array `[companyId, siteId]`
 
-**Last Updated**: 2026-04-26 (task created)
+**Last Updated**: 2026-04-27 — All phases complete ✅
