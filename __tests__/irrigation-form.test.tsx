@@ -21,6 +21,7 @@ jest.mock('@/lib/tenant', () => ({ getRequiredCompanyId: jest.fn() }))
 
 jest.mock('@/actions/sites', () => ({
   getSiteEquipment: jest.fn(),
+  updateSiteEquipment: jest.fn().mockResolvedValue({ ok: true }),
   ensureClientExists: jest.fn(),
 }))
 
@@ -814,6 +815,10 @@ describe('handleSiteSelect — client field population', () => {
       expect(mockGetSiteEquipment).toHaveBeenCalledWith(SITE_WITH_FULL_CLIENT.id)
     })
 
+    // Equipment is collapsed by default — expand it first
+    const expandBtn = screen.getByTestId('expand-saved-info-btn')
+    fireEvent.click(expandBtn)
+
     // Verify equipment sections are visible
     expect(screen.getByText('Irrigation System Overview')).toBeInTheDocument()
 
@@ -851,6 +856,9 @@ describe('handleSiteSelect — client field population', () => {
       const mockGetSiteEquipment = getSiteEquipment as jest.Mock
       expect(mockGetSiteEquipment).toHaveBeenCalledWith(SITE_WITH_FULL_CLIENT.id)
     })
+
+    // Equipment is collapsed by default — expand it to verify sections are present
+    fireEvent.click(screen.getByTestId('expand-saved-info-btn'))
 
     // Verify equipment loaded (which confirms handleSiteSelect was called with the site)
     // Equipment sections should be visible after successful selection
@@ -929,6 +937,9 @@ describe('handleSiteSelect — client field population', () => {
       expect(mockGetSiteEquipment).toHaveBeenCalledWith(SITE_WITH_FULL_CLIENT.id)
     })
 
+    // Equipment is collapsed by default — expand it first
+    fireEvent.click(screen.getByTestId('expand-saved-info-btn'))
+
     // Verify equipment sections are visible and populated
     expect(screen.getByText('Irrigation System Overview')).toBeInTheDocument()
     // Verify the controller with ID 15 is rendered
@@ -960,6 +971,9 @@ describe('handleSiteSelect — client field population', () => {
     await waitFor(() => {
       expect(mockGetSiteEquipment).toHaveBeenCalled()
     })
+
+    // Equipment is collapsed by default — expand it first
+    fireEvent.click(screen.getByTestId('expand-saved-info-btn'))
 
     // Verify system overview fields were populated
     const pressureInputs = screen.getAllByDisplayValue('72.5')
@@ -1260,5 +1274,128 @@ describe('Existing site flow unaffected', () => {
 
     const lockedClientAddress = screen.queryByTestId('client-address-locked')
     expect(lockedClientAddress).toBeInTheDocument()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quote item duplicate key bug regression
+// Repro: add items before site select → site equipment maxId < current counter
+// → old code rolled counter back → next uid() collided with existing item id
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('quote item ID counter — no duplicate keys after site selection', () => {
+  // Equipment that produces ephemeral maxId = 6 (1 controller + 5 zones)
+  const EQUIPMENT_MAXID_6 = {
+    controllers: [{ id: 1, location: '', manufacturer: '', model: '', sensors: '', numZones: '5', masterValve: false, masterValveNotes: '', notes: '' }],
+    zones: [
+      { id: 2, zoneNum: '1', controller: '1', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+      { id: 3, zoneNum: '2', controller: '1', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+      { id: 4, zoneNum: '3', controller: '1', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+      { id: 5, zoneNum: '4', controller: '1', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+      { id: 6, zoneNum: '5', controller: '1', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
+    ],
+    backflows: [],
+    overview: null,
+  }
+
+  function clickAddItem() {
+    fireEvent.click(screen.getByRole('button', { name: '+ Item' }))
+  }
+
+  function countQuoteRows() {
+    // Each quote row has a remove button (✕). Count them.
+    return screen.getAllByRole('button', { name: '✕' }).length
+  }
+
+  beforeEach(() => {
+    ;(getSiteEquipment as jest.Mock).mockResolvedValue(EQUIPMENT_MAXID_6)
+    mockSiteSelectData = MOCK_SITE
+  })
+
+  it('quote item row count is correct after adding items, selecting site, then adding more', async () => {
+    renderForm()
+
+    // Add 3 more quote items (total = 1 default + 3 = 4 items, IDs consume counter past 6)
+    clickAddItem()
+    clickAddItem()
+    clickAddItem()
+    expect(countQuoteRows()).toBe(4)
+
+    // Select site — equipment has maxId=6, old code would roll counter back below 7
+    fireEvent.click(screen.getByTestId('trigger-site-select-button'))
+    await waitFor(() => expect(getSiteEquipment as jest.Mock).toHaveBeenCalled())
+
+    // Add one more item — should get a fresh ID, not collide with any existing item
+    clickAddItem()
+
+    // Must have 5 distinct rows; a duplicate key would cause React to collapse or replace one
+    expect(countQuoteRows()).toBe(5)
+  })
+
+  it('each newly added quote item after site select gets a unique sequential row number', async () => {
+    renderForm()
+
+    // Advance counter past equipment maxId by adding items
+    clickAddItem()
+    clickAddItem()
+    clickAddItem()
+
+    fireEvent.click(screen.getByTestId('trigger-site-select-button'))
+    await waitFor(() => expect(getSiteEquipment as jest.Mock).toHaveBeenCalled())
+
+    clickAddItem()
+    clickAddItem()
+
+    // 6 rows total — row numbers displayed as 1…6 in the # column
+    const rows = screen.getAllByRole('button', { name: '✕' })
+    expect(rows).toHaveLength(6)
+  })
+
+  it('counter is not rolled back when site equipment maxId is lower than current counter', async () => {
+    renderForm()
+
+    // Add enough items so counter exceeds equipment's maxId (6)
+    // Default: IDs 1(ctrl),2(zone),3(zone),4(quoteItem) → counter=5
+    // After 3 adds: IDs 5,6,7 → counter=8
+    clickAddItem()
+    clickAddItem()
+    clickAddItem()
+
+    fireEvent.click(screen.getByTestId('trigger-site-select-button'))
+    await waitFor(() => expect(getSiteEquipment as jest.Mock).toHaveBeenCalled())
+
+    // Add item — if counter was incorrectly rolled to 7, this would be a duplicate
+    clickAddItem()
+
+    // Remove the first item and immediately add another to force a new ID allocation
+    const removeBtns = screen.getAllByRole('button', { name: '✕' })
+    fireEvent.click(removeBtns[0])
+
+    clickAddItem()
+
+    // Item count should be consistent: removed 1, added 2 after site select → 4+2-1 = 5
+    expect(countQuoteRows()).toBe(5)
+  })
+
+  it('no duplicate keys when site equipment maxId exactly equals current counter minus 1', async () => {
+    // Edge case: equipment maxId = current counter - 1 (they align exactly)
+    // Fresh form: counter after defaults = 5 (ids 1,2,3,4 consumed)
+    // Equipment with maxId=4 would set counter to 5 (same) → no collision
+    const equipmentMaxId4 = {
+      ...EQUIPMENT_MAXID_6,
+      zones: EQUIPMENT_MAXID_6.zones.slice(0, 3), // ids 2,3,4 → maxId=4
+    }
+    ;(getSiteEquipment as jest.Mock).mockResolvedValue(equipmentMaxId4)
+
+    renderForm()
+
+    fireEvent.click(screen.getByTestId('trigger-site-select-button'))
+    await waitFor(() => expect(getSiteEquipment as jest.Mock).toHaveBeenCalled())
+
+    clickAddItem()
+    clickAddItem()
+
+    // 1 default + 2 new = 3 rows, all unique
+    expect(countQuoteRows()).toBe(3)
   })
 })

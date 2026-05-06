@@ -12,13 +12,15 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { SiteEquipmentEditor } from '@/app/sites/site-equipment-editor'
 import type { SiteWithClient } from '@/actions/sites'
 
-// Mock the server action
+// Mock the server actions
 jest.mock('@/actions/sites', () => ({
   updateSiteEquipment: jest.fn(),
+  getSiteEquipment: jest.fn(),
 }))
 
-import { updateSiteEquipment } from '@/actions/sites'
+import { updateSiteEquipment, getSiteEquipment } from '@/actions/sites'
 const mockUpdateSiteEquipment = updateSiteEquipment as jest.Mock
+const mockGetSiteEquipment = getSiteEquipment as jest.Mock
 
 // Mock data
 const MOCK_SITE: SiteWithClient = {
@@ -34,9 +36,18 @@ const MOCK_SITE: SiteWithClient = {
 }
 
 describe('SiteEquipmentEditor', () => {
+  const EMPTY_EQUIPMENT = {
+    controllers: [],
+    zones: [],
+    backflows: [],
+    overview: null,
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
     mockUpdateSiteEquipment.mockResolvedValue({ ok: true })
+    // Default: site has no existing equipment
+    mockGetSiteEquipment.mockResolvedValue(EMPTY_EQUIPMENT)
   })
 
   describe('rendering', () => {
@@ -470,6 +481,9 @@ describe('SiteEquipmentEditor', () => {
 
       render(<SiteEquipmentEditor site={MOCK_SITE} onClose={onClose} />)
 
+      const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
+
       // Add some equipment
       fireEvent.click(screen.getByTestId('site-equipment-editor-add-controller'))
       const manufacturerInput = screen.getByPlaceholderText('Hunter')
@@ -480,7 +494,7 @@ describe('SiteEquipmentEditor', () => {
       fireEvent.change(staticPressureInput, { target: { value: '70' } })
 
       // Click Save
-      fireEvent.click(screen.getByTestId('site-equipment-editor-save'))
+      fireEvent.click(saveBtn)
 
       // Wait for async save
       await waitFor(() => {
@@ -512,6 +526,7 @@ describe('SiteEquipmentEditor', () => {
       render(<SiteEquipmentEditor site={MOCK_SITE} onClose={onClose} />)
 
       const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
       fireEvent.click(saveBtn)
 
       // While saving, button should show "Saving…"
@@ -534,7 +549,9 @@ describe('SiteEquipmentEditor', () => {
 
       render(<SiteEquipmentEditor site={MOCK_SITE} onClose={onClose} />)
 
-      fireEvent.click(screen.getByTestId('site-equipment-editor-save'))
+      const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
+      fireEvent.click(saveBtn)
 
       await waitFor(() => {
         const msg = screen.getByTestId('site-equipment-editor-save-message')
@@ -549,7 +566,9 @@ describe('SiteEquipmentEditor', () => {
 
       render(<SiteEquipmentEditor site={MOCK_SITE} onClose={onClose} />)
 
-      fireEvent.click(screen.getByTestId('site-equipment-editor-save'))
+      const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
+      fireEvent.click(saveBtn)
 
       await waitFor(() => {
         const msg = screen.getByTestId('site-equipment-editor-save-message')
@@ -564,7 +583,9 @@ describe('SiteEquipmentEditor', () => {
 
       render(<SiteEquipmentEditor site={MOCK_SITE} onClose={onClose} />)
 
-      fireEvent.click(screen.getByTestId('site-equipment-editor-save'))
+      const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
+      fireEvent.click(saveBtn)
 
       await waitFor(() => {
         const msg = screen.getByTestId('site-equipment-editor-save-message')
@@ -586,6 +607,7 @@ describe('SiteEquipmentEditor', () => {
       const saveBtn = screen.getByTestId('site-equipment-editor-save')
       const cancelBtn = screen.getByTestId('site-equipment-editor-cancel')
 
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
       fireEvent.click(saveBtn)
 
       // Both buttons should be disabled while saving
@@ -609,7 +631,9 @@ describe('SiteEquipmentEditor', () => {
 
       render(<SiteEquipmentEditor site={MOCK_SITE} onClose={onClose} onSave={onSave} />)
 
-      fireEvent.click(screen.getByTestId('site-equipment-editor-save'))
+      const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
+      fireEvent.click(saveBtn)
 
       await waitFor(() => {
         expect(onSave).toHaveBeenCalled()
@@ -657,6 +681,7 @@ describe('SiteEquipmentEditor', () => {
       const cancelBtn = screen.getByTestId('site-equipment-editor-cancel')
       const saveBtn = screen.getByTestId('site-equipment-editor-save')
 
+      await waitFor(() => expect(saveBtn).toHaveTextContent('Save'))
       fireEvent.click(saveBtn)
 
       expect(cancelBtn).toBeDisabled()
@@ -735,6 +760,151 @@ describe('SiteEquipmentEditor', () => {
       // Verify independence
       expect(manufacturerInputs[0]).toHaveValue('Hunter')
       expect(modelInputs[1]).toHaveValue('Rachio')
+    })
+  })
+
+  describe('load existing equipment on mount', () => {
+    test('Save button is disabled while loading then enabled after data arrives', async () => {
+      let resolve!: (v: typeof EMPTY_EQUIPMENT) => void
+      mockGetSiteEquipment.mockReturnValueOnce(new Promise(r => { resolve = r }))
+
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      const saveBtn = screen.getByTestId('site-equipment-editor-save')
+      expect(saveBtn).toBeDisabled()
+      expect(saveBtn).toHaveTextContent('Loading…')
+
+      resolve(EMPTY_EQUIPMENT)
+      await waitFor(() => {
+        expect(saveBtn).not.toBeDisabled()
+        expect(saveBtn).toHaveTextContent('Save')
+      })
+    })
+
+    test('calls getSiteEquipment with the site id on mount', async () => {
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      expect(mockGetSiteEquipment).toHaveBeenCalledWith(MOCK_SITE.id)
+      expect(mockGetSiteEquipment).toHaveBeenCalledTimes(1)
+    })
+
+    test('pre-populates controllers from saved data', async () => {
+      mockGetSiteEquipment.mockResolvedValueOnce({
+        controllers: [
+          { id: 1, location: 'Front gate', manufacturer: 'Hunter', model: 'Pro-HC', sensors: '', numZones: '6', masterValve: false, masterValveNotes: '', notes: '' },
+        ],
+        zones: [],
+        backflows: [],
+        overview: null,
+      })
+
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      expect(screen.getByDisplayValue('Front gate')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Hunter')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Pro-HC')).toBeInTheDocument()
+    })
+
+    test('pre-populates backflows from saved data', async () => {
+      mockGetSiteEquipment.mockResolvedValueOnce({
+        controllers: [],
+        zones: [],
+        backflows: [
+          { id: 1, manufacturer: 'Watts', type: 'DCVA', model: 'LF009', size: '1' },
+        ],
+        overview: null,
+      })
+
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      expect(screen.getByDisplayValue('Watts')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('DCVA')).toBeInTheDocument()
+    })
+
+    test('pre-populates overview fields from saved data', async () => {
+      mockGetSiteEquipment.mockResolvedValueOnce({
+        controllers: [],
+        zones: [],
+        backflows: [],
+        overview: {
+          staticPressure: '80',
+          backflowInstalled: true,
+          backflowServiceable: false,
+          isolationValve: true,
+          systemNotes: 'Needs flush',
+        },
+      })
+
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      expect(screen.getByTestId('site-equipment-editor-overview-static-pressure')).toHaveValue('80')
+      expect(screen.getByTestId('site-equipment-editor-overview-backflow-installed')).toBeChecked()
+      expect(screen.getByTestId('site-equipment-editor-overview-backflow-serviceable')).not.toBeChecked()
+      expect(screen.getByTestId('site-equipment-editor-overview-isolation-valve')).toBeChecked()
+      expect(screen.getByTestId('site-equipment-editor-overview-system-notes')).toHaveValue('Needs flush')
+    })
+
+    test('null overview leaves default empty values', async () => {
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      expect(screen.getByTestId('site-equipment-editor-overview-static-pressure')).toHaveValue('')
+      expect(screen.getByTestId('site-equipment-editor-overview-backflow-installed')).not.toBeChecked()
+    })
+
+    test('new items added after load get unique ids that do not collide with loaded ids', async () => {
+      mockGetSiteEquipment.mockResolvedValueOnce({
+        controllers: [
+          { id: 5, location: 'Garage', manufacturer: 'Rachio', model: '3', sensors: '', numZones: '8', masterValve: false, masterValveNotes: '', notes: '' },
+        ],
+        zones: [],
+        backflows: [],
+        overview: null,
+      })
+
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      // Add a second controller — it should render without key collisions
+      fireEvent.click(screen.getByTestId('site-equipment-editor-add-controller'))
+
+      expect(screen.getAllByTestId('site-equipment-editor-controller-row')).toHaveLength(2)
+    })
+
+    test('handles getSiteEquipment rejection without crashing', async () => {
+      mockGetSiteEquipment.mockRejectedValueOnce(new Error('Network error'))
+
+      render(<SiteEquipmentEditor site={MOCK_SITE} onClose={jest.fn()} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('site-equipment-editor-save')).toHaveTextContent('Save')
+      })
+
+      // Component renders normally with empty state after error
+      expect(screen.getByTestId('site-equipment-editor')).toBeInTheDocument()
+      expect(screen.getByText('No controllers. Add one above.')).toBeInTheDocument()
     })
   })
 

@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
-import { updateSiteEquipment } from '@/actions/sites'
+import React, { useState, useRef, useEffect } from 'react'
+import { updateSiteEquipment, getSiteEquipment } from '@/actions/sites'
 import type { SiteWithClient } from '@/actions/sites'
 import type { ControllerFormData, ZoneFormData, BackflowFormData } from '@/types'
 
@@ -41,8 +41,32 @@ export function SiteEquipmentEditor({ site, onClose, onSave }: SiteEquipmentEdit
     systemNotes:         '',
   })
 
+  const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  useEffect(() => {
+    getSiteEquipment(site.id).then(eq => {
+      if (eq.controllers.length || eq.zones.length || eq.backflows.length) {
+        setControllers(eq.controllers)
+        setZones(eq.zones)
+        setBackflows(eq.backflows)
+        // advance the ID counter past all loaded IDs so new items don't collide
+        const maxId = Math.max(
+          0,
+          ...eq.controllers.map(c => c.id),
+          ...eq.zones.map(z => z.id),
+          ...eq.backflows.map(b => b.id),
+        )
+        nextIdRef.current = maxId + 1
+      }
+      if (eq.overview) {
+        setOverview(eq.overview)
+      }
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Controllers ────────────────────────────────────────────────────────────
 
@@ -157,9 +181,9 @@ export function SiteEquipmentEditor({ site, onClose, onSave }: SiteEquipmentEdit
             data-testid="site-equipment-editor-save"
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={saving}
+            disabled={loading || saving}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : loading ? 'Loading…' : 'Save'}
           </button>
           <button
             data-testid="site-equipment-editor-cancel"

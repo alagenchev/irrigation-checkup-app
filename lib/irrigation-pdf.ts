@@ -84,10 +84,10 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
   // ── BACKFLOWS SECTION ────────────────────────────────────────────────────
   let backflowsHtml = ''
   if (backflows && backflows.length > 0) {
-    backflowsHtml = backflows.map(bf => `
+    backflowsHtml = backflows.map((bf, i) => `
       <table class="info-table">
         <tr>
-          <td style="width:28px;font-weight:bold">#${esc(bf.id)}</td>
+          <td style="width:28px;font-weight:bold">#${i + 1}</td>
           <th>Manufacturer:</th><td>${esc(bf.manufacturer)}</td>
           <th>Type:</th><td>${esc(bf.type)}</td>
           <th>Model:</th><td>${esc(bf.model)}</td>
@@ -208,6 +208,83 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
       <div class="page-footer">
         ${esc(formData.clientName || '')} — ${esc(formData.siteName || '')} — Page 1
       </div>
+    `
+  }
+
+  // ── UNASSIGNED ZONES ─────────────────────────────────────────────────────
+  // Zones whose controller field doesn't match any controller id
+  const controllerIds = new Set(controllers.map(c => String(c.id)))
+  const orphanZones = zones.filter(z => !z.controller || !controllerIds.has(String(z.controller)))
+  if (orphanZones.length > 0) {
+    const orphanZoneRows = orphanZones.map(z => `
+      <tr>
+        <td style="text-align:center">${esc(z.zoneNum)}</td>
+        <td>${esc(z.description)}</td>
+        <td>${esc((z.landscapeTypes || []).join(', '))}</td>
+        <td>${esc((z.irrigationTypes || []).join(', '))}</td>
+        <td>${esc(z.notes || '')}</td>
+      </tr>
+    `).join('')
+
+    const orphanDescHtml = `
+      <table class="info-table">
+        <thead>
+          <tr>
+            <th style="width:40px">Zone #</th>
+            <th>Description</th>
+            <th>Landscape Type(s)</th>
+            <th>Irrigation Type(s)</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orphanZoneRows}
+        </tbody>
+      </table>
+    `
+
+    const orphanIssueTotals: Record<string, number> = {}
+    ISSUE_TYPES.forEach(t => { orphanIssueTotals[t] = 0 })
+
+    const orphanIssueRows = orphanZones.map(z => {
+      const zIssueObj = (zoneIssues || []).find(zi => String(zi.zoneNum) === String(z.zoneNum))
+      const zIssueList = (zIssueObj && zIssueObj.issues) ? zIssueObj.issues : []
+      const cells = ISSUE_TYPES.map(issue => {
+        const hasIssue = zIssueList.indexOf(issue) !== -1
+        if (hasIssue) orphanIssueTotals[issue]++
+        return `<td>${hasIssue ? '<span class="check-mark">✓</span>' : ''}</td>`
+      }).join('')
+      return `<tr><td class="zone-num">${esc(z.zoneNum)}</td>${cells}</tr>`
+    }).join('')
+
+    const orphanTotalCells = ISSUE_TYPES.map(issue => `<td>${orphanIssueTotals[issue] || 0}</td>`).join('')
+    const orphanIssueHeaders = ISSUE_TYPES.map(issue => `<th class="issue-col">${esc(issue)}</th>`).join('')
+
+    const orphanIssuesHtml = `
+      <div class="section-heading">Zone Issues: Unassigned Zones</div>
+      <div class="issues-wrapper">
+        <table class="issues-table">
+          <thead>
+            <tr>
+              <th class="zone-col">Zone #</th>
+              ${orphanIssueHeaders}
+            </tr>
+          </thead>
+          <tbody>
+            ${orphanIssueRows}
+            <tr class="totals-row">
+              <td class="zone-num">Total</td>
+              ${orphanTotalCells}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `
+
+    controllersHtml += `
+      <div class="section-heading">Unassigned Zones</div>
+      ${orphanDescHtml}
+      ${orphanIssuesHtml}
     `
   }
 
@@ -546,6 +623,14 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     <td>${esc(formData.siteAddress)}</td>
     <td class="label">License #:</td>
     <td>${esc(formData.inspectorLicenseNum || '')}</td>
+  </tr>
+  <tr>
+    <td class="label">Date:</td>
+    <td>${esc(formData.datePerformed || '')}</td>
+    <td class="label">Insp. Type:</td>
+    <td>${esc(formData.inspectionType || '')}</td>
+    <td class="label">Account #:</td>
+    <td>${esc(formData.accountNumber || '')}</td>
   </tr>
 </table>
 

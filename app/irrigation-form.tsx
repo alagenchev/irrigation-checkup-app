@@ -6,7 +6,7 @@ import { AddressAutocomplete } from '@/components/ui/address-autocomplete'
 import { SiteSelector } from '@/app/components/site-selector'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
-import { getSiteEquipment } from '@/actions/sites'
+import { getSiteEquipment, updateSiteEquipment } from '@/actions/sites'
 import { uploadZonePhoto } from '@/actions/upload'
 import type { Client, CompanySettings, Inspector, IrrigationFormInitialData, ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
@@ -88,6 +88,9 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [equipmentError,   setEquipmentError]   = useState<string | null>(null)
   const [clientLocked,    setClientLocked]    = useState(false)
   const [equipmentLocked, setEquipmentLocked] = useState(false)
+  const [savedInfoExpanded,  setSavedInfoExpanded]  = useState(false)
+  const [activeEquipSection, setActiveEquipSection] = useState<'overview' | 'backflows' | 'controllers' | 'zones' | null>(null)
+  const [selectedSiteId,    setSelectedSiteId]    = useState<string | null>(null)
   const [loading,          setLoading]          = useState(false)
   const [saving,         setSaving]         = useState(false)
   const [saveMsg,        setSaveMsg]        = useState<{ ok: boolean; text: string } | null>(null)
@@ -106,6 +109,9 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [photoErrors,    setPhotoErrors]    = useState<Record<number, string>>({})
   const [photoThumbs,    setPhotoThumbs]    = useState<Record<number, string[]>>({})
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  // True when equipment was loaded from an existing site and we're creating a new inspection
+  const isEquipLockMode = equipmentLocked && !isDetailPage && mode !== 'readonly'
 
   // ── AUTOCOMPLETE DATA ──────────────────────────────────────────────────────
 
@@ -134,6 +140,13 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
     setClientLocked(true)
     setEquipmentLoading(true)
     setEquipmentError(null)
+    setSavedInfoExpanded(false)
+    setActiveEquipSection(null)
+    setSelectedSiteId(site.id)
+    setControllers([])
+    setZones([])
+    setBackflows([])
+    setZoneIssues({})
 
     try {
       const equipment = await getSiteEquipment(site.id)
@@ -145,7 +158,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
         ...equipment.zones.map(z => z.id),
         ...equipment.backflows.map(b => b.id),
       )
-      nextIdRef.current = maxId + 1
+      nextIdRef.current = Math.max(nextIdRef.current, maxId + 1)
 
       setControllers(equipment.controllers)
       setZones(equipment.zones)
@@ -181,6 +194,9 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       setEquipmentError(null)
       setClientLocked(false)
       setEquipmentLocked(false)
+      setSavedInfoExpanded(false)
+      setActiveEquipSection(null)
+      setSelectedSiteId(null)
       setControllers([{ id: uid(), location: '', manufacturer: '', model: '', sensors: '', numZones: '0', masterValve: false, masterValveNotes: '', notes: '' }])
       setZones([
         { id: uid(), zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] },
@@ -193,7 +209,30 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
       setEquipmentError(null)
       setClientLocked(false)
       setEquipmentLocked(false)
+      setSavedInfoExpanded(false)
+      setActiveEquipSection(null)
+      setSelectedSiteId(null)
     }
+  }
+
+  // ── EQUIPMENT SECTION SAVE ───────────────────────────────────────────────
+
+  async function saveEquipmentSection() {
+    if (!selectedSiteId) return
+    setActiveEquipSection(null)
+    await updateSiteEquipment({
+      siteId: selectedSiteId,
+      controllers,
+      zones,
+      backflows,
+      overview: {
+        staticPressure:      form.staticPressure as string,
+        backflowInstalled:   form.backflowInstalled as boolean,
+        backflowServiceable: form.backflowServiceable as boolean,
+        isolationValve:      form.isolationValve as boolean,
+        systemNotes:         form.systemNotes as string,
+      },
+    })
   }
 
   // ── CONTROLLERS ──────────────────────────────────────────────────────────
@@ -692,58 +731,6 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           </div>
         </section>
 
-        {/* INSPECTION INFO */}
-        <section className="card">
-          <h2>Inspection Information</h2>
-          <div className="grid-2">
-            <div className="field">
-              <label>
-                Date Performed <span style={{ color: '#ffffff' }}>*</span>
-                {fieldErrors.datePerformed && <span style={{ color: '#ef4444', marginLeft: 6, fontSize: 12 }}>{fieldErrors.datePerformed}</span>}
-              </label>
-              <input type="date" value={form.datePerformed} onChange={e => setField('datePerformed', e.target.value)} disabled={mode === 'readonly'} />
-            </div>
-            <div className="field">
-              <label>Inspection Type</label>
-              <select value={form.inspectionType} onChange={e => setField('inspectionType', e.target.value)} disabled={mode === 'readonly'}>
-                {['Repair Inspection','Start-up','Mid-season','Diagnosis','Monthly','Quarterly','Late-season','Winterization'].map(v => <option key={v}>{v}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Account Type</label>
-              <select name="accountType" value={form.accountType} onChange={e => setField('accountType', e.target.value)} disabled={mode === 'readonly'}>
-                {['Commercial','Residential','HOA','Municipal'].map(v => <option key={v}>{v}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Account Number</label>
-              <input name="accountNumber" type="text" value={form.accountNumber} onChange={e => setField('accountNumber', e.target.value)} disabled={mode === 'readonly'} />
-            </div>
-            <div className="field">
-              <label>Status</label>
-              <select value={form.status} onChange={e => setField('status', e.target.value)} disabled={mode === 'readonly'}>
-                {['New','In Progress','Completed'].map(v => <option key={v}>{v}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Due Date</label>
-              <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} disabled={mode === 'readonly'} />
-            </div>
-            <div className="field">
-              <label>Total System Repair Estimate ($)</label>
-              <input type="number" value={form.repairEstimate} onChange={e => setField('repairEstimate', e.target.value)} step="0.01" placeholder="0.00" disabled={mode === 'readonly'} />
-            </div>
-          </div>
-          <div className="field full-width" style={{ marginTop: 12 }}>
-            <label>Inspection Notes <span className="hint">(displayed on PDF)</span></label>
-            <textarea rows={3} value={form.inspectionNotes} onChange={e => setField('inspectionNotes', e.target.value)} disabled={mode === 'readonly'} />
-          </div>
-          <div className="field full-width" style={{ marginTop: 12 }}>
-            <label>Internal Notes <span className="hint">(NOT displayed on PDF)</span></label>
-            <textarea rows={2} value={form.internalNotes} onChange={e => setField('internalNotes', e.target.value)} disabled={mode === 'readonly'} />
-          </div>
-        </section>
-
         {/* IRRIGATION EQUIPMENT — only shown after a site is selected */}
         {equipmentLoading ? (
           <section className="card" data-testid="equipment-loading">
@@ -758,20 +745,50 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <p style={{ color: '#a1a1aa', fontSize: 14, margin: 0 }}>Select or create a site to manage irrigation details</p>
           </section>
         ) : (
-          <div style={{ position: 'relative' }} data-testid="equipment-sections">
-            {equipmentLocked && mode !== 'readonly' && (
-              <div
-                data-testid="equipment-lock-overlay"
-                onClick={() => setEquipmentLocked(false)}
-                title="Click to edit equipment"
-                style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer', background: 'transparent' }}
-              />
+          <div data-testid="equipment-sections">
+            {/* Expand/collapse divider — only shown when loaded from existing site in new-inspection mode */}
+            {isEquipLockMode && (
+              <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0 16px' }}>
+                <div style={{ flex: 1, height: 1, background: '#3a3a3c' }} />
+                <button
+                  data-testid="expand-saved-info-btn"
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => { setSavedInfoExpanded(e => !e); setActiveEquipSection(null) }}
+                  style={{ margin: '0 12px' }}
+                >
+                  {savedInfoExpanded ? 'Collapse' : 'Expand saved information'}
+                </button>
+                <div style={{ flex: 1, height: 1, background: '#3a3a3c' }} />
+              </div>
             )}
-            <div style={{ opacity: equipmentLocked ? 0.55 : 1, transition: 'opacity 0.15s' }}>
+
+            {(!isEquipLockMode || savedInfoExpanded) && (
+            <>
+            {isEquipLockMode && (
+              <p data-testid="saved-info-hint" style={{ fontSize: 12, color: '#a1a1aa', margin: '0 0 12px', textAlign: 'center' }}>
+                Click on a saved field to edit
+              </p>
+            )}
 
         {/* SYSTEM OVERVIEW */}
+        <div style={{ position: 'relative' }}>
+          {isEquipLockMode && activeEquipSection !== 'overview' && (
+            <div
+              data-testid="overview-lock-overlay"
+              onClick={() => setActiveEquipSection('overview')}
+              title="Click to edit"
+              style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer', background: 'transparent' }}
+            />
+          )}
+          <div style={{ opacity: isEquipLockMode && activeEquipSection !== 'overview' ? 0.55 : 1, transition: 'opacity 0.15s' }}>
         <section className="card">
-          <h2>Irrigation System Overview</h2>
+          <div className="section-header">
+            <h2>Irrigation System Overview</h2>
+            {isEquipLockMode && activeEquipSection === 'overview' && (
+              <button type="button" className="btn btn-sm" data-testid="overview-save-btn" onClick={saveEquipmentSection}>Save</button>
+            )}
+          </div>
           <div className="grid-4">
             <div className="field">
               <label>Static Pressure (PSI)</label>
@@ -795,14 +812,31 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             <textarea rows={2} value={form.systemNotes} onChange={e => setField('systemNotes', e.target.value)} disabled={mode === 'readonly'} />
           </div>
         </section>
+          </div>
+        </div>
 
         {/* BACKFLOWS */}
+        <div style={{ position: 'relative' }}>
+          {isEquipLockMode && activeEquipSection !== 'backflows' && (
+            <div
+              data-testid="backflows-lock-overlay"
+              onClick={() => setActiveEquipSection('backflows')}
+              title="Click to edit"
+              style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer', background: 'transparent' }}
+            />
+          )}
+          <div style={{ opacity: isEquipLockMode && activeEquipSection !== 'backflows' ? 0.55 : 1, transition: 'opacity 0.15s' }}>
         <section className="card">
           <div className="section-header">
             <h2>Backflow Devices</h2>
-            {mode !== 'readonly' && (
-              <button type="button" className="btn btn-sm" onClick={addBackflow}>+ Backflow</button>
-            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(!isEquipLockMode || activeEquipSection === 'backflows') && mode !== 'readonly' && (
+                <button type="button" className="btn btn-sm" onClick={addBackflow}>+ Backflow</button>
+              )}
+              {isEquipLockMode && activeEquipSection === 'backflows' && (
+                <button type="button" className="btn btn-sm" data-testid="backflows-save-btn" onClick={saveEquipmentSection}>Save</button>
+              )}
+            </div>
           </div>
           {backflows.map((bf, i) => (
             <div className="backflow-row" key={bf.id}>
@@ -823,14 +857,31 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             </div>
           ))}
         </section>
+          </div>
+        </div>
 
         {/* CONTROLLERS */}
+        <div style={{ position: 'relative' }}>
+          {isEquipLockMode && activeEquipSection !== 'controllers' && (
+            <div
+              data-testid="controllers-lock-overlay"
+              onClick={() => setActiveEquipSection('controllers')}
+              title="Click to edit"
+              style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer', background: 'transparent' }}
+            />
+          )}
+          <div style={{ opacity: isEquipLockMode && activeEquipSection !== 'controllers' ? 0.55 : 1, transition: 'opacity 0.15s' }}>
         <section className="card">
           <div className="section-header">
             <h2>Controllers</h2>
-            {mode !== 'readonly' && (
-              <button type="button" className="btn btn-sm" onClick={addController}>+ Controller</button>
-            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(!isEquipLockMode || activeEquipSection === 'controllers') && mode !== 'readonly' && (
+                <button type="button" className="btn btn-sm" onClick={addController}>+ Controller</button>
+              )}
+              {isEquipLockMode && activeEquipSection === 'controllers' && (
+                <button type="button" className="btn btn-sm" data-testid="controllers-save-btn" onClick={saveEquipmentSection}>Save</button>
+              )}
+            </div>
           </div>
           <div className="table-scroll">
           <table className="data-table">
@@ -880,14 +931,31 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           </table>
           </div>
         </section>
+          </div>
+        </div>
 
         {/* ZONE DESCRIPTIONS */}
+        <div style={{ position: 'relative' }}>
+          {isEquipLockMode && activeEquipSection !== 'zones' && (
+            <div
+              data-testid="zones-lock-overlay"
+              onClick={() => setActiveEquipSection('zones')}
+              title="Click to edit"
+              style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer', background: 'transparent' }}
+            />
+          )}
+          <div style={{ opacity: isEquipLockMode && activeEquipSection !== 'zones' ? 0.55 : 1, transition: 'opacity 0.15s' }}>
         <section className="card">
           <div className="section-header">
             <h2>Zone Descriptions</h2>
-            {mode !== 'readonly' && (
-              <button type="button" className="btn btn-sm" onClick={addZone}>+ Zone</button>
-            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(!isEquipLockMode || activeEquipSection === 'zones') && mode !== 'readonly' && (
+                <button type="button" className="btn btn-sm" onClick={addZone}>+ Zone</button>
+              )}
+              {isEquipLockMode && activeEquipSection === 'zones' && (
+                <button type="button" className="btn btn-sm" data-testid="zones-save-btn" onClick={saveEquipmentSection}>Save</button>
+              )}
+            </div>
           </div>
           <div className="table-scroll">
           <table className="data-table">
@@ -1075,13 +1143,67 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
           </table>
           </div>
         </section>
-
-            </div>
           </div>
+        </div>
+        </>
+        )}
+        </div>
         )}
 
-        {/* ZONE ISSUES */}
+        {/* INSPECTION INFO */}
         <section className="card">
+          <h2>Inspection Information</h2>
+          <div className="grid-2">
+            <div className="field">
+              <label>
+                Date Performed <span style={{ color: '#ffffff' }}>*</span>
+                {fieldErrors.datePerformed && <span style={{ color: '#ef4444', marginLeft: 6, fontSize: 12 }}>{fieldErrors.datePerformed}</span>}
+              </label>
+              <input type="date" value={form.datePerformed} onChange={e => setField('datePerformed', e.target.value)} disabled={mode === 'readonly'} />
+            </div>
+            <div className="field">
+              <label>Inspection Type</label>
+              <select value={form.inspectionType} onChange={e => setField('inspectionType', e.target.value)} disabled={mode === 'readonly'}>
+                {['Repair Inspection','Start-up','Mid-season','Diagnosis','Monthly','Quarterly','Late-season','Winterization'].map(v => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Account Type</label>
+              <select name="accountType" value={form.accountType} onChange={e => setField('accountType', e.target.value)} disabled={mode === 'readonly'}>
+                {['Commercial','Residential','HOA','Municipal'].map(v => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Account Number</label>
+              <input name="accountNumber" type="text" value={form.accountNumber} onChange={e => setField('accountNumber', e.target.value)} disabled={mode === 'readonly'} />
+            </div>
+            <div className="field">
+              <label>Status</label>
+              <select value={form.status} onChange={e => setField('status', e.target.value)} disabled={mode === 'readonly'}>
+                {['New','In Progress','Completed'].map(v => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Due Date</label>
+              <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} disabled={mode === 'readonly'} />
+            </div>
+            <div className="field">
+              <label>Total System Repair Estimate ($)</label>
+              <input type="number" value={form.repairEstimate} onChange={e => setField('repairEstimate', e.target.value)} step="0.01" placeholder="0.00" disabled={mode === 'readonly'} />
+            </div>
+          </div>
+          <div className="field full-width" style={{ marginTop: 12 }}>
+            <label>Inspection Notes <span className="hint">(displayed on PDF)</span></label>
+            <textarea rows={3} value={form.inspectionNotes} onChange={e => setField('inspectionNotes', e.target.value)} disabled={mode === 'readonly'} />
+          </div>
+          <div className="field full-width" style={{ marginTop: 12 }}>
+            <label>Internal Notes <span className="hint">(NOT displayed on PDF)</span></label>
+            <textarea rows={2} value={form.internalNotes} onChange={e => setField('internalNotes', e.target.value)} disabled={mode === 'readonly'} />
+          </div>
+        </section>
+
+        {/* ZONE ISSUES — only shown after site is selected so zone count matches loaded equipment */}
+        {siteSelected && <section className="card">
           <div className="section-header">
             <h2>Zone Issues</h2>
             <span className="hint">Check all issues found per zone</span>
@@ -1115,7 +1237,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               </tbody>
             </table>
           </div>
-        </section>
+        </section>}
 
         {/* QUOTE ITEMS */}
         <section className="card">
