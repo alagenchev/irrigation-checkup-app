@@ -143,6 +143,25 @@ body {
 }
 .data-table input[type=checkbox] { width: auto; }
 
+/* QUOTE TABLE */
+.quote-table-ui { table-layout: fixed; }
+.quote-table-ui td { vertical-align: top; }
+.quote-table-ui input, .quote-table-ui textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.quote-table-ui textarea {
+  padding: 5px 7px;
+  border: 1px solid #d4d4d8;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #fff;
+  color: #27272a;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 54px;
+}
+
 /* ZONE ISSUES */
 .zone-issues-wrapper { overflow-x: auto; }
 .issues-table { border-collapse: collapse; font-size: 11px; min-width: 900px; }

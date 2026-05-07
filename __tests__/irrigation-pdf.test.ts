@@ -132,26 +132,27 @@ describe('unassigned (orphaned) zones', () => {
     expect(html).toContain('Side yard')
   })
 
-  test('zone number appears in orphan zone issues table', () => {
+  test('zone number and controller appear in issues table for orphaned zone', () => {
     const data = makeData({
       controllers: [],
       zones: [ORPHAN],
       zoneIssues: [{ zoneNum: '3', issues: ['Runoff'] }],
     })
     const html = generateIrrigationPdfHtml(data as any)
-    expect(html).toContain('Zone Issues: Unassigned Zones')
-    // Zone 3 row should be present
-    expect(html).toMatch(/zone-num[^>]*>3</)
+    expect(html).toContain('issues-summary-table')
+    expect(html).toContain('Unassigned')
+    expect(html).toContain('Runoff')
   })
 
-  test('orphaned zone with issue shows checkmark in issues table', () => {
+  test('orphaned zone with issue appears in combined issues table', () => {
     const data = makeData({
       controllers: [],
       zones: [ORPHAN],
       zoneIssues: [{ zoneNum: '3', issues: ['Runoff'] }],
     })
     const html = generateIrrigationPdfHtml(data as any)
-    expect(html).toContain('<span class="check-mark">')
+    expect(html).toContain('issues-summary-table')
+    expect(html).toContain('Runoff')
   })
 
   test('zone assigned to a non-existent controller is treated as orphaned', () => {
@@ -179,25 +180,157 @@ describe('zone issues', () => {
   const CTRL = { id: 1, location: 'Main', manufacturer: '', model: '', sensors: '', numZones: '1', masterValve: false, notes: '' }
   const ZONE = { id: 2, zoneNum: '1', controller: '1', description: 'Lawn', landscapeTypes: [], irrigationTypes: [], notes: '' }
 
-  test('checked issue shows check-mark span', () => {
+  test('zone with issue appears in issues table with controller name', () => {
     const data = makeData({
       controllers: [CTRL],
       zones: [ZONE],
       zoneIssues: [{ zoneNum: '1', issues: ['Runoff'] }],
     })
     const html = generateIrrigationPdfHtml(data as any)
-    expect(html).toContain('<span class="check-mark">')
+    expect(html).toContain('issues-summary-table')
+    expect(html).toContain('Main')
+    expect(html).toContain('Runoff')
   })
 
-  test('unchecked issue shows empty td (no checkmark span)', () => {
+  test('zone with no issues does not appear in issues table', () => {
     const data = makeData({
       controllers: [CTRL],
       zones: [ZONE],
       zoneIssues: [{ zoneNum: '1', issues: [] }],
     })
     const html = generateIrrigationPdfHtml(data as any)
-    // The span element should not be present (CSS class name in <style> is fine)
-    expect(html).not.toContain('<span class="check-mark">')
+    expect(html).not.toContain('class="issues-summary-table"')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issues section — unified, sorted, correct heading
+// ---------------------------------------------------------------------------
+
+describe('issues section structure', () => {
+  const CTRL_A = { id: 1, location: 'Front', manufacturer: '', model: '', sensors: '', numZones: '2', masterValve: false, notes: '' }
+  const CTRL_B = { id: 2, location: 'Back',  manufacturer: '', model: '', sensors: '', numZones: '1', masterValve: false, notes: '' }
+  const ZONE_1 = { id: 10, zoneNum: '1', controller: '1', description: 'Lawn',  landscapeTypes: [], irrigationTypes: [], notes: '' }
+  const ZONE_2 = { id: 11, zoneNum: '2', controller: '2', description: 'Beds',  landscapeTypes: [], irrigationTypes: [], notes: '' }
+  const ZONE_3 = { id: 12, zoneNum: '3', controller: '1', description: 'Trees', landscapeTypes: [], irrigationTypes: [], notes: '' }
+
+  test('issues section heading is "Issues" not per-controller heading', () => {
+    const data = makeData({
+      controllers: [CTRL_A],
+      zones: [ZONE_1],
+      zoneIssues: [{ zoneNum: '1', issues: ['Runoff'] }],
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    expect(html).toContain('>Issues<')
+    expect(html).not.toContain('Zone Issues:')
+  })
+
+  test('zones from different controllers appear in one combined issues table', () => {
+    const data = makeData({
+      controllers: [CTRL_A, CTRL_B],
+      zones: [ZONE_1, ZONE_2],
+      zoneIssues: [
+        { zoneNum: '1', issues: ['Runoff'] },
+        { zoneNum: '2', issues: ['Overspray'] },
+      ],
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    // Only one issues table, not one per controller
+    const tableCount = (html.match(/class="issues-summary-table"/g) || []).length
+    expect(tableCount).toBe(1)
+    expect(html).toContain('Runoff')
+    expect(html).toContain('Overspray')
+    expect(html).toContain('Front')
+    expect(html).toContain('Back')
+  })
+
+  test('zones are sorted numerically by zone number in the issues table', () => {
+    const ZONE_10 = { id: 13, zoneNum: '10', controller: '1', description: 'D', landscapeTypes: [], irrigationTypes: [], notes: '' }
+    const data = makeData({
+      controllers: [CTRL_A],
+      zones: [ZONE_10, ZONE_3, ZONE_1],
+      zoneIssues: [
+        { zoneNum: '10', issues: ['Runoff'] },
+        { zoneNum: '3',  issues: ['Overspray'] },
+        { zoneNum: '1',  issues: ['Runoff'] },
+      ],
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    const pos1  = html.indexOf('zone-cell">1<')
+    const pos3  = html.indexOf('zone-cell">3<')
+    const pos10 = html.indexOf('zone-cell">10<')
+    expect(pos1).toBeLessThan(pos3)
+    expect(pos3).toBeLessThan(pos10)
+  })
+
+  test('multiple issues for a zone are comma-separated in the issues column', () => {
+    const data = makeData({
+      controllers: [CTRL_A],
+      zones: [ZONE_1],
+      zoneIssues: [{ zoneNum: '1', issues: ['Runoff', 'Overspray', 'Lower Head'] }],
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    expect(html).toContain('Runoff, Overspray, Lower Head')
+  })
+
+  test('zone with no issues is excluded from the issues table', () => {
+    const data = makeData({
+      controllers: [CTRL_A],
+      zones: [ZONE_1, ZONE_3],
+      zoneIssues: [
+        { zoneNum: '1', issues: ['Runoff'] },
+        { zoneNum: '3', issues: [] },
+      ],
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    // Zone 3 has no issues — should not appear as a row in the issues table
+    // The zone-cell for zone 3 should not be present (zone 1 will be)
+    expect(html).toContain('zone-cell">1<')
+    expect(html).not.toContain('zone-cell">3<')
+  })
+
+  test('issues section is omitted entirely when no zones have issues', () => {
+    const data = makeData({
+      controllers: [CTRL_A],
+      zones: [ZONE_1],
+      zoneIssues: [],
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    expect(html).not.toContain('class="issues-summary-table"')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Page breaks — conditional on photos
+// ---------------------------------------------------------------------------
+
+describe('page breaks', () => {
+  test('no photos produces exactly one page-break (before quote)', () => {
+    const html = generateIrrigationPdfHtml(makeData() as any)
+    const breaks = (html.match(/class="page-break"/g) || []).length
+    expect(breaks).toBe(1)
+  })
+
+  test('with photos produces two page-breaks (before photos + before quote)', () => {
+    const data = makeData({
+      photoMap: { photo_zone_1: ['data:image/png;base64,abc'] },
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    const breaks = (html.match(/class="page-break"/g) || []).length
+    expect(breaks).toBe(2)
+  })
+
+  test('photos section is present when photoMap has entries', () => {
+    const data = makeData({
+      photoMap: { photo_zone_1: ['data:image/png;base64,abc'] },
+    })
+    const html = generateIrrigationPdfHtml(data as any)
+    expect(html).toContain('Zone Photos')
+  })
+
+  test('photos section is absent when photoMap is empty', () => {
+    const html = generateIrrigationPdfHtml(makeData() as any)
+    expect(html).not.toContain('Zone Photos')
   })
 })
 

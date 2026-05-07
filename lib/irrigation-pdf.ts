@@ -115,10 +115,8 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     const ctrlZones = zones.filter(z => String(z.controller) === String(ctrl.id))
 
     let zoneDescHtml = ''
-    let zoneIssuesHtml = ''
 
     if (ctrlZones.length > 0) {
-      // Zone descriptions table
       const zoneRows = ctrlZones.map(z => `
         <tr>
           <td style="text-align:center">${esc(z.zoneNum)}</td>
@@ -145,47 +143,6 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
           </tbody>
         </table>
       `
-
-      // Zone issues table
-      const issueTotals: Record<string, number> = {}
-      ISSUE_TYPES.forEach(t => { issueTotals[t] = 0 })
-
-      const issueRows = ctrlZones.map(z => {
-        const zIssueObj = (zoneIssues || []).find(zi => String(zi.zoneNum) === String(z.zoneNum))
-        const zIssueList = (zIssueObj && zIssueObj.issues) ? zIssueObj.issues : []
-
-        const cells = ISSUE_TYPES.map(issue => {
-          const hasIssue = zIssueList.indexOf(issue) !== -1
-          if (hasIssue) issueTotals[issue]++
-          return `<td>${hasIssue ? '<span class="check-mark">✓</span>' : ''}</td>`
-        }).join('')
-
-        return `<tr><td class="zone-num">${esc(z.zoneNum)}</td>${cells}</tr>`
-      }).join('')
-
-      const totalCells = ISSUE_TYPES.map(issue => `<td>${issueTotals[issue] || 0}</td>`).join('')
-      const issueHeaders = ISSUE_TYPES.map(issue => `<th class="issue-col">${esc(issue)}</th>`).join('')
-
-      zoneIssuesHtml = `
-        <div class="section-heading">Zone Issues: ${esc(ctrl.location || ('Controller #' + ctrl.id))}</div>
-        <div class="issues-wrapper">
-          <table class="issues-table">
-            <thead>
-              <tr>
-                <th class="zone-col">Zone #</th>
-                ${issueHeaders}
-              </tr>
-            </thead>
-            <tbody>
-              ${issueRows}
-              <tr class="totals-row">
-                <td class="zone-num">Total</td>
-                ${totalCells}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `
     }
 
     controllersHtml += `
@@ -204,15 +161,10 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
         </tr>
       </table>
       ${zoneDescHtml}
-      ${zoneIssuesHtml}
-      <div class="page-footer">
-        ${esc(formData.clientName || '')} — ${esc(formData.siteName || '')} — Page 1
-      </div>
     `
   }
 
   // ── UNASSIGNED ZONES ─────────────────────────────────────────────────────
-  // Zones whose controller field doesn't match any controller id
   const controllerIds = new Set(controllers.map(c => String(c.id)))
   const orphanZones = zones.filter(z => !z.controller || !controllerIds.has(String(z.controller)))
   if (orphanZones.length > 0) {
@@ -226,7 +178,8 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
       </tr>
     `).join('')
 
-    const orphanDescHtml = `
+    controllersHtml += `
+      <div class="section-heading">Unassigned Zones</div>
       <table class="info-table">
         <thead>
           <tr>
@@ -242,49 +195,52 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
         </tbody>
       </table>
     `
+  }
 
-    const orphanIssueTotals: Record<string, number> = {}
-    ISSUE_TYPES.forEach(t => { orphanIssueTotals[t] = 0 })
+  // ── ISSUES SECTION (all zones combined, sorted by zone number) ───────────
+  const controllerMap = new Map(controllers.map(c => [String(c.id), c]))
+  const allZonesSorted = [...zones].sort((a, b) => {
+    const numA = parseInt(String(a.zoneNum)) || 0
+    const numB = parseInt(String(b.zoneNum)) || 0
+    return numA - numB
+  })
 
-    const orphanIssueRows = orphanZones.map(z => {
+  const zonesWithIssues = allZonesSorted.filter(z => {
+    const zIssueObj = (zoneIssues || []).find(zi => String(zi.zoneNum) === String(z.zoneNum))
+    return zIssueObj && zIssueObj.issues && zIssueObj.issues.length > 0
+  })
+
+  let issuesSectionHtml = ''
+  if (zonesWithIssues.length > 0) {
+    const issueRows = zonesWithIssues.map(z => {
+      const ctrl = controllerMap.get(String(z.controller))
+      const controllerLabel = ctrl ? esc(ctrl.location || `Controller #${ctrl.id}`) : 'Unassigned'
       const zIssueObj = (zoneIssues || []).find(zi => String(zi.zoneNum) === String(z.zoneNum))
       const zIssueList = (zIssueObj && zIssueObj.issues) ? zIssueObj.issues : []
-      const cells = ISSUE_TYPES.map(issue => {
-        const hasIssue = zIssueList.indexOf(issue) !== -1
-        if (hasIssue) orphanIssueTotals[issue]++
-        return `<td>${hasIssue ? '<span class="check-mark">✓</span>' : ''}</td>`
-      }).join('')
-      return `<tr><td class="zone-num">${esc(z.zoneNum)}</td>${cells}</tr>`
+
+      return `
+        <tr>
+          <td class="zone-cell">${esc(z.zoneNum)}</td>
+          <td class="ctrl-cell">${controllerLabel}</td>
+          <td>${esc(zIssueList.join(', '))}</td>
+        </tr>
+      `
     }).join('')
 
-    const orphanTotalCells = ISSUE_TYPES.map(issue => `<td>${orphanIssueTotals[issue] || 0}</td>`).join('')
-    const orphanIssueHeaders = ISSUE_TYPES.map(issue => `<th class="issue-col">${esc(issue)}</th>`).join('')
-
-    const orphanIssuesHtml = `
-      <div class="section-heading">Zone Issues: Unassigned Zones</div>
-      <div class="issues-wrapper">
-        <table class="issues-table">
-          <thead>
-            <tr>
-              <th class="zone-col">Zone #</th>
-              ${orphanIssueHeaders}
-            </tr>
-          </thead>
-          <tbody>
-            ${orphanIssueRows}
-            <tr class="totals-row">
-              <td class="zone-num">Total</td>
-              ${orphanTotalCells}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    `
-
-    controllersHtml += `
-      <div class="section-heading">Unassigned Zones</div>
-      ${orphanDescHtml}
-      ${orphanIssuesHtml}
+    issuesSectionHtml = `
+      <div class="section-heading">Issues</div>
+      <table class="issues-summary-table">
+        <thead>
+          <tr>
+            <th style="width:50px">Zone #</th>
+            <th style="width:130px">Controller</th>
+            <th>Issues Found</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${issueRows}
+        </tbody>
+      </table>
     `
   }
 
@@ -453,40 +409,35 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     word-break: break-word;
   }
 
-  /* ── ZONE ISSUES TABLE ── */
-  .issues-wrapper { overflow: hidden; margin-bottom: 8px; }
-  .issues-table {
+  /* ── ISSUES TABLE ── */
+  .issues-summary-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 7pt;
+    font-size: 8.5pt;
+    margin-bottom: 8px;
   }
-  .issues-table th {
-    border: 1px solid #b0b0b0;
-    padding: 2px;
-    background: #f0f0f0;
+  .issues-summary-table th {
+    background: #dbeafe;
     font-weight: bold;
-  }
-  .issues-table th.zone-col { width: 36px; text-align: center; }
-  .issues-table th.issue-col {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    height: 80px;
+    padding: 4px 6px;
+    border: 1px solid #93c5fd;
     text-align: left;
-    vertical-align: bottom;
-    white-space: nowrap;
-    padding: 3px 2px;
-    width: 18px;
+    font-size: 8pt;
   }
-  .issues-table td {
-    border: 1px solid #d0d0d0;
+  .issues-summary-table td {
+    border: 1px solid #d1d5db;
+    padding: 4px 6px;
+    vertical-align: top;
+  }
+  .issues-summary-table td.zone-cell {
     text-align: center;
-    vertical-align: middle;
-    padding: 2px;
-    font-size: 9pt;
+    font-weight: bold;
+    width: 50px;
+    background: #f9fafb;
   }
-  .issues-table td.zone-num { font-weight: bold; background: #f9fafb; }
-  .check-mark { color: #1a56db; font-size: 9pt; }
-  .totals-row td { background: #f0f0f0; font-weight: bold; }
+  .issues-summary-table td.ctrl-cell { width: 130px; }
+  .issues-summary-table tr:nth-child(even) td { background: #f9fafb; }
+  .issues-summary-table tr:nth-child(even) td.zone-cell { background: #f0f0f0; }
 
   /* ── ZONE NOTES ── */
   .zone-notes-table {
@@ -576,15 +527,6 @@ export function generateIrrigationPdfHtml(data: IrrigationPdfData): string {
     background: #fafafa;
   }
 
-  /* ── PAGE FOOTER ── */
-  .page-footer {
-    text-align: center;
-    font-size: 7pt;
-    color: #888;
-    margin-top: 14px;
-    border-top: 1px solid #e5e7eb;
-    padding-top: 4px;
-  }
 </style>
 </head>
 <body>
@@ -662,17 +604,17 @@ ${backflowsHtml}
 <!-- CONTROLLERS -->
 ${controllersHtml}
 
+<!-- ISSUES -->
+${issuesSectionHtml}
+
+${hasPhotos ? `
 <!-- ═══════════════════════════════════════════════════════ PAGE 2 ═══ -->
 <div class="page-break"></div>
 
 <!-- ZONE PHOTOS -->
 ${photosHtml}
-
-<div class="page-footer">
-  ${esc(formData.clientName || '')} — ${esc(formData.siteName || '')} — Page 2
-</div>
-
-<!-- ═══════════════════════════════════════════════════════ PAGE 3 ═══ -->
+` : ''}
+<!-- ═══════════════════════════════════════════════════════ QUOTE PAGE ═══ -->
 <div class="page-break"></div>
 
 <!-- QUOTE DETAIL -->
@@ -717,9 +659,6 @@ ${inspectionNotesRow}
   </div>
 </div>
 
-<div class="page-footer">
-  ${esc(formData.clientName || '')} — ${esc(formData.siteName || '')} — Page 3
-</div>
 
 </body>
 </html>`

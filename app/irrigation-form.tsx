@@ -37,7 +37,10 @@ interface IrrigationFormProps {
   initialData?: IrrigationFormInitialData
 }
 
-function today() { return new Date().toISOString().split('T')[0] }
+function today() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export function IrrigationForm({ clients, sites, company, inspectors, initialData }: IrrigationFormProps) {
   // ── ID COUNTER (useRef so lazy initializers don't conflict with loaded IDs) ─
@@ -1187,10 +1190,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               <label>Due Date</label>
               <input type="date" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)} disabled={mode === 'readonly'} />
             </div>
-            <div className="field">
-              <label>Total System Repair Estimate ($)</label>
-              <input type="number" value={form.repairEstimate} onChange={e => setField('repairEstimate', e.target.value)} step="0.01" placeholder="0.00" disabled={mode === 'readonly'} />
-            </div>
+
           </div>
           <div className="field full-width" style={{ marginTop: 12 }}>
             <label>Inspection Notes <span className="hint">(displayed on PDF)</span></label>
@@ -1248,11 +1248,26 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             )}
           </div>
           <div className="table-scroll">
-          <table className="data-table">
+          <table className="data-table quote-table-ui">
+            <colgroup>
+              <col style={{width:32}} />
+              <col />
+              <col />
+              <col />
+              <col style={{width:88}} />
+              <col style={{width:58}} />
+              <col style={{width:78}} />
+              {mode !== 'readonly' && <col style={{width:36}} />}
+            </colgroup>
             <thead>
               <tr>
-                <th>#</th><th>Location (e.g. C1-Z3)</th><th>Item / Description</th>
-                <th>Price ($)</th><th>QTY</th><th>Total</th>
+                <th>#</th>
+                <th>Location</th>
+                <th>Item</th>
+                <th>Description</th>
+                <th>Price ($)</th>
+                <th>QTY</th>
+                <th>Total</th>
                 {mode !== 'readonly' && <th></th>}
               </tr>
             </thead>
@@ -1260,13 +1275,11 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               {quoteItems.map((qi, i) => (
                 <tr key={qi.id}>
                   <td>{i+1}</td>
-                  <td><input style={{width:70}} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="C1-Z3" disabled={mode === 'readonly'} /></td>
-                  <td>
-                    <input value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} />
-                    <input value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" style={{marginTop:2,fontSize:11,color:'#71717a'}} disabled={mode === 'readonly'} />
-                  </td>
-                  <td><input type="number" style={{width:80}} step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
-                  <td><input type="number" style={{width:55}} value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
+                  <td><textarea rows={2} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="Controller1-Zone3" disabled={mode === 'readonly'} /></td>
+                  <td><textarea rows={2} value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} /></td>
+                  <td><textarea rows={2} value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
+                  <td><input type="number" step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
+                  <td><input type="number" value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
                   <td>${((parseFloat(qi.price)||0)*(parseInt(qi.qty)||1)).toFixed(2)}</td>
                   {mode !== 'readonly' && (
                     <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
@@ -1276,9 +1289,9 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={5} style={{textAlign:'right',fontWeight:600,padding:'8px 12px'}}>Total:</td>
+                <td colSpan={6} style={{textAlign:'right',fontWeight:600,padding:'8px 12px'}}>Total:</td>
                 <td style={{fontWeight:600,padding:'8px 12px'}}>${quoteTotal.toFixed(2)}</td>
-                <td></td>
+                {mode !== 'readonly' && <td></td>}
               </tr>
             </tfoot>
           </table>

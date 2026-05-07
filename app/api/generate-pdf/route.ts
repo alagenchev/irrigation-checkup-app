@@ -45,10 +45,21 @@ export async function POST(req: NextRequest) {
     })
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle0' })
+
+    const clientName = fields.clientName || ''
+    const siteName = fields.siteName || ''
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const labelParts = []
+    if (clientName) labelParts.push(`Client: ${esc(clientName)}`)
+    if (siteName)   labelParts.push(`Site: ${esc(siteName)}`)
+    const safeLabel = labelParts.join(' &nbsp;|&nbsp; ')
     const pdf = await page.pdf({
       format: 'Letter',
       printBackground: true,
-      margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' },
+      margin: { top: '0.5in', bottom: '0.6in', left: '0.5in', right: '0.5in' },
+      displayHeaderFooter: true,
+      headerTemplate: '<span></span>',
+      footerTemplate: `<table style="width:100%;font-family:Arial,Helvetica,sans-serif;font-size:7pt;color:#888;padding:0 0.5in;box-sizing:border-box;border-top:1px solid #e5e7eb;"><tr><td style="text-align:left">${safeLabel}</td><td style="text-align:right">Page <span class="pageNumber"></span> of <span class="totalPages"></span></td></tr></table>`,
     })
     await browser.close()
 
