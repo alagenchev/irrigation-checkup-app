@@ -8,3 +8,4 @@ playwright-report/
 playwright/.auth/
 test-results/
 .claude/plans/
+tsconfig.tsbuildinfo
