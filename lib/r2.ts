@@ -73,12 +73,17 @@ export async function uploadToR2(
 ): Promise<string> {
   const client = buildClient()
   const key = buildR2Key(companyBucketId, path)
-  await client.send(new PutObjectCommand({
-    Bucket: getBucketName(),
-    Key:    key,
-    Body:   body,
-    ContentType: contentType,
-  }))
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket: getBucketName(),
+      Key:    key,
+      Body:   body,
+      ContentType: contentType,
+    }))
+  } catch (err) {
+    console.error('[uploadToR2] Failed to upload key', key, err)
+    throw err
+  }
   return key
 }
 
@@ -87,5 +92,10 @@ export async function uploadToR2(
  */
 export async function deleteFromR2(key: string): Promise<void> {
   const client = buildClient()
-  await client.send(new DeleteObjectCommand({ Bucket: getBucketName(), Key: key }))
+  try {
+    await client.send(new DeleteObjectCommand({ Bucket: getBucketName(), Key: key }))
+  } catch (err) {
+    console.error('[deleteFromR2] Failed to delete key', key, err)
+    throw err
+  }
 }

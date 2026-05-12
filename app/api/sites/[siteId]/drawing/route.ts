@@ -15,7 +15,10 @@ export async function GET(
     where: and(eq(sites.id, siteId), eq(sites.companyId, companyId)),
     columns: { id: true },
   })
-  if (!site) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!site) {
+    console.error('[drawing GET] Site not found or access denied', { siteId, companyId })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
   const row = await db.query.siteDrawings.findFirst({
     where: and(eq(siteDrawings.siteId, siteId), eq(siteDrawings.companyId, companyId)),
@@ -36,12 +39,16 @@ export async function POST(
     where: and(eq(sites.id, siteId), eq(sites.companyId, companyId)),
     columns: { id: true },
   })
-  if (!site) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!site) {
+    console.error('[drawing POST] Site not found or access denied', { siteId, companyId })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
   let drawing: unknown
   try {
     drawing = await req.json()
-  } catch {
+  } catch (err) {
+    console.error('[drawing POST] Invalid JSON body for site', siteId, err)
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 

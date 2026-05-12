@@ -10,7 +10,14 @@ export default async function InspectionsPage({
   const sp   = await searchParams
   const page = Math.max(1, parseInt(sp.page ?? '1', 10))
 
-  const { rows, total, pageSize } = await getInspections(page)
+  let result: Awaited<ReturnType<typeof getInspections>>
+  try {
+    result = await getInspections(page)
+  } catch (err) {
+    console.error('[InspectionsPage] Failed to load inspections for page', page, err)
+    throw err
+  }
+  const { rows, total, pageSize } = result
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (

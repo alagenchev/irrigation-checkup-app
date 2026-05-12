@@ -13,13 +13,19 @@ export default async function InspectionDetailPage({
 }) {
   const { id } = await params
 
-  const [initialData, clients, sites, company, inspectors] = await Promise.all([
-    getInspectionForEdit(id),
-    getClients(),
-    getSites(),
-    getCompanySettings(),
-    getInspectors(),
-  ])
+  let initialData, clients, sites, company, inspectors
+  try {
+    ;[initialData, clients, sites, company, inspectors] = await Promise.all([
+      getInspectionForEdit(id),
+      getClients(),
+      getSites(),
+      getCompanySettings(),
+      getInspectors(),
+    ])
+  } catch (err) {
+    console.error('[InspectionDetailPage] Failed to load data for inspection', id, err)
+    throw err
+  }
 
   if (!initialData) notFound()
 

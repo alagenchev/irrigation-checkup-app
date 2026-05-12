@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     })
   } catch (err: unknown) {
+    console.error('[preview-report] Failed to generate preview HTML', err)
     return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) }, { status: 500 })
   }
 }

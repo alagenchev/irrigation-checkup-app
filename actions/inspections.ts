@@ -21,7 +21,10 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
   const visit = await db.query.siteVisits.findFirst({
     where: and(eq(siteVisits.companyId, companyId), eq(siteVisits.siteVisitId, siteVisitId)),
   })
-  if (!visit) return null
+  if (!visit) {
+    console.error('[getInspectionForEdit] Visit not found or access denied', { siteVisitId, companyId })
+    return null
+  }
 
   const [site, client, dbControllers, dbZones, dbBackflows] = await Promise.all([
     db.query.sites.findFirst({
@@ -43,7 +46,10 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
       .orderBy(siteBackflows.id),
   ])
 
-  if (!site) return null
+  if (!site) {
+    console.error('[getInspectionForEdit] Site not found for visit', { siteVisitId, siteId: visit.siteId, companyId })
+    return null
+  }
 
   // Assign stable ephemeral IDs starting at 1 for controller FK resolution
   let eid = 1

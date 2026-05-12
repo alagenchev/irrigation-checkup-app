@@ -40,6 +40,7 @@ export async function uploadZonePhoto(formData: FormData): Promise<ActionResult<
     const key = await uploadToR2(settings.r2CompanyBucketId, path, buffer, file.type || 'application/octet-stream')
     return { ok: true, data: { key, publicUrl: r2PublicUrl(key) } }
   } catch (err) {
+    console.error('[uploadZonePhoto] Failed to upload to R2', { zoneNum, path }, err)
     const message = err instanceof Error ? err.message : 'Upload failed'
     return { ok: false, error: message }
   }

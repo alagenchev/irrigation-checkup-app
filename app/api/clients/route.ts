@@ -15,6 +15,7 @@ export async function GET() {
       .orderBy(asc(clients.name))
     return NextResponse.json(rows)
   } catch (err: unknown) {
+    console.error('[GET /api/clients] Failed to fetch clients', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 500 },
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
       .returning()
     return NextResponse.json(client, { status: 201 })
   } catch (err: unknown) {
+    console.error('[POST /api/clients] Failed to create client', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 500 },

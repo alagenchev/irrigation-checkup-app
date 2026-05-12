@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (err: unknown) {
+    console.error('[generate-pdf] Failed to generate PDF', err)
     return NextResponse.json({ error: (err instanceof Error ? err.message : String(err)) }, { status: 500 })
   }
 }

@@ -15,11 +15,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(url)
-    if (!res.ok) return NextResponse.json([])
+    if (!res.ok) {
+      console.error('[address-suggest] Mapbox returned', res.status, 'for query', q)
+      return NextResponse.json([])
+    }
     const data = await res.json() as { features?: { place_name: string }[] }
     const suggestions = (data.features ?? []).map(f => f.place_name)
     return NextResponse.json(suggestions)
-  } catch {
+  } catch (err) {
+    console.error('[address-suggest] Failed to fetch suggestions for query', q, err)
     return NextResponse.json([])
   }
 }

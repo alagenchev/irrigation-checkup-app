@@ -11,6 +11,7 @@ export async function POST() {
     await db.execute(sql`SELECT 1`)
     return NextResponse.json({ success: true, message: 'Database connection OK' })
   } catch (err: unknown) {
+    console.error('[/api/init] Database connectivity check failed', err)
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : String(err) },
       { status: 500 },

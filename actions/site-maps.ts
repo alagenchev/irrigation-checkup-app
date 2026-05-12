@@ -21,21 +21,36 @@ export async function getSiteMaps(siteId: string) {
 
 export async function createSiteMap(siteId: string, name: string) {
   const companyId = await getRequiredCompanyId()
-  const [map] = await db.insert(siteMaps).values({ siteId, companyId, name }).returning()
-  return map
+  try {
+    const [map] = await db.insert(siteMaps).values({ siteId, companyId, name }).returning()
+    return map
+  } catch (err) {
+    console.error('[createSiteMap] Failed for siteId', siteId, err)
+    throw err
+  }
 }
 
 export async function saveSiteMapDrawing(mapId: string, drawing: object) {
   const companyId = await getRequiredCompanyId()
-  await db.update(siteMaps)
-    .set({ drawing, updatedAt: new Date() })
-    .where(and(eq(siteMaps.id, mapId), eq(siteMaps.companyId, companyId)))
+  try {
+    await db.update(siteMaps)
+      .set({ drawing, updatedAt: new Date() })
+      .where(and(eq(siteMaps.id, mapId), eq(siteMaps.companyId, companyId)))
+  } catch (err) {
+    console.error('[saveSiteMapDrawing] Failed for mapId', mapId, err)
+    throw err
+  }
 }
 
 export async function deleteSiteMap(mapId: string) {
   const companyId = await getRequiredCompanyId()
-  await db.delete(siteMaps)
-    .where(and(eq(siteMaps.id, mapId), eq(siteMaps.companyId, companyId)))
+  try {
+    await db.delete(siteMaps)
+      .where(and(eq(siteMaps.id, mapId), eq(siteMaps.companyId, companyId)))
+  } catch (err) {
+    console.error('[deleteSiteMap] Failed for mapId', mapId, err)
+    throw err
+  }
 }
 
 export async function duplicateSiteMap(mapId: string, newName: string) {
@@ -43,14 +58,22 @@ export async function duplicateSiteMap(mapId: string, newName: string) {
   const original = await db.query.siteMaps.findFirst({
     where: and(eq(siteMaps.id, mapId), eq(siteMaps.companyId, companyId)),
   })
-  if (!original) throw new Error('Map not found')
-  const [copy] = await db.insert(siteMaps)
-    .values({
-      siteId: original.siteId,
-      companyId,
-      name: newName,
-      drawing: (original.drawing as object | null) ?? undefined,
-    })
-    .returning()
-  return copy
+  if (!original) {
+    console.error('[duplicateSiteMap] Map not found', { mapId, companyId })
+    throw new Error('Map not found')
+  }
+  try {
+    const [copy] = await db.insert(siteMaps)
+      .values({
+        siteId: original.siteId,
+        companyId,
+        name: newName,
+        drawing: (original.drawing as object | null) ?? undefined,
+      })
+      .returning()
+    return copy
+  } catch (err) {
+    console.error('[duplicateSiteMap] Failed to insert copy for mapId', mapId, err)
+    throw err
+  }
 }
