@@ -64,7 +64,10 @@ export function SiteEquipmentEditor({ site, onClose, onSave }: SiteEquipmentEdit
         setOverview(eq.overview)
       }
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch(err => {
+      console.error('[SiteEquipmentEditor] Failed to load equipment for site', site.id, err)
+      setLoading(false)
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -137,7 +140,8 @@ export function SiteEquipmentEditor({ site, onClose, onSave }: SiteEquipmentEdit
       } else {
         setSaveMsg({ ok: false, text: result.error })
       }
-    } catch {
+    } catch (err) {
+      console.error('[SiteEquipmentEditor] Unexpected error saving equipment for site', site.id, err)
       setSaveMsg({ ok: false, text: 'An unexpected error occurred.' })
     } finally {
       setSaving(false)

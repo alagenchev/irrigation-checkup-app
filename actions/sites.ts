@@ -227,7 +227,8 @@ export async function updateSiteEquipment(
 
   try {
     return await updateSiteEquipmentCore(parsed.data, companyId, db)
-  } catch {
+  } catch (err) {
+    console.error('[updateSiteEquipment] Failed for siteId', input.siteId, err)
     return { ok: false, error: 'Failed to update equipment. Please try again.' }
   }
 }

@@ -15,6 +15,7 @@ import { companies } from './schema'
 export async function getRequiredCompanyId(): Promise<string> {
   const { orgId } = await auth()
   if (!orgId) {
+    console.error('[getRequiredCompanyId] No orgId on authenticated session — user has no active Clerk organisation')
     throw new Error(
       'No organisation context — the user must be a member of a Clerk organisation',
     )
