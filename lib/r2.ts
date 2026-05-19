@@ -20,7 +20,7 @@
 
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 
-function buildClient(): S3Client {
+function getS3Client(): S3Client {
   const endpoint = process.env.R2_ENDPOINT
   const accessKeyId = process.env.R2_ACCESS_KEY_ID
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
@@ -36,6 +36,12 @@ function buildClient(): S3Client {
     endpoint,
     credentials: { accessKeyId, secretAccessKey },
   })
+}
+
+// Lazy singleton — created on first use so missing env vars only fail at call time.
+let _s3Client: S3Client | undefined
+function client(): S3Client {
+  return (_s3Client ??= getS3Client())
 }
 
 function getBucketName(): string {
@@ -71,10 +77,9 @@ export async function uploadToR2(
   body: Buffer,
   contentType: string,
 ): Promise<string> {
-  const client = buildClient()
   const key = buildR2Key(companyBucketId, path)
   try {
-    await client.send(new PutObjectCommand({
+    await client().send(new PutObjectCommand({
       Bucket: getBucketName(),
       Key:    key,
       Body:   body,
@@ -91,9 +96,8 @@ export async function uploadToR2(
  * Deletes an object from R2 by its full key.
  */
 export async function deleteFromR2(key: string): Promise<void> {
-  const client = buildClient()
   try {
-    await client.send(new DeleteObjectCommand({ Bucket: getBucketName(), Key: key }))
+    await client().send(new DeleteObjectCommand({ Bucket: getBucketName(), Key: key }))
   } catch (err) {
     console.error('[deleteFromR2] Failed to delete key', key, err)
     throw err

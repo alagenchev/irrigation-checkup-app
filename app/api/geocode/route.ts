@@ -8,8 +8,7 @@ interface MapboxResponse {
   features?: MapboxFeature[]
 }
 
-// In-memory cache for geocoding results
-// Key: "lat,lon" → Value: array of formatted addresses
+const MAX_GEOCODE_CACHE_SIZE = 500
 const geocodeCache = new Map<string, string[]>()
 
 async function fetchMapbox(url: string): Promise<MapboxResponse | null> {
@@ -104,7 +103,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Cache the result (even if empty — avoid repeated requests)
+    // Cache the result (even if empty — avoid repeated requests). Evict oldest entry
+    // when cap is reached; Map preserves insertion order so first key is always oldest.
+    if (geocodeCache.size >= MAX_GEOCODE_CACHE_SIZE) {
+      geocodeCache.delete(geocodeCache.keys().next().value!)
+    }
     geocodeCache.set(cacheKey, results)
 
     return NextResponse.json(results)

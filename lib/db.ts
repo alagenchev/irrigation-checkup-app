@@ -10,7 +10,12 @@ const ssl =
     ? { rejectUnauthorized: false }
     : false
 
-const client = postgres(process.env.DATABASE_URL!, { ssl })
+const client = postgres(process.env.DATABASE_URL!, {
+  ssl,
+  max: 5,
+  idle_timeout: 20,
+  max_lifetime: 1800,
+})
 export const db = globalForDb.db ?? drizzle(client, { schema })
 
 if (process.env.NODE_ENV !== 'production') globalForDb.db = db
