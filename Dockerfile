@@ -9,6 +9,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+RUN mkdir -p /app/public
 
 ARG NEXT_PUBLIC_MAPBOX_TOKEN
 ENV NEXT_PUBLIC_MAPBOX_TOKEN=$NEXT_PUBLIC_MAPBOX_TOKEN
