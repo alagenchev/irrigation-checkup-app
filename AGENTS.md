@@ -269,6 +269,35 @@ Also remove any `ALTER COLUMN "id" DROP DEFAULT` line that follows — the seque
 
 ---
 
+## Testing Agent — MANDATORY After Every Code Change
+
+After implementing any feature, bug fix, or UI change, **spawn a separate dedicated testing agent**. Do not consider the task complete until this agent finishes and all tests pass.
+
+### When to spawn
+
+Spawn the testing agent after the implementation agent finishes writing code, before committing. Wait for its results — tests gate the commit.
+
+```ts
+Agent({
+  subagent_type: 'claude',  // sonnet
+  run_in_background: false, // wait — tests gate the commit
+  description: 'Testing agent for <feature name>',
+  prompt: `
+    Write and run tests for the changes in <list changed files>:
+    1. Write/update unit tests for every new or modified function and component
+    2. All new tests must achieve >90% branch coverage on the changed files:
+       npx jest --coverage --collectCoverageFrom='["<changed paths>"]'
+    3. Test every interactive UI element: dropdowns open/close, buttons trigger correct
+       actions, text inputs accept and validate input, forms submit and show errors
+    4. Run the full suite: npm test — must pass with 0 failures
+    5. Run npm run build — must pass
+    Report: tests added, coverage % per file, any failures.
+  `
+})
+```
+
+---
+
 ## Testing conventions
 
 - Unit tests in `__tests__/*.test.ts` — no DB, no network. Mock `@/lib/db` and `@/lib/tenant`.
@@ -279,6 +308,37 @@ Also remove any `ALTER COLUMN "id" DROP DEFAULT` line that follows — the seque
 - Co-locate component tests with source files (`component.test.tsx` next to `component.tsx`) when appropriate.
 - Never share DB state between tests — each test must be fully isolated.
 - Mock `db` in unit tests — only hit the real DB in `*.integration.test.ts` files.
+
+### Server action tests (every `actions/*.ts` changed)
+- Happy path returns `{ ok: true }`
+- Auth guard: `getRequiredCompanyId` rejects → returns `{ ok: false }`
+- Validation failure: Zod rejects bad input → returns `{ ok: false }`
+- DB error path → returns `{ ok: false }`
+- `revalidatePath` called on success, NOT called on error
+
+### Component tests (every `*.tsx` changed)
+Use `@testing-library/react` + `@testing-library/user-event`:
+
+| UI element | Required assertions |
+|---|---|
+| Dropdown / select / combobox | renders closed, opens on click, selecting an option updates state, closes after selection |
+| Button | renders with correct label, calls correct handler on click, disabled state renders correctly, loading state shown during async action |
+| Text input / textarea | accepts input, updates controlled state, shows validation error on blur or submit |
+| Form | submit calls correct server action, success feedback renders, error feedback renders, resets after success |
+| Modal / dialog | opens on trigger, closes on cancel, cancel does not submit |
+
+Use `@testing-library/user-event` (not `fireEvent`) for all interaction simulation.
+
+### Coverage gate
+
+Every file touched must have >90% branch coverage. Check per file:
+
+```bash
+npx jest --coverage --collectCoverageFrom='["path/to/changed/file.ts"]' \
+  --coverageThreshold='{"global":{"branches":90,"functions":90,"lines":90,"statements":90}}'
+```
+
+If a file is below 90%, add tests until it passes — do not skip or override the threshold.
 
 | Command           | What it runs                          |
 |-------------------|---------------------------------------|
