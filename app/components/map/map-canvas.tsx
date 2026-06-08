@@ -218,7 +218,13 @@ export function MapCanvas({
       if (!removed) {
         initLoadedRef.current = true
         setFeatures(loadedFeatures)
-        if (loadedFeatures.length > 0) {
+        const savedCamera = mapId ? (() => {
+          try { return JSON.parse(sessionStorage.getItem(`map-camera-${mapId}`) ?? 'null') as { center: [number, number]; zoom: number } | null } catch { return null }
+        })() : null
+        if (savedCamera) {
+          map.jumpTo({ center: savedCamera.center, zoom: savedCamera.zoom })
+          fittedRef.current = true
+        } else if (loadedFeatures.length > 0) {
           fitMapToFeatures(map, loadedFeatures)
           fittedRef.current = true
         } else if (mapId && siteAddress) {
@@ -296,6 +302,13 @@ export function MapCanvas({
     map.on('mouseout', () => {
       updateDraftPreview()
     })
+
+    if (mapId) {
+      map.on('moveend', () => {
+        const { lng, lat } = map.getCenter()
+        try { sessionStorage.setItem(`map-camera-${mapId}`, JSON.stringify({ center: [lng, lat], zoom: map.getZoom() })) } catch { /* ignore */ }
+      })
+    }
 
     const ro = new ResizeObserver(() => map.resize())
     if (containerRef.current) ro.observe(containerRef.current)
