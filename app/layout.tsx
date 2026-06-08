@@ -1,5 +1,6 @@
 import { ClerkProvider, UserButton, SignInButton, SignUpButton, Show } from '@clerk/nextjs'
 import Link from 'next/link'
+import SuperAdminBanner from './components/super-admin-banner'
 import './globals.css'
 
 export const metadata = { title: 'Irrigation Inspection' }
@@ -9,6 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <ClerkProvider>
+          <SuperAdminBanner />
           <header className="top-nav">
             <div className="nav-left">
               <nav>
