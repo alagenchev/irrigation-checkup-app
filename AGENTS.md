@@ -74,6 +74,8 @@ All must pass before committing. Always commit and push — never leave implemen
 
 **This is the required workflow for all feature changes:**
 
+> **Planning mode is mandatory for any change that touches more than one file.** Before writing a single line of code, call `EnterPlanMode` and produce a complete plan. Do not start implementing until the user approves the plan and you have called `ExitPlanMode`.
+
 1. **User gives a command** (e.g., "add photo annotations to the form")
 2. **You provide an overview** — describe what files you'll change, what the changes do, and why (2-3 bullet points max)
 3. **Wait for explicit approval** — user must say "yes", "proceed", "approved", etc. Do not proceed without this.
