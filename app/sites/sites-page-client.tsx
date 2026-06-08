@@ -55,8 +55,8 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
     setPanelState({ type: 'maps-list', siteId })
   }
 
-  // Map editor takes over the full viewport for maximum usability
-  if (panelState?.type === 'map-editor' && selectedSite) {
+  // Maps list and map editor both take over the full viewport for maximum usability
+  if ((panelState?.type === 'maps-list' || panelState?.type === 'map-editor') && selectedSite) {
     return (
       <div
         data-testid="sites-page-map-fullscreen"
@@ -70,14 +70,27 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
           overflow: 'auto',
         }}
       >
-        <MapCanvas
-          key={panelState.mapId}
-          mapId={panelState.mapId}
-          siteName={selectedSite.name}
-          siteAddress={selectedSite.address}
-          onClose={() => handleBackToList(selectedSite.id)}
-          height='calc(100vh - 140px)'
-        />
+        {panelState.type === 'maps-list' && (
+          <MapsListPanel
+            key={selectedSite.id}
+            siteId={selectedSite.id}
+            siteName={selectedSite.name}
+            siteAddress={selectedSite.address}
+            onEditMap={(mapId) => handleEditMap(selectedSite.id, mapId)}
+            onClose={handleClose}
+            previewHeight={500}
+          />
+        )}
+        {panelState.type === 'map-editor' && (
+          <MapCanvas
+            key={panelState.mapId}
+            mapId={panelState.mapId}
+            siteName={selectedSite.name}
+            siteAddress={selectedSite.address}
+            onClose={() => handleBackToList(selectedSite.id)}
+            height='calc(100vh - 140px)'
+          />
+        )}
       </div>
     )
   }
@@ -120,31 +133,19 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
           />
         </section>
 
-        {/* Right: equipment editor or maps list panel */}
-        {panelState !== null && selectedSite && (
+        {/* Right: equipment editor panel (maps panels are rendered fullscreen above) */}
+        {panelState?.type === 'equipment' && selectedSite && (
           <section
             className="card"
             style={{ flex: '1 1 auto', minWidth: 0 }}
             data-testid="sites-page-editor-panel"
           >
-            {panelState.type === 'equipment' && (
-              <SiteEquipmentEditor
-                key={selectedSite.id}
-                site={selectedSite}
-                onClose={handleClose}
-                onSave={handleClose}
-              />
-            )}
-            {panelState.type === 'maps-list' && (
-              <MapsListPanel
-                key={selectedSite.id}
-                siteId={selectedSite.id}
-                siteName={selectedSite.name}
-                siteAddress={selectedSite.address}
-                onEditMap={(mapId) => handleEditMap(selectedSite.id, mapId)}
-                onClose={handleClose}
-              />
-            )}
+            <SiteEquipmentEditor
+              key={selectedSite.id}
+              site={selectedSite}
+              onClose={handleClose}
+              onSave={handleClose}
+            />
           </section>
         )}
       </div>

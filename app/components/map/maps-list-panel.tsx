@@ -17,9 +17,10 @@ interface MapsListPanelProps {
   siteAddress?: string | null
   onEditMap: (mapId: string) => void
   onClose: () => void
+  previewHeight?: number
 }
 
-export function MapsListPanel({ siteId, siteName, siteAddress, onEditMap, onClose }: MapsListPanelProps) {
+export function MapsListPanel({ siteId, siteName, siteAddress, onEditMap, onClose, previewHeight = 260 }: MapsListPanelProps) {
   const [maps, setMaps] = useState<SiteMap[]>([])
   const [loading, setLoading] = useState(true)
   const [previewMapId, setPreviewMapId] = useState<string | null>(null)
@@ -92,7 +93,7 @@ export function MapsListPanel({ siteId, siteName, siteAddress, onEditMap, onClos
                 mapId={previewMapId}
                 siteAddress={siteAddress}
                 readOnly
-                height={260}
+                height={previewHeight}
               />
             </div>
           )}
