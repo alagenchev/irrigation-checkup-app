@@ -55,6 +55,33 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
     setPanelState({ type: 'maps-list', siteId })
   }
 
+  // Map editor takes over the full viewport for maximum usability
+  if (panelState?.type === 'map-editor' && selectedSite) {
+    return (
+      <div
+        data-testid="sites-page-map-fullscreen"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          background: '#fff',
+          padding: '20px 24px',
+          boxSizing: 'border-box',
+          overflow: 'auto',
+        }}
+      >
+        <MapCanvas
+          key={panelState.mapId}
+          mapId={panelState.mapId}
+          siteName={selectedSite.name}
+          siteAddress={selectedSite.address}
+          onClose={() => handleBackToList(selectedSite.id)}
+          height='calc(100vh - 140px)'
+        />
+      </div>
+    )
+  }
+
   return (
     <main className="container" data-testid="sites-page">
       <div className="page-header">
@@ -93,7 +120,7 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
           />
         </section>
 
-        {/* Right: equipment editor, maps list, or map editor panel */}
+        {/* Right: equipment editor or maps list panel */}
         {panelState !== null && selectedSite && (
           <section
             className="card"
@@ -116,15 +143,6 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
                 siteAddress={selectedSite.address}
                 onEditMap={(mapId) => handleEditMap(selectedSite.id, mapId)}
                 onClose={handleClose}
-              />
-            )}
-            {panelState.type === 'map-editor' && (
-              <MapCanvas
-                key={panelState.mapId}
-                mapId={panelState.mapId}
-                siteName={selectedSite.name}
-                siteAddress={selectedSite.address}
-                onClose={() => handleBackToList(selectedSite.id)}
               />
             )}
           </section>
