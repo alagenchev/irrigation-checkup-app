@@ -55,8 +55,8 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
     setPanelState({ type: 'maps-list', siteId })
   }
 
-  // Maps list and map editor both take over the full viewport for maximum usability
-  if ((panelState?.type === 'maps-list' || panelState?.type === 'map-editor') && selectedSite) {
+  // Equipment editor, maps list, and map editor all take over the full viewport for maximum usability
+  if ((panelState?.type === 'equipment' || panelState?.type === 'maps-list' || panelState?.type === 'map-editor') && selectedSite) {
     return (
       <div
         data-testid="sites-page-map-fullscreen"
@@ -70,6 +70,14 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
           overflow: 'auto',
         }}
       >
+        {panelState.type === 'equipment' && (
+          <SiteEquipmentEditor
+            key={selectedSite.id}
+            site={selectedSite}
+            onClose={handleClose}
+            onSave={handleClose}
+          />
+        )}
         {panelState.type === 'maps-list' && (
           <MapsListPanel
             key={selectedSite.id}
@@ -106,49 +114,14 @@ export function SitesPageClient({ sites, clients }: SitesPageClientProps) {
         <AddSiteForm clients={clients} />
       </section>
 
-      <div
-        data-testid="sites-page-layout"
-        style={{
-          display: 'flex',
-          gap: 24,
-          alignItems: 'flex-start',
-        }}
-      >
-        {/* Left: sites list */}
-        <section
-          className="card"
-          style={{
-            flex: panelState !== null ? '0 0 auto' : '1 1 auto',
-            minWidth: 0,
-            width: panelState !== null ? '55%' : '100%',
-            transition: 'width 0.2s',
-          }}
-          data-testid="sites-page-table-panel"
-        >
-          <h2>All Sites ({sites.length})</h2>
-          <SitesTable
-            sites={sites}
-            onEditEquipment={handleEditEquipment}
-            onViewMap={handleViewMap}
-          />
-        </section>
-
-        {/* Right: equipment editor panel (maps panels are rendered fullscreen above) */}
-        {panelState?.type === 'equipment' && selectedSite && (
-          <section
-            className="card"
-            style={{ flex: '1 1 auto', minWidth: 0 }}
-            data-testid="sites-page-editor-panel"
-          >
-            <SiteEquipmentEditor
-              key={selectedSite.id}
-              site={selectedSite}
-              onClose={handleClose}
-              onSave={handleClose}
-            />
-          </section>
-        )}
-      </div>
+      <section className="card" data-testid="sites-page-table-panel">
+        <h2>All Sites ({sites.length})</h2>
+        <SitesTable
+          sites={sites}
+          onEditEquipment={handleEditEquipment}
+          onViewMap={handleViewMap}
+        />
+      </section>
     </main>
   )
 }
