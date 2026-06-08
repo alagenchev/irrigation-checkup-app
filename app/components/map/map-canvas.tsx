@@ -52,7 +52,7 @@ interface MapCanvasProps {
   onDrawingChange?: (drawing: GeoJSON.FeatureCollection) => void
   onGeolocate?: (coords: [number, number]) => void
   readOnly?: boolean
-  height?: number
+  height?: number | string
 }
 
 export function MapCanvas({
