@@ -218,6 +218,10 @@ export function MapCanvas({
       if (!removed) {
         initLoadedRef.current = true
         setFeatures(loadedFeatures)
+        // Update map sources directly here — avoids a race where the React
+        // effect fires just before isStyleLoaded() returns true on a fresh
+        // mount, causing sources to stay empty until the next state change.
+        updateMapSources(loadedFeatures)
         const savedCamera = mapId ? (() => {
           try { return JSON.parse(sessionStorage.getItem(`map-camera-${mapId}`) ?? 'null') as { center: [number, number]; zoom: number } | null } catch { return null }
         })() : null
