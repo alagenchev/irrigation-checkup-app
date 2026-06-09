@@ -1,5 +1,17 @@
 # Agent Instructions — Irrigation Checkup App
 
+## Project Aliases
+
+When the user says any of the following, resolve to the correct directory:
+
+| User says | Means |
+|---|---|
+| "sparkai", "spark ai", "spark", "the electrical app", "the electrical form" | `~/field-tech/sparkai/apps/sparkai` |
+| "crestation", "cre station", "CREStation" | `~/field-tech/sparkai/apps/crestation` |
+| "irrigation", "irrigation inspection", "irrigation app", "irrigation form" | `~/field-tech/irrigation-checkup-app` |
+
+---
+
 ## What this app is
 
 A multi-tenant SaaS field-service tool for irrigation inspection companies. Technicians fill out inspection forms on-site; the app generates PDF reports, stores photos in Cloudflare R2, and tracks site equipment across visits.
