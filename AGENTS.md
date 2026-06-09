@@ -12,6 +12,12 @@ When the user says any of the following, resolve to the correct directory:
 
 ---
 
+## Non-negotiable: always push when done
+
+**After every completed code change — no exceptions — run `git push`.** Do not stop after committing. Do not wait for the user to ask. If the build and tests pass and work is committed, push immediately.
+
+---
+
 ## What this app is
 
 A multi-tenant SaaS field-service tool for irrigation inspection companies. Technicians fill out inspection forms on-site; the app generates PDF reports, stores photos in Cloudflare R2, and tracks site equipment across visits.
