@@ -6,6 +6,13 @@
  * Task: add-site-with-equipment (f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c)
  */
 
+jest.mock('@/lib/super-admin', () => ({
+  isSuperAdmin: jest.fn().mockReturnValue(false),
+  getSuperAdminSelectedCompanyId: jest.fn().mockResolvedValue(null),
+  setSuperAdminSelectedCompanyId: jest.fn().mockResolvedValue(undefined),
+  clearSuperAdminSelectedCompanyId: jest.fn().mockResolvedValue(undefined),
+}))
+
 import '@testing-library/jest-dom'
 import React from 'react'
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
@@ -14,6 +21,11 @@ import type { Client } from '@/types'
 
 jest.mock('@/actions/sites', () => ({
   createSite: jest.fn(),
+}))
+
+jest.mock('@/actions/site-maps', () => ({
+  createSiteMap: jest.fn().mockResolvedValue({ id: 'map-1' }),
+  saveSiteMapDrawing: jest.fn().mockResolvedValue(undefined),
 }))
 
 jest.mock('@/app/sites/site-equipment-editor', () => ({
@@ -30,6 +42,14 @@ jest.mock('@/app/components/site-map-editor', () => ({
   SiteMapEditor: ({ initialCenter, onDrawingChange, height }: { initialCenter?: [number, number]; onDrawingChange?: (d: any) => void; height?: number }) => (
     <div data-testid="mock-site-map-editor">
       <span />
+      <button onClick={() => onDrawingChange?.({ type: 'FeatureCollection', features: [] })}>Close Map</button>
+    </div>
+  ),
+}))
+
+jest.mock('@/app/components/map/map-canvas', () => ({
+  MapCanvas: ({ onDrawingChange }: { onDrawingChange?: (d: any) => void }) => (
+    <div data-testid="mock-map-canvas">
       <button onClick={() => onDrawingChange?.({ type: 'FeatureCollection', features: [] })}>Close Map</button>
     </div>
   ),
@@ -136,7 +156,7 @@ describe('AddSiteForm', () => {
 
     it('renders inline map in the form', () => {
       render(<AddSiteForm clients={MOCK_CLIENTS} />)
-      expect(screen.getByTestId('mock-site-map-editor')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-map-canvas')).toBeInTheDocument()
     })
   })
 
