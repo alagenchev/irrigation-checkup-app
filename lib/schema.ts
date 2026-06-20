@@ -141,7 +141,7 @@ export type NewSiteMap = typeof siteMaps.$inferInsert
 
 // ── JSONB sub-types for visit-specific snapshot data ──────────────────────
 
-export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string }
+export type QuoteItemData = { id: number; location: string; item: string; description: string; price: string; qty: string; photoData?: { url: string; annotation: string }[] }
 export type ZoneIssueData = { zoneNum: string; issues: string[] }
 export type ZonePhotoData = { zoneNum: string; photos: { url: string; annotation: string }[] }
 
