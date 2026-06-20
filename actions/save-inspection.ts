@@ -106,6 +106,7 @@ export async function saveInspection(input: SaveInspectionInput): Promise<Action
       const quoteItems: QuoteItemData[] = data.quoteItems.map(qi => ({
         id: qi.id, location: qi.location, item: qi.item,
         description: qi.description, price: qi.price, qty: qi.qty,
+        photoData: qi.photoData ?? [],
       }))
 
       // ── Upsert visit (create or update for same site + date) ──────────────

@@ -120,8 +120,9 @@ export async function getInspectionForEdit(siteVisitId: string): Promise<Irrigat
         description: qi.description,
         price:       qi.price,
         qty:         qi.qty,
+        photoData:   qi.photoData ?? [],
       }))
-    : [{ id: eid++, location: '', item: '', description: '', price: '', qty: '1' }]
+    : [{ id: eid++, location: '', item: '', description: '', price: '', qty: '1', photoData: [] }]
 
   return {
     siteVisitId,
