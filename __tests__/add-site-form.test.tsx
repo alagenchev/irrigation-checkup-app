@@ -6,6 +6,13 @@
  * Task: add-site-with-equipment (f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c)
  */
 
+jest.mock('@/lib/super-admin', () => ({
+  isSuperAdmin: jest.fn().mockReturnValue(false),
+  getSuperAdminSelectedCompanyId: jest.fn().mockResolvedValue(null),
+  setSuperAdminSelectedCompanyId: jest.fn().mockResolvedValue(undefined),
+  clearSuperAdminSelectedCompanyId: jest.fn().mockResolvedValue(undefined),
+}))
+
 import '@testing-library/jest-dom'
 import React from 'react'
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
