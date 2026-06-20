@@ -18,6 +18,14 @@ When the user says any of the following, resolve to the correct directory:
 
 ---
 
+## Non-negotiable: reuse common code across projects
+
+**Before writing any new utility, component, hook, or helper — search the other projects in `~/field-tech/` first.** If the same logic already exists in another project (sparkai, crestation, irrigation), extract it to a shared location or copy the pattern exactly. Do not re-implement from scratch.
+
+**When building a new feature that involves UI patterns already present in this repo** (e.g. photo upload, form tables, confirmation modals), extract a shared component rather than duplicating the JSX inline.
+
+---
+
 ## What this app is
 
 A multi-tenant SaaS field-service tool for irrigation inspection companies. Technicians fill out inspection forms on-site; the app generates PDF reports, stores photos in Cloudflare R2, and tracks site equipment across visits.

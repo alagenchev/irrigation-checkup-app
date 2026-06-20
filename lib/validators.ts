@@ -139,6 +139,7 @@ const backflowRow = z.object({
 const quoteItemRow = z.object({
   id: z.number(), location: z.string(), item: z.string(),
   description: z.string(), price: z.string(), qty: z.string(),
+  photoData: z.array(z.object({ url: z.string(), annotation: z.string() })).optional(),
 })
 
 // ── Update site equipment (bulk replace from equipment editor) ───────────

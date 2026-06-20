@@ -45,3 +45,36 @@ export async function uploadZonePhoto(formData: FormData): Promise<ActionResult<
     return { ok: false, error: message }
   }
 }
+
+/**
+ * Uploads a single repair item photo to Cloudflare R2.
+ * The file is placed at: {companyBucketId}/repairs/{itemIdx}/{timestamp}_{filename}
+ */
+export async function uploadRepairPhoto(formData: FormData): Promise<ActionResult<UploadResult>> {
+  const file    = formData.get('file') as File | null
+  const itemIdx = formData.get('itemIdx') as string | null
+
+  if (!file)    return { ok: false, error: 'No file provided' }
+  if (!itemIdx) return { ok: false, error: 'No item index provided' }
+
+  const settings = await db.query.companySettings.findFirst()
+  if (!settings?.r2CompanyBucketId?.trim()) {
+    return {
+      ok: false,
+      error: 'R2 Company Bucket ID is not set. Add it in Company Settings.',
+    }
+  }
+
+  const buffer   = Buffer.from(await file.arrayBuffer())
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path     = `repairs/${itemIdx}/${Date.now()}_${safeName}`
+
+  try {
+    const key = await uploadToR2(settings.r2CompanyBucketId, path, buffer, file.type || 'application/octet-stream')
+    return { ok: true, data: { key, publicUrl: r2PublicUrl(key) } }
+  } catch (err) {
+    console.error('[uploadRepairPhoto] Failed to upload to R2', { itemIdx, path }, err)
+    const message = err instanceof Error ? err.message : 'Upload failed'
+    return { ok: false, error: message }
+  }
+}

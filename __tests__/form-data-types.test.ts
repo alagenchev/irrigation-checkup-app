@@ -80,6 +80,7 @@ describe('form data shapes match Zod schemas', () => {
   test('quoteItemRow schema accepts a complete QuoteItemFormData object', () => {
     const qi: QuoteItemFormData = {
       id: 4, location: 'Zone 1', item: 'Replace head', description: '4" popup', price: '25.00', qty: '2',
+      photoData: [{ url: 'https://r2.example.com/photo.jpg', annotation: 'Broken head' }],
     }
     const r = saveInspectionSchema.safeParse({ ...validBase, quoteItems: [qi] })
     expect(r.success).toBe(true)

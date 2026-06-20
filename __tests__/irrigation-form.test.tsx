@@ -31,6 +31,7 @@ jest.mock('@/actions/save-inspection', () => ({
 
 jest.mock('@/actions/upload', () => ({
   uploadZonePhoto: jest.fn(),
+  uploadRepairPhoto: jest.fn(),
 }))
 
 jest.mock('@/actions/clients', () => ({
@@ -414,7 +415,7 @@ describe('IrrigationForm ID counter', () => {
       zones: [{ id: 10, zoneNum: '1', controller: '', description: '', landscapeTypes: [], irrigationTypes: [], notes: '', photoData: [] }],
       backflows: [{ id: 8, manufacturer: '', type: '', model: '', size: '' }],
       zoneIssues: {},
-      quoteItems: [{ id: 3, location: '', item: '', description: '', price: '', qty: '' }],
+      quoteItems: [{ id: 3, location: '', item: '', description: '', price: '', qty: '', photoData: [] }],
     }
     renderForm({ initialData })
 

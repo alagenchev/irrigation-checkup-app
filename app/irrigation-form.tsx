@@ -7,7 +7,8 @@ import { SiteSelector } from '@/app/components/site-selector'
 import { ensureClientExists } from '@/actions/clients'
 import { saveInspection } from '@/actions/save-inspection'
 import { getSiteEquipment, updateSiteEquipment } from '@/actions/sites'
-import { uploadZonePhoto } from '@/actions/upload'
+import { uploadZonePhoto, uploadRepairPhoto } from '@/actions/upload'
+import { PhotoUploadSection } from '@/app/components/photo-upload-section'
 import type { Client, CompanySettings, Inspector, IrrigationFormInitialData, ControllerFormData, ZoneFormData, BackflowFormData, QuoteItemFormData } from '@/types'
 import type { SiteWithClient } from '@/actions/sites'
 
@@ -82,7 +83,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [zoneIssues, setZoneIssues] = useState<Record<string, string[]>>(() => initialData?.zoneIssues ?? {})
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>(() =>
     initialData?.quoteItems ?? [
-      { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
+      { id: uid(), location: '', item: '', description: '', price: '', qty: '1', photoData: [] }
     ]
   )
   const [siteMode,         setSiteMode]         = useState<'existing' | 'new'>('existing')
@@ -108,9 +109,6 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [geoLoading,     setGeoLoading]     = useState(false)
   const [geoResults,     setGeoResults]     = useState<string[]>([])
   const [geoError,       setGeoError]       = useState<string | null>(null)
-  const [photoUploading, setPhotoUploading] = useState<Record<number, boolean>>({})
-  const [photoErrors,    setPhotoErrors]    = useState<Record<number, string>>({})
-  const [photoThumbs,    setPhotoThumbs]    = useState<Record<number, string[]>>({})
   const photoRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // True when equipment was loaded from an existing site and we're creating a new inspection
@@ -336,13 +334,23 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   // ── QUOTE ITEMS ──────────────────────────────────────────────────────────
 
   function addQuoteItem() {
-    setQuoteItems(q => [...q, { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }])
+    setQuoteItems(q => [...q, { id: uid(), location: '', item: '', description: '', price: '', qty: '1', photoData: [] }])
   }
   function updateQuoteItem(id: number, key: keyof QuoteItem, value: string) {
     setQuoteItems(q => q.map(qi => qi.id === id ? { ...qi, [key]: value } : qi))
   }
   function removeQuoteItem(id: number) {
     setQuoteItems(q => q.filter(qi => qi.id !== id))
+  }
+  function addQuoteItemPhotoUrl(id: number, url: string) {
+    setQuoteItems(q => q.map(qi => qi.id === id ? { ...qi, photoData: [...qi.photoData, { url, annotation: '' }] } : qi))
+  }
+  function updateQuoteItemPhotoAnnotation(id: number, photoIdx: number, annotation: string) {
+    setQuoteItems(q => q.map(qi =>
+      qi.id === id
+        ? { ...qi, photoData: qi.photoData.map((p, i) => i === photoIdx ? { ...p, annotation } : p) }
+        : qi,
+    ))
   }
 
   const quoteTotal = quoteItems.reduce((sum, qi) => sum + (parseFloat(qi.price) || 0) * (parseInt(qi.qty) || 1), 0)
@@ -1019,124 +1027,24 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                         </div>
 
                         {/* PHOTOS SECTION */}
-                        <div>
-                          <div style={{fontSize:11,color:'#71717a',marginBottom:3}}>Photos ({zn.photoData.length}/30)</div>
-
-                          {mode !== 'readonly' && (
-                            <>
-                              <input type="file" accept="image/*" multiple style={{display:'none'}}
-                                ref={el => { photoRefs.current[`zone_upload_${zn.id}`] = el }}
-                                onChange={async e => {
-                                  const files = Array.from(e.target.files ?? [])
-                                  for (const file of files) {
-                                    if (zn.photoData.length >= 30) {
-                                      setPhotoErrors(p => ({...p, [zn.id]: 'Maximum 30 photos per zone reached'}))
-                                      return
-                                    }
-                                    setPhotoUploading(p => ({...p, [zn.id]: true}))
-                                    setPhotoErrors(p => ({...p, [zn.id]: ''}))
-
-                                    try {
-                                      const reader = new FileReader()
-                                      reader.onload = () => {
-                                        setPhotoThumbs(t => ({...t, [zn.id]: [...(t[zn.id] ?? []), reader.result as string]}))
-                                      }
-                                      reader.readAsDataURL(file)
-
-                                      const fd = new FormData()
-                                      fd.append('file', file)
-                                      fd.append('zoneNum', zn.zoneNum)
-                                      const res = await uploadZonePhoto(fd)
-                                      if (res.ok) {
-                                        addZonePhotoUrl(zn.id, res.data.publicUrl || res.data.key)
-                                      } else {
-                                        setPhotoErrors(p => ({...p, [zn.id]: res.error || 'Upload failed'}))
-                                      }
-                                    } catch (err: any) {
-                                      setPhotoErrors(p => ({...p, [zn.id]: err.message || 'Upload error'}))
-                                    } finally {
-                                      setPhotoUploading(p => ({...p, [zn.id]: false}))
-                                    }
-                                  }
-                                  e.target.value = ''
-                                }}
-                              />
-                              <input type="file" accept="image/*" capture="environment" style={{display:'none'}}
-                                ref={el => { photoRefs.current[`zone_capture_${zn.id}`] = el }}
-                                onChange={async e => {
-                                  const file = e.target.files?.[0]
-                                  if (!file) return
-
-                                  if (zn.photoData.length >= 30) {
-                                    setPhotoErrors(p => ({...p, [zn.id]: 'Maximum 30 photos per zone reached'}))
-                                    return
-                                  }
-
-                                  setPhotoUploading(p => ({...p, [zn.id]: true}))
-                                  setPhotoErrors(p => ({...p, [zn.id]: ''}))
-
-                                  try {
-                                    const reader = new FileReader()
-                                    reader.onload = () => {
-                                      setPhotoThumbs(t => ({...t, [zn.id]: [...(t[zn.id] ?? []), reader.result as string]}))
-                                    }
-                                    reader.readAsDataURL(file)
-
-                                    const fd = new FormData()
-                                    fd.append('file', file)
-                                    fd.append('zoneNum', zn.zoneNum)
-                                    const res = await uploadZonePhoto(fd)
-                                    if (res.ok) {
-                                      addZonePhotoUrl(zn.id, res.data.publicUrl || res.data.key)
-                                    } else {
-                                      setPhotoErrors(p => ({...p, [zn.id]: res.error || 'Upload failed'}))
-                                    }
-                                  } catch (err: any) {
-                                    setPhotoErrors(p => ({...p, [zn.id]: err.message || 'Upload error'}))
-                                  } finally {
-                                    setPhotoUploading(p => ({...p, [zn.id]: false}))
-                                  }
-                                  e.target.value = ''
-                                }}
-                              />
-                              <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
-                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_upload_${zn.id}`]?.click()} disabled={photoUploading[zn.id] || zn.photoData.length >= 30}>Upload</button>
-                                <button type="button" className="btn btn-sm" onClick={() => photoRefs.current[`zone_capture_${zn.id}`]?.click()} disabled={photoUploading[zn.id] || zn.photoData.length >= 30}>📷 Capture</button>
-                                {photoUploading[zn.id] && <span style={{fontSize:12,color:'#3b82f6'}}>⏳ Uploading...</span>}
-                              </div>
-                            </>
-                          )}
-
-                          {photoErrors[zn.id] && (
-                            <div style={{fontSize:11,color:'#ef4444',marginBottom:8,padding:8,backgroundColor:'#fee2e2',borderRadius:4}}>
-                              ❌ {photoErrors[zn.id]}
-                            </div>
-                          )}
-
-                          {/* RESPONSIVE PHOTO GRID WITH ANNOTATIONS */}
-                          {zn.photoData.length > 0 && (
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))',gap:8}}>
-                              {zn.photoData.map((photo, idx) => (
-                                <div key={idx} style={{display:'flex',flexDirection:'column',gap:4}}>
-                                  <img src={photo.url} alt={`Photo ${idx + 1}`} style={{width:'100%',height:120,objectFit:'cover',borderRadius:4,border:'1px solid #e5e7eb',backgroundColor:'#f5f5f5'}} />
-                                  {mode !== 'readonly' && (
-                                    <input
-                                      type="text"
-                                      placeholder="Annotation..."
-                                      value={photo.annotation}
-                                      onChange={e => updateZonePhotoAnnotation(zn.id, idx, e.target.value)}
-                                      maxLength={100}
-                                      style={{fontSize:11,padding:4,borderRadius:3,border:'1px solid #d4d4d8',width:'100%',boxSizing:'border-box'}}
-                                    />
-                                  )}
-                                  {mode === 'readonly' && photo.annotation && (
-                                    <div style={{fontSize:11,color:'#71717a',padding:4}}>{photo.annotation}</div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <PhotoUploadSection
+                          photos={zn.photoData}
+                          maxPhotos={30}
+                          readonly={mode === 'readonly'}
+                          onPhotoAdded={url => addZonePhotoUrl(zn.id, url)}
+                          onAnnotationChange={(idx, text) => updateZonePhotoAnnotation(zn.id, idx, text)}
+                          uploadAction={async file => {
+                            const fd = new FormData()
+                            fd.append('file', file)
+                            fd.append('zoneNum', zn.zoneNum)
+                            const res = await uploadZonePhoto(fd)
+                            return res.ok
+                              ? { ok: true, url: res.data.publicUrl || res.data.key }
+                              : { ok: false, error: res.error }
+                          }}
+                          uploadInputRef={el => { photoRefs.current[`zone_upload_${zn.id}`] = el }}
+                          captureInputRef={el => { photoRefs.current[`zone_capture_${zn.id}`] = el }}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -1273,18 +1181,40 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             </thead>
             <tbody>
               {quoteItems.map((qi, i) => (
-                <tr key={qi.id}>
-                  <td>{i+1}</td>
-                  <td><textarea rows={2} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="Controller1-Zone3" disabled={mode === 'readonly'} /></td>
-                  <td><textarea rows={2} value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} /></td>
-                  <td><textarea rows={2} value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
-                  <td><input type="number" step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
-                  <td><input type="number" value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
-                  <td>${((parseFloat(qi.price)||0)*(parseInt(qi.qty)||1)).toFixed(2)}</td>
-                  {mode !== 'readonly' && (
-                    <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
-                  )}
-                </tr>
+                <React.Fragment key={qi.id}>
+                  <tr>
+                    <td>{i+1}</td>
+                    <td><textarea rows={2} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="Controller1-Zone3" disabled={mode === 'readonly'} /></td>
+                    <td><textarea rows={2} value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} /></td>
+                    <td><textarea rows={2} value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
+                    <td><input type="number" step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
+                    <td><input type="number" value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
+                    <td>${((parseFloat(qi.price)||0)*(parseInt(qi.qty)||1)).toFixed(2)}</td>
+                    {mode !== 'readonly' && (
+                      <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td colSpan={mode !== 'readonly' ? 8 : 7} style={{padding:'0 8px 12px',background:'#1a1a1a'}}>
+                      <PhotoUploadSection
+                        photos={qi.photoData}
+                        maxPhotos={10}
+                        readonly={mode === 'readonly'}
+                        onPhotoAdded={url => addQuoteItemPhotoUrl(qi.id, url)}
+                        onAnnotationChange={(idx, text) => updateQuoteItemPhotoAnnotation(qi.id, idx, text)}
+                        uploadAction={async file => {
+                          const fd = new FormData()
+                          fd.append('file', file)
+                          fd.append('itemIdx', String(i))
+                          const res = await uploadRepairPhoto(fd)
+                          return res.ok
+                            ? { ok: true, url: res.data.publicUrl || res.data.key }
+                            : { ok: false, error: res.error }
+                        }}
+                      />
+                    </td>
+                  </tr>
+                </React.Fragment>
               ))}
             </tbody>
             <tfoot>

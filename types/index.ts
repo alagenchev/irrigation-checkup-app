@@ -39,6 +39,7 @@ export type BackflowFormData = {
 
 export type QuoteItemFormData = {
   id: number; location: string; item: string; description: string; price: string; qty: string
+  photoData: { url: string; annotation: string }[]
 }
 
 export type IrrigationFormFieldValues = {
