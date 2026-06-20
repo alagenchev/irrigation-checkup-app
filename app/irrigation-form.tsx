@@ -83,7 +83,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   const [zoneIssues, setZoneIssues] = useState<Record<string, string[]>>(() => initialData?.zoneIssues ?? {})
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>(() =>
     initialData?.quoteItems ?? [
-      { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }
+      { id: uid(), location: '', item: '', description: '', price: '', qty: '1', photoData: [] }
     ]
   )
   const [siteMode,         setSiteMode]         = useState<'existing' | 'new'>('existing')
@@ -334,13 +334,23 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
   // ── QUOTE ITEMS ──────────────────────────────────────────────────────────
 
   function addQuoteItem() {
-    setQuoteItems(q => [...q, { id: uid(), location: '', item: '', description: '', price: '', qty: '1' }])
+    setQuoteItems(q => [...q, { id: uid(), location: '', item: '', description: '', price: '', qty: '1', photoData: [] }])
   }
   function updateQuoteItem(id: number, key: keyof QuoteItem, value: string) {
     setQuoteItems(q => q.map(qi => qi.id === id ? { ...qi, [key]: value } : qi))
   }
   function removeQuoteItem(id: number) {
     setQuoteItems(q => q.filter(qi => qi.id !== id))
+  }
+  function addQuoteItemPhotoUrl(id: number, url: string) {
+    setQuoteItems(q => q.map(qi => qi.id === id ? { ...qi, photoData: [...qi.photoData, { url, annotation: '' }] } : qi))
+  }
+  function updateQuoteItemPhotoAnnotation(id: number, photoIdx: number, annotation: string) {
+    setQuoteItems(q => q.map(qi =>
+      qi.id === id
+        ? { ...qi, photoData: qi.photoData.map((p, i) => i === photoIdx ? { ...p, annotation } : p) }
+        : qi,
+    ))
   }
 
   const quoteTotal = quoteItems.reduce((sum, qi) => sum + (parseFloat(qi.price) || 0) * (parseInt(qi.qty) || 1), 0)
@@ -1171,18 +1181,40 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
             </thead>
             <tbody>
               {quoteItems.map((qi, i) => (
-                <tr key={qi.id}>
-                  <td>{i+1}</td>
-                  <td><textarea rows={2} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="Controller1-Zone3" disabled={mode === 'readonly'} /></td>
-                  <td><textarea rows={2} value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} /></td>
-                  <td><textarea rows={2} value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
-                  <td><input type="number" step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
-                  <td><input type="number" value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
-                  <td>${((parseFloat(qi.price)||0)*(parseInt(qi.qty)||1)).toFixed(2)}</td>
-                  {mode !== 'readonly' && (
-                    <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
-                  )}
-                </tr>
+                <React.Fragment key={qi.id}>
+                  <tr>
+                    <td>{i+1}</td>
+                    <td><textarea rows={2} value={qi.location} onChange={e => updateQuoteItem(qi.id,'location',e.target.value)} placeholder="Controller1-Zone3" disabled={mode === 'readonly'} /></td>
+                    <td><textarea rows={2} value={qi.item} onChange={e => updateQuoteItem(qi.id,'item',e.target.value)} placeholder="Item name" disabled={mode === 'readonly'} /></td>
+                    <td><textarea rows={2} value={qi.description} onChange={e => updateQuoteItem(qi.id,'description',e.target.value)} placeholder="Description" disabled={mode === 'readonly'} /></td>
+                    <td><input type="number" step="0.01" value={qi.price} onChange={e => updateQuoteItem(qi.id,'price',e.target.value)} placeholder="0.00" disabled={mode === 'readonly'} /></td>
+                    <td><input type="number" value={qi.qty} onChange={e => updateQuoteItem(qi.id,'qty',e.target.value)} min="1" disabled={mode === 'readonly'} /></td>
+                    <td>${((parseFloat(qi.price)||0)*(parseInt(qi.qty)||1)).toFixed(2)}</td>
+                    {mode !== 'readonly' && (
+                      <td><button type="button" className="btn btn-danger" onClick={() => removeQuoteItem(qi.id)}>✕</button></td>
+                    )}
+                  </tr>
+                  <tr>
+                    <td colSpan={mode !== 'readonly' ? 8 : 7} style={{padding:'0 8px 12px',background:'#1a1a1a'}}>
+                      <PhotoUploadSection
+                        photos={qi.photoData}
+                        maxPhotos={10}
+                        readonly={mode === 'readonly'}
+                        onPhotoAdded={url => addQuoteItemPhotoUrl(qi.id, url)}
+                        onAnnotationChange={(idx, text) => updateQuoteItemPhotoAnnotation(qi.id, idx, text)}
+                        uploadAction={async file => {
+                          const fd = new FormData()
+                          fd.append('file', file)
+                          fd.append('itemIdx', String(i))
+                          const res = await uploadRepairPhoto(fd)
+                          return res.ok
+                            ? { ok: true, url: res.data.publicUrl || res.data.key }
+                            : { ok: false, error: res.error }
+                        }}
+                      />
+                    </td>
+                  </tr>
+                </React.Fragment>
               ))}
             </tbody>
             <tfoot>
