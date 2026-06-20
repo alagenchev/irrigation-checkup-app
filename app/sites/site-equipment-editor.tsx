@@ -477,7 +477,7 @@ export function SiteEquipmentEditor({ site, onClose, onSave }: SiteEquipmentEdit
               </tr>
             </thead>
             <tbody>
-              {zones.map(zn => (
+              {[...zones].sort((a, b) => a.zoneNum.localeCompare(b.zoneNum, undefined, { numeric: true, sensitivity: 'base' })).map(zn => (
                 <React.Fragment key={zn.id}>
                   <tr data-testid="site-equipment-editor-zone-row">
                     <td style={{ verticalAlign: 'top', paddingTop: 8 }}>

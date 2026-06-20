@@ -970,7 +970,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
               </tr>
             </thead>
             <tbody>
-              {zones.map(zn => (
+              {[...zones].sort((a, b) => a.zoneNum.localeCompare(b.zoneNum, undefined, { numeric: true, sensitivity: 'base' })).map(zn => (
                 <React.Fragment key={zn.id}>
                   <tr>
                     <td style={{verticalAlign:'top',paddingTop:8}}><input type="number" style={{width:55}} value={zn.zoneNum} onChange={e => updateZone(zn.id, 'zoneNum', e.target.value)} disabled={mode === 'readonly'} /></td>
@@ -1219,7 +1219,7 @@ export function IrrigationForm({ clients, sites, company, inspectors, initialDat
                 </tr>
               </thead>
               <tbody>
-                {zones.map(zn => (
+                {[...zones].sort((a, b) => a.zoneNum.localeCompare(b.zoneNum, undefined, { numeric: true, sensitivity: 'base' })).map(zn => (
                   <tr key={zn.id}>
                     <td style={{fontWeight:600}}>Zone {zn.zoneNum}</td>
                     {ISSUE_TYPES.map(issue => (
