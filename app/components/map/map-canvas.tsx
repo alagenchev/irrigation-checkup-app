@@ -90,6 +90,9 @@ export function MapCanvas({
   const draftPointsRef = useRef<[number, number][]>([])
   draftPointsRef.current = draftPoints
 
+  const featuresRef = useRef<GeoJSON.Feature[]>([])
+  featuresRef.current = features
+
   const fittedRef = useRef(false)
   const geolocRef = useRef<[number, number] | null>(null)
   const readOnlyRef = useRef(readOnly)
@@ -247,8 +250,16 @@ export function MapCanvas({
     map.on('click', 'features-fill', (e) => {
       if (readOnlyRef.current || modeRef.current !== 'idle') return
       e.preventDefault()
-      const feature = e.features?.[0] as GeoJSON.Feature<GeoJSON.Polygon> | undefined
-      if (feature) setSelectedFeature(feature)
+      const clicked = e.features?.[0] as GeoJSON.Feature<GeoJSON.Polygon> | undefined
+      if (!clicked) return
+      // Mapbox GL 3.x may return click features with null geometry or missing
+      // properties (_fid). Always resolve to the matching React state feature so
+      // the ZoneInfoPanel receives a complete, authoritative feature object.
+      const clickedFid = clicked.properties?._fid as string | undefined
+      const stateFeature = (
+        clickedFid ? featuresRef.current.find(f => f.properties?._fid === clickedFid) : undefined
+      ) as GeoJSON.Feature<GeoJSON.Polygon> | undefined
+      setSelectedFeature(stateFeature ?? clicked)
     })
 
     map.on('click', 'features-points', (e) => {

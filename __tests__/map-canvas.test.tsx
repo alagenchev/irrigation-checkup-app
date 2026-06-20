@@ -34,7 +34,7 @@ jest.mock('@/app/components/map/drawing-toolbar', () => ({
   DrawingToolbar: () => null,
 }))
 jest.mock('@/app/components/map/zone-info-panel', () => ({
-  ZoneInfoPanel: () => null,
+  ZoneInfoPanel: jest.fn(() => null),
 }))
 jest.mock('@/app/components/map/line-info-panel', () => ({
   LineInfoPanel: () => null,
@@ -175,9 +175,11 @@ import '@testing-library/jest-dom'
 import React from 'react'
 import { render, act } from '@testing-library/react'
 import { MapCanvas } from '@/app/components/map/map-canvas'
+import { ZoneInfoPanel } from '@/app/components/map/zone-info-panel'
 import { getSiteMap } from '@/actions/site-maps'
 
 const mockGetSiteMap = getSiteMap as jest.Mock
+const MockZoneInfoPanel = ZoneInfoPanel as jest.Mock
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -557,5 +559,230 @@ describe('MapCanvas — map initialization', () => {
     const map = latestMapInstance()
     unmount()
     expect(map.remove).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zone edit flow: clicking a zone then updating it must keep it on the map
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('MapCanvas — zone edit: zone stays on map after editing', () => {
+  beforeEach(() => {
+    MockZoneInfoPanel.mockClear()
+  })
+
+  /**
+   * Simulate what happens when the user:
+   *  1. Has a zone on the map (loaded from DB)
+   *  2. Clicks it  → selectedFeature is set, ZoneInfoPanel opens
+   *  3. Types a name and clicks Done  → onUpdate(updatedFeature) is called
+   *  4. Zone must still appear in features-fill-src after the update
+   */
+  it('zone remains in features-fill-src after clicking Done on ZoneInfoPanel', async () => {
+    const drawing: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [ZONE_FEATURE],
+    }
+    mockGetSiteMap.mockResolvedValueOnce({ id: 'map-1', drawing })
+
+    render(<MapCanvas mapId="map-1" />)
+    const map = latestMapInstance()
+    await fireMapLoad(map)
+
+    const fillSrc = map.sources.get('features-fill-src')!
+    fillSrc.setData.mockClear()
+
+    // ── Step 1: simulate user clicking on the zone ──────────────────────────
+    // Mapbox click events return the feature as stored in the source.
+    // We pass the feature as if returned from e.features[0] on features-fill.
+    const mapboxClickFeature = {
+      ...ZONE_FEATURE,
+      // Mapbox serialises array properties to JSON strings
+      properties: { ...ZONE_FEATURE.properties, photoUrls: '[]' },
+    }
+
+    await act(async () => {
+      map.fireEvent('click', {
+        features: [mapboxClickFeature],
+        preventDefault: jest.fn(),
+        defaultPrevented: false,
+        lngLat: { lng: -119.5, lat: 37.5 },
+      })
+    })
+
+    // ZoneInfoPanel should now be rendered and have received onUpdate
+    expect(MockZoneInfoPanel).toHaveBeenCalled()
+    const lastCallProps = MockZoneInfoPanel.mock.calls[MockZoneInfoPanel.mock.calls.length - 1][0] as {
+      feature: GeoJSON.Feature
+      onUpdate: (f: GeoJSON.Feature) => void
+      onClose: () => void
+    }
+    expect(lastCallProps.onUpdate).toBeDefined()
+
+    // ── Step 2: simulate user typing a name and clicking Done ──────────────
+    // This mirrors ZoneInfoPanel.handleDone(): spreads the clicked feature's
+    // properties (as received from Mapbox) then overrides individual fields.
+    const clickedProps = mapboxClickFeature.properties as Record<string, unknown>
+    const updatedFeature: GeoJSON.Feature = {
+      ...mapboxClickFeature,
+      properties: {
+        ...clickedProps,
+        name: 'Front Lawn',
+        color: '#22c55e',
+        opacity: 25,
+        role: 'zone',
+        areaType: 'turf',
+        sunExposure: 'sunny',
+        grassType: '',
+        photoUrls: [],
+        areaSqFt: clickedProps.areaSqFt ?? 0,
+        perimeterFt: clickedProps.perimeterFt ?? 0,
+      },
+    }
+
+    await act(async () => {
+      lastCallProps.onUpdate(updatedFeature)
+      lastCallProps.onClose()
+    })
+
+    // ── Step 3: verify zone still in fill source ────────────────────────────
+    // updateMapSources must have been called with the updated zone
+    const lastSetDataCall = fillSrc.setData.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection
+    expect(lastSetDataCall).toBeDefined()
+    expect(lastSetDataCall.features).toHaveLength(1)
+    expect(lastSetDataCall.features[0].properties?.featureType).toBe('zone')
+    expect(lastSetDataCall.features[0].properties?.name).toBe('Front Lawn')
+  })
+
+  /**
+   * Regression: In Mapbox GL 3.x, e.features[0] from a fill-layer click may
+   * return a feature with geometry: null.  If we spread that into the updated
+   * object the zone loses its coordinates, gets pushed to features-fill-src
+   * without geometry, and vanishes from the map — even though it's still listed
+   * in the ReviewPanel (featureType is intact, just no shape to render).
+   *
+   * Fix: look up the matching feature from the React state in the click handler
+   * so selectedFeature always has complete geometry.
+   */
+  it('zone stays on map when Mapbox click returns feature with null geometry', async () => {
+    const drawing: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [ZONE_FEATURE],
+    }
+    mockGetSiteMap.mockResolvedValueOnce({ id: 'map-3', drawing })
+
+    render(<MapCanvas mapId="map-3" />)
+    const map = latestMapInstance()
+    await fireMapLoad(map)
+
+    const fillSrc = map.sources.get('features-fill-src')!
+    fillSrc.setData.mockClear()
+    MockZoneInfoPanel.mockClear()
+
+    // Simulate Mapbox returning the feature WITHOUT geometry (null)
+    const mapboxClickFeatureNoGeom = {
+      type: 'Feature',
+      id: 'zone-1',
+      geometry: null as unknown as GeoJSON.Geometry,
+      properties: { ...ZONE_FEATURE.properties, photoUrls: '[]' },
+    }
+
+    await act(async () => {
+      map.fireEvent('click', {
+        features: [mapboxClickFeatureNoGeom],
+        preventDefault: jest.fn(),
+        defaultPrevented: false,
+        lngLat: { lng: -119.5, lat: 37.5 },
+      })
+    })
+
+    expect(MockZoneInfoPanel).toHaveBeenCalled()
+    const props = MockZoneInfoPanel.mock.calls[MockZoneInfoPanel.mock.calls.length - 1][0] as {
+      feature: GeoJSON.Feature
+      onUpdate: (f: GeoJSON.Feature) => void
+      onClose: () => void
+    }
+
+    // The feature passed to ZoneInfoPanel must have valid geometry (from state, not Mapbox click)
+    expect(props.feature.geometry).not.toBeNull()
+    expect(props.feature.geometry.type).toBe('Polygon')
+
+    // Simulate Done: build updated feature from what ZoneInfoPanel would produce
+    const updatedFeature: GeoJSON.Feature = {
+      ...props.feature,
+      properties: { ...props.feature.properties, name: 'Front Lawn' },
+    }
+
+    await act(async () => {
+      props.onUpdate(updatedFeature)
+      props.onClose()
+    })
+
+    const lastCall = fillSrc.setData.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection
+    expect(lastCall).toBeDefined()
+    expect(lastCall.features).toHaveLength(1)
+    expect(lastCall.features[0].geometry).not.toBeNull()
+    expect(lastCall.features[0].properties?.featureType).toBe('zone')
+    expect(lastCall.features[0].properties?.name).toBe('Front Lawn')
+  })
+
+  it('zone from DB without _fid still stays on map after editing', async () => {
+    // Test the edge case where a feature was saved to DB before _fid was introduced.
+    const zoneWithoutFid: GeoJSON.Feature = {
+      type: 'Feature',
+      geometry: ZONE_FEATURE.geometry,
+      properties: {
+        featureType: 'zone',
+        name: '',
+        color: '#22c55e',
+        opacity: 25,
+        areaSqFt: 1000,
+        perimeterFt: 500,
+      },
+    }
+    const drawing: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [zoneWithoutFid],
+    }
+    mockGetSiteMap.mockResolvedValueOnce({ id: 'map-2', drawing })
+
+    render(<MapCanvas mapId="map-2" />)
+    const map = latestMapInstance()
+    await fireMapLoad(map)
+
+    const fillSrc = map.sources.get('features-fill-src')!
+    fillSrc.setData.mockClear()
+    MockZoneInfoPanel.mockClear()
+
+    await act(async () => {
+      map.fireEvent('click', {
+        features: [{ ...zoneWithoutFid, properties: { ...zoneWithoutFid.properties, photoUrls: '[]' } }],
+        preventDefault: jest.fn(),
+        defaultPrevented: false,
+        lngLat: { lng: -119.5, lat: 37.5 },
+      })
+    })
+
+    expect(MockZoneInfoPanel).toHaveBeenCalled()
+    const props = MockZoneInfoPanel.mock.calls[MockZoneInfoPanel.mock.calls.length - 1][0] as {
+      onUpdate: (f: GeoJSON.Feature) => void
+      onClose: () => void
+    }
+
+    const updatedFeature: GeoJSON.Feature = {
+      ...zoneWithoutFid,
+      properties: { ...zoneWithoutFid.properties, name: 'Back Yard', photoUrls: [] },
+    }
+
+    await act(async () => {
+      props.onUpdate(updatedFeature)
+      props.onClose()
+    })
+
+    const lastCall = fillSrc.setData.mock.calls.at(-1)?.[0] as GeoJSON.FeatureCollection
+    expect(lastCall).toBeDefined()
+    expect(lastCall.features).toHaveLength(1)
+    expect(lastCall.features[0].properties?.featureType).toBe('zone')
+    expect(lastCall.features[0].properties?.name).toBe('Back Yard')
   })
 })
