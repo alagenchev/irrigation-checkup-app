@@ -31,6 +31,7 @@ jest.mock('@/actions/save-inspection', () => ({
 
 jest.mock('@/actions/upload', () => ({
   uploadZonePhoto: jest.fn(),
+  uploadRepairPhoto: jest.fn(),
 }))
 
 jest.mock('@/actions/clients', () => ({
