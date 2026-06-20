@@ -2,9 +2,13 @@ import { auth } from '@clerk/nextjs/server'
 import { eq } from 'drizzle-orm'
 import { db } from './db'
 import { companies } from './schema'
+import { isSuperAdmin, getSuperAdminSelectedCompanyId } from './super-admin'
 
 /**
  * Resolves the current request's Clerk organisation to an internal company ID.
+ *
+ * Super admins (listed in SUPER_ADMIN_CLERK_USER_IDS) bypass org-scoping:
+ * their selected company is read from a cookie set via the /admin panel.
  *
  * Auto-provisions a `companies` row on first access for a new org so callers
  * never have to worry about setup order.
@@ -13,7 +17,14 @@ import { companies } from './schema'
  * user must belong to an org for the multi-tenant invariant to hold.
  */
 export async function getRequiredCompanyId(): Promise<string> {
-  const { orgId } = await auth()
+  const { userId, orgId } = await auth()
+
+  if (isSuperAdmin(userId)) {
+    const selected = await getSuperAdminSelectedCompanyId()
+    if (selected) return selected
+    throw new Error('Super admin: no company selected — visit /admin to pick one')
+  }
+
   if (!orgId) {
     console.error('[getRequiredCompanyId] No orgId on authenticated session — user has no active Clerk organisation')
     throw new Error(
