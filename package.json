@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
     "test": "jest --config jest.config.js",
     "test:db": "DATABASE_URL_TEST=postgresql://localhost:5432/irrigation_test jest --config jest.integration.config.js --runInBand",
     "test:e2e": "playwright test",
